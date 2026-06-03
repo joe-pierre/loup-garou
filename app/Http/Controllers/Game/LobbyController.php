@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Game;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateGameRequest;
 use App\Http\Requests\JoinGameRequest;
+use App\Models\Game;
 use App\Services\GameService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\View\View;
 
 class LobbyController extends Controller
 {
@@ -43,6 +45,25 @@ class LobbyController extends Controller
                 'player_id' => $player->id,
                 'game_code' => strtoupper($code),
             ],
+        ]);
+    }
+
+    public function waitingRoom(string $code): View
+    {
+        $game = Game::where('code', strtoupper($code))->firstOrFail();
+
+        $currentPlayer = $game->players()
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
+
+        $players = $game->players()
+            ->select(['id', 'pseudo', 'is_host'])
+            ->get();
+
+        return view('lobby.waiting-room', [
+            'game'          => $game,
+            'currentPlayer' => $currentPlayer,
+            'players'       => $players,
         ]);
     }
 }

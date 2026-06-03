@@ -22,16 +22,18 @@
 - [x] POST /game/{code}/join
 - [ ] POST /game/{id}/exclude/{playerId}
 - [ ] POST /game/{id}/ready
-- [ ] Event PlayerJoined
+- [x] Event PlayerJoined
 - [ ] Event PlayerExcluded
 - [ ] RoleDistributor (avec config extensible)
 - [ ] Démarrage automatique quand max_players atteint
+- [x] GET /game/{code}/lobby (salle d'attente)
+- [x] Vue waiting-room.blade.php (Écran 4)
 
 ## Phase 4 — WebSocket Setup
-- [ ] Reverb config
-- [ ] Echo config (frontend)
-- [ ] Channel definitions (routes/channels.php)
-- [ ] Broadcasting Auth (loups, joueur individuel)
+- [x] Reverb config (config/broadcasting.php)
+- [x] Echo config (resources/js/echo.js)
+- [x] Channel definitions (routes/channels.php)
+- [x] Broadcasting Auth (loups, joueur individuel)
 
 ## Phase 5 — Élection Maire
 - [ ] POST /game/{id}/vote/mayor
