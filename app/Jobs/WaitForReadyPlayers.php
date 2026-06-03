@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Jobs\ProcessMayorElection;
 
 class WaitForReadyPlayers implements ShouldQueue
 {
@@ -31,10 +32,12 @@ class WaitForReadyPlayers implements ShouldQueue
             return;
         }
 
-        $deadline = now()->addSeconds(config('game.timers.mayor_election', 30));
+        $timer    = config('game.timers.mayor_election', 30);
+        $deadline = now()->addSeconds($timer);
 
         $game->update(['phase_deadline' => $deadline]);
 
         broadcast(new MayorElectionStarted($game));
+        ProcessMayorElection::dispatch($game->id)->delay(now()->addSeconds($timer));
     }
 }

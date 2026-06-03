@@ -44,6 +44,64 @@ class VoteService
         });
     }
 
+    /**
+     * Résout l'élection du maire : élit le candidat avec le plus de votes,
+     * aléatoire en cas d'égalité ou si aucun vote n'a été exprimé.
+     * Retourne null si la phase a déjà changé (double-fire guard).
+     *
+     * @return array{player: GamePlayer, game: Game, was_random: bool}|null
+     */
+    public function resolveMayorElection(Game $game): ?array
+    {
+        return DB::transaction(function () use ($game) {
+            $locked = Game::where('id', $game->id)
+                ->where('status', 'electing_mayor')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked) {
+                return null;
+            }
+
+            $votes = GameAction::where('game_id', $locked->id)
+                ->where('type', 'mayor_vote')
+                ->where('round', $locked->round)
+                ->selectRaw('target_player_id, COUNT(*) as vote_count')
+                ->groupBy('target_player_id')
+                ->orderByDesc('vote_count')
+                ->get();
+
+            $wasRandom = false;
+
+            if ($votes->isEmpty()) {
+                $winner    = $locked->alivePlayers()->inRandomOrder()->first();
+                $wasRandom = true;
+            } else {
+                $maxVotes      = $votes->first()->vote_count;
+                $topCandidates = $votes->where('vote_count', $maxVotes);
+
+                if ($topCandidates->count() > 1) {
+                    $wasRandom  = true;
+                    $winnerId   = $topCandidates->random()->target_player_id;
+                } else {
+                    $winnerId = $topCandidates->first()->target_player_id;
+                }
+
+                $winner = GamePlayer::find($winnerId);
+            }
+
+            $winner->update(['is_mayor' => true]);
+
+            $locked->update([
+                'status'         => 'night',
+                'round'          => 1,
+                'phase_deadline' => now()->addSeconds(config('game.timers.seer', 30)),
+            ]);
+
+            return ['player' => $winner, 'game' => $locked, 'was_random' => $wasRandom];
+        });
+    }
+
     private function getMayorVoteTotals(Game $game): array
     {
         return GameAction::where('game_actions.game_id', $game->id)

@@ -7,6 +7,7 @@ use App\Events\Game\MayorElectionStarted;
 use App\Events\Game\PlayerExcluded;
 use App\Events\Game\PlayerJoined;
 use App\Events\Game\PlayerReady;
+use App\Jobs\ProcessMayorElection;
 use App\Jobs\WaitForReadyPlayers;
 use App\Models\Exclusion;
 use App\Models\Game;
@@ -164,9 +165,11 @@ class GameService
 
             // Déclencher l'élection maire si tous prêts et pas encore déclenchée
             if ($readyCount === $total && $game->phase_deadline === null) {
-                $deadline = now()->addSeconds(config('game.timers.mayor_election', 30));
+                $timer    = config('game.timers.mayor_election', 30);
+                $deadline = now()->addSeconds($timer);
                 $game->update(['phase_deadline' => $deadline]);
                 broadcast(new MayorElectionStarted($game));
+                ProcessMayorElection::dispatch($game->id)->delay(now()->addSeconds($timer));
             }
         });
     }
