@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Game\ActionController;
 use App\Http\Controllers\Game\LobbyController;
+use App\Http\Controllers\Game\VoteController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -23,4 +24,5 @@ Route::middleware('auth')->group(function () {
     Route::post('/game/{id}/exclude/{playerId}', [LobbyController::class, 'exclude'])->name('game.exclude');
     Route::get('/game/{code}/role-reveal', [ActionController::class, 'roleReveal'])->name('game.role-reveal');
     Route::post('/game/{id}/ready', [ActionController::class, 'ready'])->name('game.ready');
+    Route::post('/game/{id}/vote/mayor', [VoteController::class, 'mayor'])->name('game.vote.mayor');
 });
