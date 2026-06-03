@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Game\ActionController;
 use App\Http\Controllers\Game\ChatController;
+use App\Http\Controllers\Game\GameController;
 use App\Http\Controllers\Game\LobbyController;
 use App\Http\Controllers\Game\VoteController;
 use Illuminate\Support\Facades\Route;
@@ -29,4 +30,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/game/{id}/vote/night', [VoteController::class, 'night'])->name('game.vote.night');
     Route::post('/game/{id}/chat', [ChatController::class, 'send'])->name('game.chat.send');
     Route::post('/game/{id}/seer/check', [ActionController::class, 'seerCheck'])->name('game.seer.check');
+    Route::post('/game/{id}/mayor/succession', [ActionController::class, 'mayorSuccession'])->name('game.mayor.succession');
+    Route::get('/game/{code}/day', [GameController::class, 'day'])->name('game.day');
+    Route::get('/game/{code}/night', [GameController::class, 'night'])->name('game.night');
 });

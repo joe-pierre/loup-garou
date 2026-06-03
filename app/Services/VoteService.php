@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\Game\MayorSuccessionStarted;
 use App\Events\Game\NoElimination;
 use App\Events\Game\PlayerEliminated;
 use App\Jobs\ProcessMayorSuccession;
@@ -195,7 +196,14 @@ class VoteService
             }
 
             if ($eliminated->is_mayor) {
-                ProcessMayorSuccession::dispatch($locked->id);
+                // Maire inactif → succession aléatoire immédiate, sinon timer 15s
+                $successionDelay = $eliminated->is_inactive
+                    ? 0
+                    : config('game.timers.mayor_succession', 15);
+
+                broadcast(new MayorSuccessionStarted($locked, $eliminated->pseudo));
+                ProcessMayorSuccession::dispatch($locked->id, $locked->round)
+                    ->delay(now()->addSeconds($successionDelay));
             } else {
                 $this->phaseManager->startNight($locked);
             }

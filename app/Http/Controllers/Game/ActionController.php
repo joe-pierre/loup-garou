@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Game;
 
+use App\Events\Game\MayorSuccessionDone;
 use App\Events\Game\SeerResult;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\MayorSuccessionRequest;
 use App\Http\Requests\SeerCheckRequest;
 use App\Models\Game;
 use App\Models\GamePlayer;
@@ -45,6 +47,19 @@ class ActionController extends Controller
                 'role'             => $target->role,
             ],
         ]);
+    }
+
+    public function mayorSuccession(MayorSuccessionRequest $request, int $id): JsonResponse
+    {
+        $mayor = GamePlayer::where('game_id', $id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        $target = $this->gameService->mayorSuccessionByPlayer($mayor, $request->validated('target_player_id'));
+
+        broadcast(new MayorSuccessionDone($mayor->game->fresh(), $target, false));
+
+        return response()->json(['success' => true, 'data' => []]);
     }
 
     public function roleReveal(Request $request, string $code): View

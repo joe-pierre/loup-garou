@@ -60,12 +60,12 @@
 
 ## Phase 7 — Jour
 - [ ] POST /game/{id}/vote/day
-- [ ] POST /game/{id}/mayor/succession
+- [x] POST /game/{id}/mayor/succession
 - [x] Job ProcessDayVote (timer 90s)
 - [ ] Event DayStarted
 - [ ] Event DayVoteCast
 - [x] Event PlayerEliminated / NoElimination
-- [ ] Event MayorSuccessionStarted + MayorSuccessionDone
+- [x] Event MayorSuccessionStarted + MayorSuccessionDone
 - [ ] WinConditionChecker
 
 ## Phase 8 — Déconnexion

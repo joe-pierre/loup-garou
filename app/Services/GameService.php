@@ -19,7 +19,10 @@ use Illuminate\Support\Str;
 
 class GameService
 {
-    public function __construct(private RoleDistributor $roleDistributor) {}
+    public function __construct(
+        private RoleDistributor $roleDistributor,
+        private PhaseManager $phaseManager,
+    ) {}
 
     public function createGame(User $user, string $pseudo, int $maxPlayers): Game
     {
@@ -244,6 +247,54 @@ class GameService
 
             return GamePlayer::findOrFail($targetId);
         });
+    }
+
+    public function mayorSuccessionByPlayer(GamePlayer $mayor, int $targetId): GamePlayer
+    {
+        $game = $mayor->game;
+
+        if (! $mayor->is_mayor || $mayor->is_alive) {
+            abort(403, 'Seul le maire éliminé peut désigner son successeur.');
+        }
+
+        if ($game->status !== 'day') {
+            abort(409, 'La succession du maire n\'est disponible que pendant la phase jour.');
+        }
+
+        $target = DB::transaction(function () use ($mayor, $targetId, $game) {
+            $alreadyDone = GameAction::where('game_id', $game->id)
+                ->where('type', 'mayor_succession')
+                ->where('round', $game->round)
+                ->lockForUpdate()
+                ->exists();
+
+            if ($alreadyDone) {
+                abort(409, 'La succession du maire a déjà été effectuée.');
+            }
+
+            $target = GamePlayer::where('id', $targetId)
+                ->where('game_id', $game->id)
+                ->where('is_alive', true)
+                ->firstOrFail();
+
+            $mayor->update(['is_mayor' => false]);
+            $target->update(['is_mayor' => true]);
+
+            GameAction::create([
+                'game_id'          => $game->id,
+                'player_id'        => $mayor->id,
+                'type'             => 'mayor_succession',
+                'target_player_id' => $target->id,
+                'round'            => $game->round,
+                'phase'            => 'day',
+            ]);
+
+            return $target;
+        });
+
+        $this->phaseManager->startNight($game);
+
+        return $target;
     }
 
     private function generateUniqueCode(): string

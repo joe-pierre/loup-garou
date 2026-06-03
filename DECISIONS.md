@@ -39,6 +39,16 @@ auth: {
 
 ---
 
+## [CHOIX] mayorSuccessionByPlayer dans GameService, pas dans ActionController
+
+**Contexte :** Tâche 17 — `ActionController::mayorSuccession()`, `GameService`
+**Problème :** La tâche spec plaçait le DB::transaction directement dans ActionController. CLAUDE.md interdit la logique métier dans les controllers.
+**Décision :** Logique déplacée dans `GameService::mayorSuccessionByPlayer()`. ActionController appelle le service + broadcast. PhaseManager injecté dans GameService (pas dans le controller).
+**Leçon :** Quand la spec task et CLAUDE.md sont en conflit, CLAUDE.md prime. Ajouter une méthode au Service existant plutôt que créer un nouveau Service juste pour une action.
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] resolveDayVote appelle startNight dans la même transaction (transactions imbriquées MySQL)
 
 **Contexte :** Tâche 16 — `VoteService::resolveDayVote()`, `PhaseManager::startNight()`
