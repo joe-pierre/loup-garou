@@ -4,18 +4,23 @@
 
 ---
 
-## PROMPT D'AMORÇAGE (début de chaque session)
+## Prompt d'amorçage (à coller en début de CHAQUE session)
 
 ```
 Lis ces fichiers dans l'ordre avant de faire quoi que ce soit :
-1. SPEC.md — vue d'ensemble, modèle de données, règles métier, architecture, events WS
-2. CONVENTIONS.md — format des réponses API, nommage, broadcasting, sécurité
-3. TODO.md — état d'avancement (cases cochées = déjà fait, ne pas re-faire)
+SPEC.md
+CONVENTIONS.md
+TODO.md
+DECISIONS.md
 
-Résume en 5 points ce que tu as compris du projet, puis attends mes instructions.
-Ne génère aucun code avant que je t'aie donné la tâche.
+Dis-moi ce que tu as compris du projet en 5 points clés,
+puis attends mes instructions.
+
+À la FIN de chaque tâche, avant de dire "terminé" :
+1. Détermine si un ajout dans DECISIONS.md est justifié (bug non évident, choix technique, contournement)
+2. Si oui → écris l'entrée dans DECISIONS.md avant de rendre la main
+3. Si non → dis explicitement "Rien à ajouter dans DECISIONS.md"
 ```
-
 ---
 
 ## TÂCHE 1 — Migrations et modèles de base

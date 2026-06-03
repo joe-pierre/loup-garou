@@ -28,3 +28,21 @@ auth: {
 ```
 **Leçon :** Tout projet Laravel Reverb avec channels privés doit inclure le CSRF token dans `echo.js` dès le setup. Vérifier que toutes les vues utilisant `Echo.private()` ont bien `<meta name="csrf-token">` dans leur `<head>`.
 **Statut :** ✅ Résolu
+
+## [CHOIX] Dispatch ProcessWerewolvesTurn sans delay depuis ProcessSeerTurn
+
+**Contexte :** Tâche 13 — `ProcessMayorElection.php`, `ProcessSeerTurn.php`
+**Problème :** ProcessMayorElection dispatchait ProcessSeerTurn avec un delay — or le job est le démarreur du tour, pas son résolveur. Le delay appartenait à ProcessWerewolvesTurn.
+**Fix :** Suppression du delay sur `ProcessSeerTurn::dispatch()` dans ProcessMayorElection. Le delay 30s est posé par ProcessSeerTurn lui-même sur `ProcessWerewolvesTurn::dispatch()`.
+**Leçon :** Chaque job "démarreur de phase" dispatche le suivant avec le delay de SA propre phase, pas le job appelant.
+**Statut :** ✅ Résolu
+
+---
+
+## [CHOIX] SeerResult broadcasté sur canal privé joueur, jamais sur canal public
+
+**Contexte :** Tâche 13 — `SeerTurnStarted`, `SeerResult`
+**Problème :** Le résultat d'inspection de la voyante ne doit jamais fuiter aux autres joueurs, même en cas d'erreur de routing.
+**Décision :** Les deux events voyante passent exclusivement par `PrivateChannel("game.{id}.player.{seer->id}")` — jamais sur `game.{id}`.
+**Leçon :** Toute information de rôle privée (résultat voyante, composition loups) → canal privé individuel obligatoire. Canal public = informations visibles par tous.
+**Statut :** 🔵 Choix assumé

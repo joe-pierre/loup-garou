@@ -11,6 +11,7 @@ use App\Jobs\ProcessMayorElection;
 use App\Jobs\WaitForReadyPlayers;
 use App\Models\Exclusion;
 use App\Models\Game;
+use App\Models\GameAction;
 use App\Models\GamePlayer;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -205,6 +206,43 @@ class GameService
             // L'event stocke des scalaires : pas de dépendance DB après delete
             broadcast(new PlayerExcluded($game, $target));
             broadcast(new PlayerExcluded($game, $target, $reason));
+        });
+    }
+
+    public function seerCheck(GamePlayer $seer, int $targetId): GamePlayer
+    {
+        if ($seer->role !== 'seer') {
+            abort(403, 'Seule la voyante peut utiliser ce pouvoir.');
+        }
+
+        $game = $seer->game;
+
+        if ($game->status !== 'night') {
+            abort(409, 'L\'action de la voyante n\'est pas disponible hors phase nuit.');
+        }
+
+        return DB::transaction(function () use ($seer, $targetId, $game) {
+            $alreadyActed = GameAction::where('game_id', $game->id)
+                ->where('player_id', $seer->id)
+                ->where('type', 'seer_check')
+                ->where('round', $game->round)
+                ->lockForUpdate()
+                ->exists();
+
+            if ($alreadyActed) {
+                abort(409, 'Vous avez déjà utilisé votre pouvoir ce round.');
+            }
+
+            GameAction::create([
+                'game_id'          => $game->id,
+                'player_id'        => $seer->id,
+                'type'             => 'seer_check',
+                'target_player_id' => $targetId,
+                'round'            => $game->round,
+                'phase'            => 'night',
+            ]);
+
+            return GamePlayer::findOrFail($targetId);
         });
     }
 

@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Game;
 
+use App\Events\Game\SeerResult;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\SeerCheckRequest;
 use App\Models\Game;
 use App\Models\GamePlayer;
 use App\Services\GameService;
@@ -23,6 +25,26 @@ class ActionController extends Controller
         $this->gameService->markReady($player);
 
         return response()->json(['success' => true, 'data' => []]);
+    }
+
+    public function seerCheck(SeerCheckRequest $request, int $id): JsonResponse
+    {
+        $seer = GamePlayer::where('game_id', $id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        $target = $this->gameService->seerCheck($seer, $request->validated('target_player_id'));
+
+        broadcast(new SeerResult($seer->game, $seer, $target));
+
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'target_player_id' => $target->id,
+                'pseudo'           => $target->pseudo,
+                'role'             => $target->role,
+            ],
+        ]);
     }
 
     public function roleReveal(Request $request, string $code): View

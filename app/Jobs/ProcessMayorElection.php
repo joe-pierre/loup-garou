@@ -36,7 +36,8 @@ class ProcessMayorElection implements ShouldQueue
         broadcast(new MayorElected($result['game'], $result['player'], $result['was_random']));
         broadcast(new NightStarted($result['game']));
 
-        ProcessSeerTurn::dispatch($this->gameId)
-            ->delay(now()->addSeconds(config('game.timers.seer', 30)));
+        // ProcessSeerTurn est le démarreur du tour : dispatché immédiatement, sans delay.
+        // C'est lui qui broadcast SeerTurnStarted et qui dispatche ProcessWerewolvesTurn avec delay 30s.
+        ProcessSeerTurn::dispatch($this->gameId);
     }
 }
