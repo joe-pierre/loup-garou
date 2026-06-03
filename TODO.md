@@ -33,10 +33,11 @@
 - [x] Vue game/role-reveal.blade.php (Écran 5)
 
 ## Phase 4 — WebSocket Setup
-- [x] Reverb config (config/broadcasting.php)
-- [x] Echo config (resources/js/echo.js)
+- [x] Reverb config (config/broadcasting.php + config/reverb.php)
+- [x] Echo config (resources/js/echo.js) — CSRF token dans auth.headers
 - [x] Channel definitions (routes/channels.php)
 - [x] Broadcasting Auth (loups, joueur individuel)
+- [x] CORS Reverb (allowed_origins: ['*'] pour dev)
 
 ## Phase 5 — Élection Maire
 - [ ] POST /game/{id}/vote/mayor

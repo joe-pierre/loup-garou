@@ -82,6 +82,25 @@ CheckReconnectionTimeout dispatché avec delay 30s après déconnexion détecté
 - v1.1 (en cours) : Villageois, Loup-Garou, Voyante, Maire électif
 - v1.2 (anticiper) : Sorcier, Cupidon, Loup Blanc, timers/joueurs customisables
 
+## DECISIONS.md — Mise à jour obligatoire
+
+Après chaque tâche terminée, ajouter une entrée dans `DECISIONS.md` uniquement si :
+- Un bug non évident a été rencontré et résolu
+- Un choix technique a été fait parmi plusieurs options
+- Un comportement inattendu de Laravel/Reverb/Alpine a été contourné
+- Une race condition a été identifiée et une stratégie choisie
+
+Format :
+## [RÉSOLU | CHOIX] Titre court
+**Contexte :** tâche concernée, fichier(s)
+**Symptôme / Problème :** ce qui s'est passé ou le dilemme
+**Cause / Alternatives :** pourquoi, options envisagées
+**Fix / Décision :** ce qui a été retenu
+**Leçon :** règle générale pour la suite
+**Statut :** ✅ Résolu | 🔵 Choix assumé
+
+Ne pas documenter les implémentations qui suivent directement taches.md ou la SPEC.
+
 ## État d'avancement
 → Voir TODO.md (source de vérité unique)
 → Voir DECISIONS.md (bugs résolus + décisions techniques)
