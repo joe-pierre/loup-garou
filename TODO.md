@@ -13,9 +13,9 @@
 - [x] config/game.php (timers, rôles)
 
 ## Phase 2 — Auth
-- [ ] Google OAuth (GoogleController)
-- [ ] Routes auth
-- [ ] Middleware auth
+- [x] Google OAuth (GoogleController)
+- [x] Routes auth
+- [x] Middleware auth
 
 ## Phase 3 — Lobby
 - [ ] POST /game (création)
