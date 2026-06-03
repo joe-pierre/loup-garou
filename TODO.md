@@ -7,10 +7,10 @@
 - [!] Bug connu
 
 ## Phase 1 — Base
-- [ ] Migrations (users, games, game_players, game_actions, chat_messages, exclusions)
-- [ ] Modèles + relations + scopes
-- [ ] Factories + Seeders
-- [ ] config/game.php (timers, rôles)
+- [x] Migrations (users, games, game_players, game_actions, chat_messages, exclusions)
+- [x] Modèles + relations + scopes
+- [x] Factories + Seeders
+- [x] config/game.php (timers, rôles)
 
 ## Phase 2 — Auth
 - [ ] Google OAuth (GoogleController)
