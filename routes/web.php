@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Game\ActionController;
+use App\Http\Controllers\Game\ChatController;
 use App\Http\Controllers\Game\LobbyController;
 use App\Http\Controllers\Game\VoteController;
 use Illuminate\Support\Facades\Route;
@@ -26,5 +27,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/game/{id}/ready', [ActionController::class, 'ready'])->name('game.ready');
     Route::post('/game/{id}/vote/mayor', [VoteController::class, 'mayor'])->name('game.vote.mayor');
     Route::post('/game/{id}/vote/night', [VoteController::class, 'night'])->name('game.vote.night');
+    Route::post('/game/{id}/chat', [ChatController::class, 'send'])->name('game.chat.send');
     Route::post('/game/{id}/seer/check', [ActionController::class, 'seerCheck'])->name('game.seer.check');
 });

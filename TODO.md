@@ -55,8 +55,8 @@
 - [x] Event NightStarted
 - [x] Event SeerTurnStarted + SeerResult
 - [x] Event WerewolvesTurnStarted + WerewolvesVoteCast
-- [ ] Event WerewolfChatMessage
-- [ ] Chat loups (channel werewolves)
+- [x] Event WerewolfChatMessage
+- [x] Chat loups (channel werewolves)
 
 ## Phase 7 — Jour
 - [ ] POST /game/{id}/vote/day
