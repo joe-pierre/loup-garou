@@ -22,6 +22,7 @@ php artisan test
 - Controllers : valider request + appeler Service, rien d'autre
 - Jobs : gestion des timers uniquement
 - Utiliser Gates/Policies pour toutes les autorisations
+- Lire DECISIONS.md en début de session pour éviter de reproduire les bugs connus
 
 ## Réponses API
 Toujours : { "success": true|false, "data": {}, "message": "" }
@@ -83,3 +84,4 @@ CheckReconnectionTimeout dispatché avec delay 30s après déconnexion détecté
 
 ## État d'avancement
 → Voir TODO.md (source de vérité unique)
+→ Voir DECISIONS.md (bugs résolus + décisions techniques)

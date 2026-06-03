@@ -24,4 +24,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(GamePlayer::class);
     }
+
+    public function getRememberTokenName()
+    {
+        return null;
+    }
 }

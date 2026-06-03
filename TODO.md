@@ -19,7 +19,7 @@
 
 ## Phase 3 — Lobby
 - [x] POST /game (création)
-- [ ] POST /game/{code}/join
+- [x] POST /game/{code}/join
 - [ ] POST /game/{id}/exclude/{playerId}
 - [ ] POST /game/{id}/ready
 - [ ] Event PlayerJoined
