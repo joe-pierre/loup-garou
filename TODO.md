@@ -49,12 +49,12 @@
 - [ ] Event MayorElected
 
 ## Phase 6 — Nuit
-- [ ] POST /game/{id}/seer/check
-- [ ] POST /game/{id}/vote/night
+- [x] POST /game/{id}/seer/check
+- [x] POST /game/{id}/vote/night
 - [ ] Job ProcessNightActions (timer 30s par action)
-- [ ] Event NightStarted
-- [ ] Event SeerTurnStarted + SeerResult
-- [ ] Event WerewolvesTurnStarted + WerewolvesVoteCast
+- [x] Event NightStarted
+- [x] Event SeerTurnStarted + SeerResult
+- [x] Event WerewolvesTurnStarted + WerewolvesVoteCast
 - [ ] Event WerewolfChatMessage
 - [ ] Chat loups (channel werewolves)
 

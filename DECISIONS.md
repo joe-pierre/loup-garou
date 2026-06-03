@@ -39,6 +39,17 @@ auth: {
 
 ---
 
+## [CHOIX] Vote nuit — delete+insert pour permettre le changement de cible
+
+**Contexte :** Tâche 14 — `VoteService::castNightVote()`, `app/Models/GameAction`
+**Problème :** Un loup doit pouvoir changer sa cible jusqu'à expiration du timer. `updateOrCreate` exige une contrainte unique en base, absente sur `game_actions`. `UPDATE` direct est fragile (dépend d'un ID existant inconnu).
+**Alternatives :** (1) Ajouter une contrainte unique `(game_id, player_id, round, type)` + `updateOrCreate` — trop invasif, les autres types d'action autorisent plusieurs lignes. (2) `whereFirst()->update()` — race condition entre lecture et écriture. (3) `lockForUpdate()->delete()` + `create()` dans une transaction.
+**Décision :** Option 3 retenue : `lockForUpdate()->delete()` puis `GameAction::create()` dans une transaction. Simple, safe, cohérent avec l'absence de contrainte unique.
+**Leçon :** Ne pas ajouter de contrainte unique sur `game_actions` pour "faciliter" updateOrCreate — d'autres types d'action (seer_check, ready) n'ont qu'un enregistrement par design mais sans contrainte DB. Utiliser delete+insert en transaction pour toute action "remplaçable".
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] SeerResult broadcasté sur canal privé joueur, jamais sur canal public
 
 **Contexte :** Tâche 13 — `SeerTurnStarted`, `SeerResult`

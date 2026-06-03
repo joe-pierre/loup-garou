@@ -102,6 +102,64 @@ class VoteService
         });
     }
 
+    public function castNightVote(GamePlayer $wolf, int $targetId): array
+    {
+        $game = $wolf->game;
+
+        if ($game->status !== 'night') {
+            abort(409, 'La partie n\'est pas en phase nuit.');
+        }
+
+        if (! $wolf->isWerewolf()) {
+            abort(403, 'Seuls les loups peuvent voter la nuit.');
+        }
+
+        if (! $wolf->is_alive) {
+            abort(403, 'Un joueur éliminé ne peut pas voter.');
+        }
+
+        return DB::transaction(function () use ($wolf, $targetId, $game) {
+            // Supprimer le vote existant : le loup peut changer de cible jusqu'à expiration
+            GameAction::where('game_id', $game->id)
+                ->where('player_id', $wolf->id)
+                ->where('type', 'night_vote')
+                ->where('round', $game->round)
+                ->lockForUpdate()
+                ->delete();
+
+            GameAction::create([
+                'game_id'          => $game->id,
+                'player_id'        => $wolf->id,
+                'type'             => 'night_vote',
+                'weight'           => 1,
+                'target_player_id' => $targetId,
+                'round'            => $game->round,
+                'phase'            => 'night',
+            ]);
+
+            return $this->getNightVoteState($game);
+        });
+    }
+
+    private function getNightVoteState(Game $game): array
+    {
+        $aliveWolves = $game->alivePlayers()
+            ->whereIn('role', ['werewolf', 'white_wolf'])
+            ->get();
+
+        $votedWolfIds = GameAction::where('game_id', $game->id)
+            ->where('type', 'night_vote')
+            ->where('round', $game->round)
+            ->pluck('player_id')
+            ->toArray();
+
+        return $aliveWolves->map(fn (GamePlayer $w) => [
+            'player_id' => $w->id,
+            'pseudo'    => $w->pseudo,
+            'has_voted' => in_array($w->id, $votedWolfIds),
+        ])->values()->toArray();
+    }
+
     private function getMayorVoteTotals(Game $game): array
     {
         return GameAction::where('game_actions.game_id', $game->id)
