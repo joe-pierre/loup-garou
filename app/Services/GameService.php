@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Events\Game\GameStarted;
 use App\Events\Game\PlayerExcluded;
 use App\Events\Game\PlayerJoined;
+use App\Jobs\WaitForReadyPlayers;
 use App\Models\Exclusion;
 use App\Models\Game;
 use App\Models\GamePlayer;
@@ -13,6 +15,8 @@ use Illuminate\Support\Str;
 
 class GameService
 {
+    public function __construct(private RoleDistributor $roleDistributor) {}
+
     public function createGame(User $user, string $pseudo, int $maxPlayers): Game
     {
         $code = $this->generateUniqueCode();
@@ -79,7 +83,61 @@ class GameService
 
             broadcast(new PlayerJoined($game, $player));
 
+            $currentCount = $game->players()->count();
+            if ($currentCount === $game->max_players) {
+                $this->startGame($game);
+            }
+
             return $player;
+        });
+    }
+
+    public function startGame(Game $game): void
+    {
+        DB::transaction(function () use ($game) {
+            // Re-lock et vérifier le status pour éviter un double démarrage
+            $locked = Game::where('id', $game->id)
+                ->where('status', 'waiting')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked) {
+                return;
+            }
+
+            $locked->update(['status' => 'electing_mayor', 'started_at' => now()]);
+
+            // Distribuer les rôles et persister
+            $players     = $locked->players()->get();
+            $assignments = $this->roleDistributor->distribute($players);
+
+            foreach ($assignments as $playerId => $role) {
+                GamePlayer::where('id', $playerId)->update(['role' => $role]);
+            }
+
+            // Recharger avec les rôles assignés
+            $players = $locked->players()->get();
+
+            // Broadcast public — liste sans rôles
+            broadcast(new GameStarted($locked));
+
+            // Broadcast privé par joueur — rôle + alliés loups si applicable
+            foreach ($players as $player) {
+                $allies = null;
+                if ($player->isWerewolf()) {
+                    $allies = $players
+                        ->filter(fn (GamePlayer $p) => $p->id !== $player->id && $p->isWerewolf())
+                        ->map(fn (GamePlayer $p) => ['id' => $p->id, 'pseudo' => $p->pseudo])
+                        ->values()
+                        ->toArray();
+                }
+
+                broadcast(new GameStarted($locked, $player, $allies));
+            }
+
+            WaitForReadyPlayers::dispatch($locked->id)->delay(
+                now()->addSeconds(config('game.timers.ready_timeout', 60))
+            );
         });
     }
 

@@ -25,7 +25,7 @@
 - [x] Event PlayerJoined
 - [x] Event PlayerExcluded
 - [x] RoleDistributor (avec config extensible)
-- [ ] Démarrage automatique quand max_players atteint
+- [x] Démarrage automatique quand max_players atteint
 - [x] GET /game/{code}/lobby (salle d'attente)
 - [x] Vue waiting-room.blade.php (Écran 4)
 
