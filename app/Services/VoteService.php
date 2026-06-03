@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Events\Game\NoElimination;
+use App\Events\Game\PlayerEliminated;
+use App\Jobs\ProcessMayorSuccession;
 use App\Models\Game;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
@@ -9,6 +12,11 @@ use Illuminate\Support\Facades\DB;
 
 class VoteService
 {
+    public function __construct(
+        private PhaseManager $phaseManager,
+        private WinConditionChecker $winConditionChecker,
+    ) {}
+
     public function castMayorVote(GamePlayer $voter, int $targetId): array
     {
         $game = $voter->game;
@@ -138,6 +146,59 @@ class VoteService
             ]);
 
             return $this->getNightVoteState($game);
+        });
+    }
+
+    public function resolveDayVote(Game $game): void
+    {
+        DB::transaction(function () use ($game) {
+            $locked = Game::where('id', $game->id)
+                ->where('status', 'day')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked) {
+                return;
+            }
+
+            // Agréger les votes pondérés (poids maire = 2 sur day_vote)
+            $votes = GameAction::where('game_id', $locked->id)
+                ->where('type', 'day_vote')
+                ->where('round', $locked->round)
+                ->selectRaw('target_player_id, SUM(weight) as vote_weight')
+                ->groupBy('target_player_id')
+                ->orderByDesc('vote_weight')
+                ->get();
+
+            if ($votes->isEmpty()) {
+                broadcast(new NoElimination($locked, 'no_vote'));
+                $this->phaseManager->startNight($locked);
+                return;
+            }
+
+            $maxWeight     = $votes->first()->vote_weight;
+            $topCandidates = $votes->where('vote_weight', $maxWeight);
+
+            if ($topCandidates->count() > 1) {
+                broadcast(new NoElimination($locked, 'equality'));
+                $this->phaseManager->startNight($locked);
+                return;
+            }
+
+            $eliminated = GamePlayer::find($topCandidates->first()->target_player_id);
+            $eliminated->update(['is_alive' => false]);
+
+            broadcast(new PlayerEliminated($locked, $eliminated, 'day_vote'));
+
+            if ($this->winConditionChecker->check($locked)) {
+                return;
+            }
+
+            if ($eliminated->is_mayor) {
+                ProcessMayorSuccession::dispatch($locked->id);
+            } else {
+                $this->phaseManager->startNight($locked);
+            }
         });
     }
 
