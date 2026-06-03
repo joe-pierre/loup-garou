@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Game;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateGameRequest;
+use App\Http\Requests\ExcludePlayerRequest;
 use App\Http\Requests\JoinGameRequest;
 use App\Models\Game;
+use App\Models\GamePlayer;
 use App\Services\GameService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
@@ -46,6 +48,20 @@ class LobbyController extends Controller
                 'game_code' => strtoupper($code),
             ],
         ]);
+    }
+
+    public function exclude(ExcludePlayerRequest $request, int $id, int $playerId): JsonResponse
+    {
+        $host = GamePlayer::where('game_id', $id)
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
+
+        $target = GamePlayer::where('game_id', $id)
+            ->findOrFail($playerId);
+
+        $this->gameService->excludePlayer($host, $target, $request->validated('reason'));
+
+        return response()->json(['success' => true, 'data' => []]);
     }
 
     public function waitingRoom(string $code): View

@@ -19,4 +19,5 @@ Route::middleware('auth')->group(function () {
     Route::post('/game', [LobbyController::class, 'create'])->name('game.create');
     Route::post('/game/{code}/join', [LobbyController::class, 'join'])->name('game.join');
     Route::get('/game/{code}/lobby', [LobbyController::class, 'waitingRoom'])->name('game.lobby');
+    Route::post('/game/{id}/exclude/{playerId}', [LobbyController::class, 'exclude'])->name('game.exclude');
 });

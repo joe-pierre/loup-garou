@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\Game\PlayerExcluded;
 use App\Events\Game\PlayerJoined;
 use App\Models\Exclusion;
 use App\Models\Game;
@@ -79,6 +80,40 @@ class GameService
             broadcast(new PlayerJoined($game, $player));
 
             return $player;
+        });
+    }
+
+    public function excludePlayer(GamePlayer $host, GamePlayer $target, string $reason): void
+    {
+        $game = $host->game;
+
+        if ($game->status !== 'waiting') {
+            abort(409, 'Impossible d\'exclure un joueur après le début de la partie.');
+        }
+
+        if (! $host->is_host) {
+            abort(403, 'Seul le host peut exclure un joueur.');
+        }
+
+        if ($host->id === $target->id) {
+            abort(403, 'Le host ne peut pas s\'exclure lui-même.');
+        }
+
+        DB::transaction(function () use ($game, $target, $reason) {
+            // Insérer dans exclusions avant suppression (FK) — $target reste en mémoire après delete()
+            Exclusion::create([
+                'game_id'     => $game->id,
+                'player_id'   => $target->id,
+                'reason'      => $reason,
+                'excluded_at' => now(),
+            ]);
+
+            $target->delete();
+
+            // Broadcast public (pseudo seulement) puis privé (avec motif)
+            // L'event stocke des scalaires : pas de dépendance DB après delete
+            broadcast(new PlayerExcluded($game, $target));
+            broadcast(new PlayerExcluded($game, $target, $reason));
         });
     }
 

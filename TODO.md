@@ -20,10 +20,10 @@
 ## Phase 3 — Lobby
 - [x] POST /game (création)
 - [x] POST /game/{code}/join
-- [ ] POST /game/{id}/exclude/{playerId}
+- [x] POST /game/{id}/exclude/{playerId}
 - [ ] POST /game/{id}/ready
 - [x] Event PlayerJoined
-- [ ] Event PlayerExcluded
+- [x] Event PlayerExcluded
 - [ ] RoleDistributor (avec config extensible)
 - [ ] Démarrage automatique quand max_players atteint
 - [x] GET /game/{code}/lobby (salle d'attente)

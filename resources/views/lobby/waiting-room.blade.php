@@ -150,40 +150,101 @@
             </template>
         </div>
 
-        {{-- Bouton exclure (host uniquement) — modale tâche 6 --}}
-        @if($currentPlayer->is_host)
-        <div class="text-center mt-4">
+        {{-- Bouton exclure (host uniquement) --}}
+        <div class="text-center mt-4" x-show="isHost && players.length > 1">
             <button
                 class="text-xs px-4 py-2 rounded-lg transition-opacity hover:opacity-75"
                 style="background-color: rgba(139,0,0,0.2); border: 1px solid rgba(139,0,0,0.4); color: #fca5a5;"
-                @click="showExcludeModal = true"
-                x-show="players.length > 1"
+                @click="openExcludeModal()"
             >
                 Exclure un joueur
             </button>
         </div>
 
-        {{-- Modale exclusion (placeholder tâche 6) --}}
+        {{-- Modale exclusion --}}
         <div
             x-show="showExcludeModal"
-            x-transition
+            x-transition.opacity
             class="fixed inset-0 flex items-center justify-center z-50"
-            style="background-color: rgba(0,0,0,0.7);"
-            @click.self="showExcludeModal = false"
+            style="background-color: rgba(0,0,0,0.75);"
+            @click.self="closeExcludeModal()"
         >
-            <div class="rounded-2xl p-6 max-w-sm w-full mx-4" style="background-color: #111827; border: 1px solid rgba(139,0,0,0.4);">
-                <h3 class="font-cinzel text-lg font-semibold mb-4" style="color: #fca5a5;">Exclure un joueur</h3>
-                <p class="text-sm mb-4" style="color: #e8e0d0; opacity: 0.6;">
-                    Cette fonctionnalité sera disponible dans la tâche 6.
-                </p>
-                <button @click="showExcludeModal = false"
-                        class="w-full py-2 rounded-lg text-sm font-cinzel"
-                        style="background-color: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.3); color: #c9a84c;">
-                    Fermer
-                </button>
+            <div class="rounded-2xl p-6 max-w-sm w-full mx-4" style="background-color: #111827; border: 1px solid rgba(139,0,0,0.5);">
+                <h3 class="font-cinzel text-lg font-semibold mb-5" style="color: #fca5a5;">Exclure un joueur</h3>
+
+                {{-- Sélection du joueur --}}
+                <div class="mb-4">
+                    <p class="text-xs mb-3" style="color: #e8e0d0; opacity: 0.5; letter-spacing: 0.05em;">CHOISIR LE JOUEUR</p>
+                    <div class="flex flex-col gap-2">
+                        <template x-for="player in excludablePlayers" :key="player.id">
+                            <button
+                                type="button"
+                                @click="excludeTarget = player"
+                                class="flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all"
+                                :style="excludeTarget && excludeTarget.id === player.id
+                                    ? 'background-color: rgba(139,0,0,0.25); border: 1px solid rgba(139,0,0,0.6);'
+                                    : 'background-color: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);'"
+                            >
+                                <div class="avatar" style="width:2rem;height:2rem;font-size:0.75rem;"
+                                     x-text="player.pseudo.charAt(0).toUpperCase()"></div>
+                                <span class="text-sm" style="color: #e8e0d0;" x-text="player.pseudo"></span>
+                                <span x-show="excludeTarget && excludeTarget.id === player.id"
+                                      class="ml-auto text-xs" style="color: #fca5a5;">✓</span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- Motif --}}
+                <div class="mb-5">
+                    <label class="block text-xs mb-2" style="color: #e8e0d0; opacity: 0.5; letter-spacing: 0.05em;">MOTIF</label>
+                    <textarea
+                        x-model="excludeReason"
+                        rows="3"
+                        maxlength="500"
+                        placeholder="Explique pourquoi tu exclus ce joueur…"
+                        class="w-full px-3 py-2 rounded-lg text-sm resize-none outline-none"
+                        style="background-color: #0a0f1e; border: 1px solid rgba(139,0,0,0.35); color: #e8e0d0;"
+                    ></textarea>
+                    <div class="flex justify-between mt-1">
+                        <p x-show="excludeError" x-text="excludeError" class="text-xs" style="color: #fca5a5;"></p>
+                        <span class="text-xs ml-auto" style="color: #e8e0d0; opacity: 0.3;"
+                              x-text="excludeReason.length + '/500'"></span>
+                    </div>
+                </div>
+
+                {{-- Actions --}}
+                <div class="flex gap-3">
+                    <button
+                        @click="closeExcludeModal()"
+                        class="flex-1 py-2 rounded-lg text-sm font-cinzel transition-opacity hover:opacity-75"
+                        style="background-color: transparent; border: 1px solid rgba(201,168,76,0.25); color: #e8e0d0;"
+                    >Annuler</button>
+                    <button
+                        @click="confirmExclude()"
+                        :disabled="excluding || !excludeTarget || !excludeReason.trim()"
+                        class="flex-1 py-2 rounded-lg text-sm font-cinzel font-semibold transition-opacity disabled:opacity-40"
+                        style="background-color: #8b0000; color: #fca5a5; border: 1px solid rgba(139,0,0,0.6);"
+                    >
+                        <span x-show="!excluding">Confirmer</span>
+                        <span x-show="excluding">Exclusion…</span>
+                    </button>
+                </div>
             </div>
         </div>
-        @endif
+
+        {{-- Overlay exclusion (joueur exclu) --}}
+        <div
+            x-show="isExcluded"
+            x-transition.opacity
+            class="fixed inset-0 flex flex-col items-center justify-center z-50 text-center px-6"
+            style="background-color: rgba(10,15,30,0.95);"
+        >
+            <p class="font-cinzel text-2xl font-bold mb-4" style="color: #8b0000;">Tu as été exclu</p>
+            <p class="text-sm mb-2" style="color: #e8e0d0; opacity: 0.7;">Motif :</p>
+            <p class="text-base mb-8" style="color: #e8e0d0;" x-text="exclusionReason"></p>
+            <p class="text-xs" style="color: #e8e0d0; opacity: 0.4;">Redirection en cours…</p>
+        </div>
     </main>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -192,10 +253,20 @@
             return {
                 players:         @json($players->values()),
                 maxPlayers:      {{ $game->max_players }},
+                gameId:          {{ $game->id }},
                 currentPlayerId: {{ $currentPlayer->id }},
                 gameCode:        '{{ $game->code }}',
-                copied:          false,
+                isHost:          {{ $currentPlayer->is_host ? 'true' : 'false' }},
+
+                copied:           false,
                 showExcludeModal: false,
+                excludeTarget:    null,
+                excludeReason:    '',
+                excludeError:     '',
+                excluding:        false,
+
+                isExcluded:       false,
+                exclusionReason:  '',
 
                 get emptySlots() {
                     return Math.max(0, this.maxPlayers - this.players.length);
@@ -208,55 +279,114 @@
                     return `Plus que ${remaining} joueur${remaining > 1 ? 's' : ''} pour commencer`;
                 },
 
+                get excludablePlayers() {
+                    return this.players.filter(p => p.id !== this.currentPlayerId && !p.is_host);
+                },
+
                 init() {
-                    // Animations GSAP initiales
                     gsap.from('#wr-header',   { opacity: 0, y: 20, duration: 0.6, ease: 'power2.out' });
                     gsap.from('#wr-progress', { opacity: 0, y: 20, duration: 0.6, delay: 0.1, ease: 'power2.out' });
                     gsap.from('#wr-players',  { opacity: 0, y: 20, duration: 0.6, delay: 0.2, ease: 'power2.out' });
 
-                    // Barre de progression initiale
                     this.animateProgress(this.players.length);
-
-                    // Pulsation des slots vides
                     this.pulseEmptySlots();
 
-                    // Écoute WebSocket
-                    window.Echo.channel(`game.{{ $game->id }}`)
+                    // Canal public — nouveaux joueurs + exclusions
+                    window.Echo.channel(`game.${this.gameId}`)
                         .listen('.player.joined', (data) => {
-                            this.players    = data.players;
+                            this.players = data.players;
                             this.animateProgress(this.players.length);
                             this.pulseEmptySlots();
 
-                            // Redirection automatique quand la partie est complète
                             if (data.slots_remaining === 0) {
                                 setTimeout(() => {
                                     window.location.href = `/game/${this.gameCode}/role-reveal`;
                                 }, 1500);
                             }
+                        })
+                        .listen('.player.excluded', (data) => {
+                            this.players = this.players.filter(p => p.id !== data.excluded_player_id);
+                            this.animateProgress(this.players.length);
+                            this.pulseEmptySlots();
+                        });
+
+                    // Canal privé — réception du motif d'exclusion personnel
+                    window.Echo.private(`game.${this.gameId}.player.${this.currentPlayerId}`)
+                        .listen('.player.excluded', (data) => {
+                            this.isExcluded      = true;
+                            this.exclusionReason = data.reason;
+                            setTimeout(() => {
+                                window.location.href = '/lobby?error=' + encodeURIComponent('Tu as été exclu de cette partie.');
+                            }, 3000);
                         });
                 },
 
                 animateProgress(count) {
                     const pct = (count / this.maxPlayers) * 100;
-                    gsap.to('#progress-fill', {
-                        width: pct + '%',
-                        duration: 0.5,
-                        ease: 'power2.out',
-                    });
+                    gsap.to('#progress-fill', { width: pct + '%', duration: 0.5, ease: 'power2.out' });
                 },
 
                 pulseEmptySlots() {
                     this.$nextTick(() => {
                         document.querySelectorAll('.slot-pulse').forEach((el) => {
-                            gsap.to(el, {
-                                opacity: 0.15,
-                                duration: 1,
-                                repeat: -1,
-                                yoyo: true,
-                                ease: 'power1.inOut',
-                            });
+                            gsap.to(el, { opacity: 0.15, duration: 1, repeat: -1, yoyo: true, ease: 'power1.inOut' });
                         });
                     });
+                },
+
+                openExcludeModal() {
+                    this.excludeTarget = null;
+                    this.excludeReason = '';
+                    this.excludeError  = '';
+                    this.showExcludeModal = true;
+                },
+
+                closeExcludeModal() {
+                    this.showExcludeModal = false;
+                    this.excludeError     = '';
+                },
+
+                async confirmExclude() {
+                    this.excludeError = '';
+
+                    if (! this.excludeTarget) {
+                        this.excludeError = 'Sélectionne un joueur.';
+                        return;
+                    }
+                    if (! this.excludeReason.trim()) {
+                        this.excludeError = 'Le motif est obligatoire.';
+                        return;
+                    }
+
+                    this.excluding = true;
+                    try {
+                        const res = await fetch(`/game/${this.gameId}/exclude/${this.excludeTarget.id}`, {
+                            method:  'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept':       'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({ reason: this.excludeReason }),
+                        });
+
+                        const json = await res.json();
+
+                        if (json.success) {
+                            this.closeExcludeModal();
+                            return;
+                        }
+
+                        if (res.status === 422 && json.errors?.reason) {
+                            this.excludeError = json.errors.reason[0];
+                        } else {
+                            this.excludeError = json.message || 'Une erreur est survenue.';
+                        }
+                    } catch {
+                        this.excludeError = 'Impossible de contacter le serveur.';
+                    } finally {
+                        this.excluding = false;
+                    }
                 },
 
                 async copyLink() {
@@ -264,7 +394,6 @@
                     try {
                         await navigator.clipboard.writeText(url);
                     } catch {
-                        // Fallback pour les navigateurs sans clipboard API
                         const el = document.createElement('textarea');
                         el.value = url;
                         document.body.appendChild(el);
