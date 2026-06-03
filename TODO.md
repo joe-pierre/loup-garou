@@ -18,7 +18,7 @@
 - [x] Middleware auth
 
 ## Phase 3 — Lobby
-- [ ] POST /game (création)
+- [x] POST /game (création)
 - [ ] POST /game/{code}/join
 - [ ] POST /game/{id}/exclude/{playerId}
 - [ ] POST /game/{id}/ready
