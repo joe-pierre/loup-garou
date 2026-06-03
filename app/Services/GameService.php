@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Events\Game\GameStarted;
+use App\Events\Game\MayorElectionStarted;
 use App\Events\Game\PlayerExcluded;
 use App\Events\Game\PlayerJoined;
+use App\Events\Game\PlayerReady;
 use App\Jobs\WaitForReadyPlayers;
 use App\Models\Exclusion;
 use App\Models\Game;
@@ -138,6 +140,34 @@ class GameService
             WaitForReadyPlayers::dispatch($locked->id)->delay(
                 now()->addSeconds(config('game.timers.ready_timeout', 60))
             );
+        });
+    }
+
+    public function markReady(GamePlayer $player): void
+    {
+        DB::transaction(function () use ($player) {
+            $game = Game::where('id', $player->game_id)
+                ->where('status', 'electing_mayor')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $game || $player->is_ready) {
+                return;
+            }
+
+            $player->update(['is_ready' => true]);
+
+            $total      = $game->players()->count();
+            $readyCount = $game->players()->where('is_ready', true)->count();
+
+            broadcast(new PlayerReady($game, $readyCount, $total));
+
+            // Déclencher l'élection maire si tous prêts et pas encore déclenchée
+            if ($readyCount === $total && $game->phase_deadline === null) {
+                $deadline = now()->addSeconds(config('game.timers.mayor_election', 30));
+                $game->update(['phase_deadline' => $deadline]);
+                broadcast(new MayorElectionStarted($game));
+            }
         });
     }
 

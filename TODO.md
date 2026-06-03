@@ -17,7 +17,7 @@
 - [x] Routes auth
 - [x] Middleware auth
 
-## Phase 3 — Lobby
+## Phase 3 — Lobby (+ Écran 5)
 - [x] POST /game (création)
 - [x] POST /game/{code}/join
 - [x] POST /game/{id}/exclude/{playerId}
@@ -28,6 +28,9 @@
 - [x] Démarrage automatique quand max_players atteint
 - [x] GET /game/{code}/lobby (salle d'attente)
 - [x] Vue waiting-room.blade.php (Écran 4)
+- [x] GET /game/{code}/role-reveal + POST /game/{id}/ready
+- [x] Event PlayerReady
+- [x] Vue game/role-reveal.blade.php (Écran 5)
 
 ## Phase 4 — WebSocket Setup
 - [x] Reverb config (config/broadcasting.php)
