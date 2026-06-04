@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Events\Game\GameFinished;
 use App\Events\Game\GameStarted;
+use App\Notifications\PlayerExcludedNotification;
+use App\Notifications\RoleAssignedNotification;
 use App\Events\Game\MayorElectionStarted;
 use App\Events\Game\PlayerDisconnected;
 use App\Events\Game\PlayerExcluded;
@@ -127,8 +129,8 @@ class GameService
                 GamePlayer::where('id', $playerId)->update(['role' => $role]);
             }
 
-            // Recharger avec les rôles assignés
-            $players = $locked->players()->get();
+            // Recharger avec les rôles assignés (user eager-loadé pour les notifications)
+            $players = $locked->players()->with('user')->get();
 
             // Broadcast public — liste sans rôles
             broadcast(new GameStarted($locked));
@@ -145,6 +147,10 @@ class GameService
                 }
 
                 broadcast(new GameStarted($locked, $player, $allies));
+
+                try {
+                    $player->user->notify(new RoleAssignedNotification($player->role));
+                } catch (\Throwable) {}
             }
 
             WaitForReadyPlayers::dispatch($locked->id)->delay(
@@ -208,12 +214,17 @@ class GameService
                 'excluded_at' => now(),
             ]);
 
+            $targetUser = $target->user;
             $target->delete();
 
             // Broadcast public (pseudo seulement) puis privé (avec motif)
             // L'event stocke des scalaires : pas de dépendance DB après delete
             broadcast(new PlayerExcluded($game, $target));
             broadcast(new PlayerExcluded($game, $target, $reason));
+
+            try {
+                $targetUser->notify(new PlayerExcludedNotification($reason));
+            } catch (\Throwable) {}
         });
     }
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Game\ChatController;
 use App\Http\Controllers\Game\GameController;
 use App\Http\Controllers\Game\LobbyController;
 use App\Http\Controllers\Game\VoteController;
+use App\Http\Controllers\PushSubscriptionController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -36,4 +37,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/game/{code}/night', [GameController::class, 'night'])->name('game.night');
     Route::post('/game/{id}/disconnect', [GameController::class, 'disconnect'])->name('game.disconnect');
     Route::post('/game/{code}/reconnect', [GameController::class, 'reconnect'])->name('game.reconnect');
+    Route::post('/push/subscriptions', [PushSubscriptionController::class, 'store'])->name('push.subscribe');
+    Route::delete('/push/subscriptions', [PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
 });

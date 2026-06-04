@@ -15,5 +15,12 @@ class ProcessNightActions implements ShouldQueue
 
     public function __construct(public readonly int $gameId) {}
 
-    public function handle(): void {}
+    public function handle(): void
+    {
+        // TODO (tâche 16) : après $killedPlayer->update(['is_alive' => false]) :
+        // try {
+        //     $killedPlayer->load('user');
+        //     $killedPlayer->user->notify(new \App\Notifications\PlayerKilledNightNotification());
+        // } catch (\Throwable) {}
+    }
 }

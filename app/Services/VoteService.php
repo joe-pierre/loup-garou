@@ -9,6 +9,7 @@ use App\Jobs\ProcessMayorSuccession;
 use App\Models\Game;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
+use App\Notifications\PlayerEliminatedDayNotification;
 use Illuminate\Support\Facades\DB;
 
 class VoteService
@@ -186,10 +187,15 @@ class VoteService
                 return;
             }
 
-            $eliminated = GamePlayer::find($topCandidates->first()->target_player_id);
+            $eliminated = GamePlayer::with('user')->find($topCandidates->first()->target_player_id);
             $eliminated->update(['is_alive' => false]);
 
             broadcast(new PlayerEliminated($locked, $eliminated, 'day_vote'));
+
+            try {
+                $eliminated->user->notify(new PlayerEliminatedDayNotification($eliminated->role));
+            } catch (\Throwable) {}
+
 
             if ($this->winConditionChecker->check($locked)) {
                 return;
