@@ -86,6 +86,7 @@ class LobbyController extends Controller
         return response()->json([
             'success' => true,
             'data'    => [
+                'status'          => $game->status,
                 'players_count'   => count($players),
                 'max_players'     => $game->max_players,
                 'slots_remaining' => $game->max_players - count($players),

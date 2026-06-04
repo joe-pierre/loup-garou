@@ -320,6 +320,9 @@
                             this.players = this.players.filter(p => p.id !== data.excluded_player_id);
                             this.animateProgress(this.players.length);
                             this.pulseEmptySlots();
+                        })
+                        .listen('.game.started', () => {
+                            window.location.href = `/game/${this.gameCode}/role-reveal`;
                         });
 
                     // Canal privé — réception du motif d'exclusion personnel
@@ -351,6 +354,10 @@
                         if (! res.ok) return;
                         const json = await res.json();
                         if (! json.success) return;
+                        if (json.data.status !== 'waiting') {
+                            window.location.href = `/game/${this.gameCode}/role-reveal`;
+                            return;
+                        }
                         this.players = json.data.players;
                         this.animateProgress(this.players.length);
                         this.pulseEmptySlots();
