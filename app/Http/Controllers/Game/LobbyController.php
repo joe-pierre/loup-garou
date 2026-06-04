@@ -64,6 +64,36 @@ class LobbyController extends Controller
         return response()->json(['success' => true, 'data' => []]);
     }
 
+    public function lobbyState(int $id): JsonResponse
+    {
+        $game = Game::findOrFail($id);
+
+        GamePlayer::where('game_id', $id)
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
+
+        $players = $game->players()
+            ->select(['id', 'pseudo', 'is_host'])
+            ->get()
+            ->map(fn ($p) => [
+                'id'      => $p->id,
+                'pseudo'  => $p->pseudo,
+                'is_host' => (bool) $p->is_host,
+            ])
+            ->values()
+            ->toArray();
+
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'players_count'   => count($players),
+                'max_players'     => $game->max_players,
+                'slots_remaining' => $game->max_players - count($players),
+                'players'         => $players,
+            ],
+        ]);
+    }
+
     public function waitingRoom(string $code): View
     {
         $game = Game::where('code', strtoupper($code))->firstOrFail();

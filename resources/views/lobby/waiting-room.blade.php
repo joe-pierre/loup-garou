@@ -331,6 +331,35 @@
                                 window.location.href = '/lobby?error=' + encodeURIComponent('Tu as été exclu de cette partie.');
                             }, 3000);
                         });
+
+                    // Resync quand l'onglet redevient visible (events WS manqués pendant l'absence)
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.visibilityState === 'visible') {
+                            this.resync();
+                        }
+                    });
+                },
+
+                async resync() {
+                    try {
+                        const res = await fetch(`/game/${this.gameId}/lobby/state`, {
+                            headers: {
+                                'Accept':       'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                        });
+                        if (! res.ok) return;
+                        const json = await res.json();
+                        if (! json.success) return;
+                        this.players = json.data.players;
+                        this.animateProgress(this.players.length);
+                        this.pulseEmptySlots();
+                        if (json.data.slots_remaining === 0) {
+                            window.location.href = `/game/${this.gameCode}/role-reveal`;
+                        }
+                    } catch {
+                        // silencieux — le WS reprend les events suivants normalement
+                    }
                 },
 
                 animateProgress(count) {
