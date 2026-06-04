@@ -259,10 +259,11 @@
                     gsap.to('#game-timer-fill', { width: '0%', duration: 60, ease: 'none' });
 
                     // Décompte 60s → redirection automatique (fallback si WS manqué)
-                    const gameTick = setInterval(() => {
+                    // Stocké sur this pour que redirect() puisse le clearer depuis l'extérieur
+                    this._gameTick = setInterval(() => {
                         this.gameTimer--;
                         if (this.gameTimer <= 0) {
-                            clearInterval(gameTick);
+                            clearInterval(this._gameTick);
                             this.redirect();
                         }
                     }, 1000);
@@ -287,6 +288,8 @@
                 },
 
                 redirect() {
+                    clearInterval(this._gameTick);
+                    gsap.killTweensOf('#game-timer-fill');
                     window.location.href = '/game/{{ $game->code }}/mayor-election';
                 },
 

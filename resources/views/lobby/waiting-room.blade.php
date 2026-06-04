@@ -341,6 +341,9 @@
                             this.resync();
                         }
                     });
+
+                    // Resync au montage : couvre le joueur 6 qui arrive après GameStarted
+                    setTimeout(() => { this.resync(); }, 500);
                 },
 
                 async resync() {
