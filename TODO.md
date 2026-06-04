@@ -73,7 +73,7 @@
 - [x] Job CheckReconnectionTimeout (30s)
 - [x] is_inactive logic
 - [x] Annulation si > 50% inactifs
-- [ ] GET /game/{code}/state (reconnexion)
+- [x] GET /game/{code}/state (reconnexion)
 
 ## Phase 9 — Fin de partie
 - [x] Event GameFinished

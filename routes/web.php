@@ -31,6 +31,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/game/{id}/chat', [ChatController::class, 'send'])->name('game.chat.send');
     Route::post('/game/{id}/seer/check', [ActionController::class, 'seerCheck'])->name('game.seer.check');
     Route::post('/game/{id}/mayor/succession', [ActionController::class, 'mayorSuccession'])->name('game.mayor.succession');
+    Route::get('/game/{code}/state', [GameController::class, 'state'])->name('game.state');
     Route::get('/game/{code}/day', [GameController::class, 'day'])->name('game.day');
     Route::get('/game/{code}/night', [GameController::class, 'night'])->name('game.night');
     Route::post('/game/{id}/disconnect', [GameController::class, 'disconnect'])->name('game.disconnect');
