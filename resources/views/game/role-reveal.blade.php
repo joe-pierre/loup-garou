@@ -15,6 +15,7 @@
         h1, h2, h3, .font-cinzel { font-family: 'Cinzel', serif; }
 
         #rr-title  { opacity: 0; }
+        #rr-timer  { opacity: 0; }
         #card-wrap { perspective: 1200px; opacity: 0; }
         #role-card {
             width: 240px;
@@ -134,6 +135,24 @@
             </h1>
         </div>
 
+        {{-- Timer 60s + compteur joueurs prêts (toujours visible) --}}
+        <div id="rr-timer" class="w-full max-w-xs mb-6">
+            <div class="flex justify-between text-xs mb-2" style="color: #e8e0d0; opacity: 0.5;">
+                <span x-text="'Démarrage dans ' + gameTimer + 's'"></span>
+                <span x-text="nbReady + '/' + total + ' prêts'"></span>
+            </div>
+            <div style="background-color: rgba(201,168,76,0.12); border-radius: 9999px; height: 5px; overflow: hidden;">
+                <div
+                    id="game-timer-fill"
+                    :style="'background-color:' + (gameTimer <= 5 ? '#8b0000' : gameTimer <= 10 ? '#f97316' : '#c9a84c')"
+                    style="height: 100%; width: 100%; border-radius: 9999px; background-color: #c9a84c;"
+                ></div>
+            </div>
+            <p x-show="nbReady === total && total > 0" class="text-center text-xs mt-2 font-cinzel" style="color: #c9a84c;">
+                L'élection du Maire commence !
+            </p>
+        </div>
+
         {{-- Carte --}}
         <div id="card-wrap" class="mb-8 flex flex-col items-center">
             <div id="role-card" @click="flipCard()">
@@ -186,7 +205,7 @@
         </div>
 
         {{-- Bouton "Entrer" (visible après reveal) --}}
-        <div x-show="revealed" x-transition class="flex flex-col items-center gap-4 w-full max-w-xs">
+        <div x-show="revealed" x-transition class="flex flex-col items-center w-full max-w-xs">
             <button
                 @click="markReady()"
                 :disabled="readyDone || submitting"
@@ -198,20 +217,6 @@
                 <span x-show="submitting">Confirmation…</span>
                 <span x-show="readyDone">Tu es prêt !</span>
             </button>
-
-            {{-- Progression des joueurs prêts --}}
-            <div class="w-full">
-                <div class="flex justify-between text-xs mb-1" style="color: #e8e0d0; opacity: 0.4;">
-                    <span x-text="nbReady + ' joueur' + (nbReady > 1 ? 's' : '') + ' prêt' + (nbReady > 1 ? 's' : '')"></span>
-                    <span x-text="total + ' total'"></span>
-                </div>
-                <div class="progress-track">
-                    <div class="progress-fill" :style="'width:' + (nbReady / total * 100) + '%'"></div>
-                </div>
-                <p x-show="nbReady === total" class="text-center text-xs mt-2 font-cinzel" style="color: #c9a84c;">
-                    L'élection du Maire commence !
-                </p>
-            </div>
         </div>
     </main>
 
@@ -227,6 +232,7 @@
             return {
                 revealed:    false,
                 countdown:   5,
+                gameTimer:   60,
                 role:        '{{ $player->role }}',
                 roleName:    ROLE_NAMES['{{ $player->role }}'] ?? '{{ $player->role }}',
                 nbReady:     {{ $nbReady }},
@@ -240,12 +246,28 @@
                         { opacity: 0, y: -20 },
                         { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }
                     );
+                    gsap.fromTo('#rr-timer',
+                        { opacity: 0 },
+                        { opacity: 1, duration: 0.5, delay: 0.05, ease: 'power2.out' }
+                    );
                     gsap.fromTo('#card-wrap',
                         { opacity: 0, y: 40 },
                         { opacity: 1, y: 0, duration: 0.7, delay: 0.1, ease: 'power2.out' }
                     );
 
-                    // Compte à rebours avant flip automatique
+                    // Barre du timer 60s — GSAP anime la largeur en continu
+                    gsap.to('#game-timer-fill', { width: '0%', duration: 60, ease: 'none' });
+
+                    // Décompte 60s → redirection automatique (fallback si WS manqué)
+                    const gameTick = setInterval(() => {
+                        this.gameTimer--;
+                        if (this.gameTimer <= 0) {
+                            clearInterval(gameTick);
+                            this.redirect();
+                        }
+                    }, 1000);
+
+                    // Compte à rebours avant flip automatique (5s)
                     const tick = setInterval(() => {
                         this.countdown--;
                         if (this.countdown <= 0) {
@@ -260,11 +282,12 @@
                             this.nbReady = data.nb_ready;
                         })
                         .listen('.mayor.election.started', () => {
-                            // Redirection vers l'écran d'élection (tâche 11)
-                            setTimeout(() => {
-                                window.location.href = '/game/{{ $game->code }}/mayor-election';
-                            }, 1000);
+                            setTimeout(() => { this.redirect(); }, 1000);
                         });
+                },
+
+                redirect() {
+                    window.location.href = '/game/{{ $game->code }}/mayor-election';
                 },
 
                 flipCard() {
