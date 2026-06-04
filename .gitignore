@@ -1,5 +1,6 @@
 /_notes
 /.editorconfig
+/template_accueil.html
 
 /.phpunit.cache
 /node_modules

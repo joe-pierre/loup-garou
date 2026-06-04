@@ -265,7 +265,7 @@
     {{-- ════════════════════════════════════════════════════════════════
          SECTION 4 — CTA FINALE
     ═══════════════════════════════════════════════════════════════════ --}}
-    <section id="section-cta" class="py-28 px-4 text-center">
+    <section id="section-cta" class="py-16 px-4 text-center">
         <p class="font-medieval text-xs tracking-widest mb-5"
            style="color:rgba(201,168,76,0.5);">
             🎲 6 JOUEURS MINIMUM · ⏱ ~15 MINUTES PAR PARTIE
