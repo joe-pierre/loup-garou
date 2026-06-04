@@ -51,7 +51,7 @@
 ## Phase 6 — Nuit
 - [x] POST /game/{id}/seer/check
 - [x] POST /game/{id}/vote/night
-- [ ] Job ProcessNightActions (timer 30s par action)
+- [x] Job ProcessNightActions (timer 30s par action)
 - [x] Event NightStarted
 - [x] Event SeerTurnStarted + SeerResult
 - [x] Event WerewolvesTurnStarted + WerewolvesVoteCast
@@ -62,7 +62,7 @@
 - [ ] POST /game/{id}/vote/day
 - [x] POST /game/{id}/mayor/succession
 - [x] Job ProcessDayVote (timer 90s)
-- [ ] Event DayStarted
+- [x] Event DayStarted
 - [ ] Event DayVoteCast
 - [x] Event PlayerEliminated / NoElimination
 - [x] Event MayorSuccessionStarted + MayorSuccessionDone

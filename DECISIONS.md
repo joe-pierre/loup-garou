@@ -102,6 +102,17 @@ auth: {
 
 ---
 
+## [CHOIX] Mort du maire la nuit — vote jour du round sacrifié pour la succession
+
+**Contexte :** Tâche 16 — `ProcessNightActions`, `ProcessMayorSuccession`
+**Problème :** `ProcessMayorSuccession` appelle `startNight()` à la fin (conçu pour les morts en phase jour). Si le maire meurt la nuit, `ProcessNightActions` dispatche `ProcessMayorSuccession` (delay 15s), puis appelle `startDay()`. Quand `ProcessMayorSuccession` se déclenche 15s plus tard, il voit `status='day'` (guard passe), fait la succession, et appelle `startNight()` — ce qui termine le jour après seulement 15s, annulant le `ProcessDayVote` (dispatché avec 90s de délai, il verra le mauvais round/status et s'arrêtera sans effet).
+**Alternatives :** (1) Ajouter un flag `shouldStartNight` à `ProcessMayorSuccession` pour distinguer les contextes nuit/jour. (2) Créer un `ProcessMayorSuccessionNight` séparé qui appelle `startDay` au lieu de `startNight`. (3) Accepter le comportement : nuit → maire tué → succession 15s → nuit suivante sans vote jour.
+**Décision :** Option 3 retenue pour v1.1. Si le maire meurt la nuit, les joueurs perdent le vote jour de ce round (ils voient `DayStarted`, puis `MayorSuccessionDone` 15s plus tard, puis `NightStarted`). Cohérent avec la mécanique "succession = responsabilité du maire mourant" : une nuit sans maire = perturbation du rythme. Corrigeable en v1.2 avec le flag `shouldStartNight`.
+**Leçon :** `ProcessMayorSuccession` est couplé au contexte "mort en jour". Pour une mort en nuit, il faut soit un job dédié, soit un paramètre de contexte. Ne pas réutiliser un job pensé pour un contexte sans vérifier son effet de fin.
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] SeerResult broadcasté sur canal privé joueur, jamais sur canal public
 
 **Contexte :** Tâche 13 — `SeerTurnStarted`, `SeerResult`

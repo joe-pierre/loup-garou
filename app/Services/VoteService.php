@@ -112,6 +112,30 @@ class VoteService
         });
     }
 
+    public function resolveNightVote(Game $game): ?GamePlayer
+    {
+        $votes = GameAction::where('game_id', $game->id)
+            ->where('type', 'night_vote')
+            ->where('round', $game->round)
+            ->selectRaw('target_player_id, COUNT(*) as vote_count')
+            ->groupBy('target_player_id')
+            ->orderByDesc('vote_count')
+            ->get();
+
+        if ($votes->isEmpty()) {
+            return null;
+        }
+
+        $maxVotes      = $votes->first()->vote_count;
+        $topCandidates = $votes->where('vote_count', $maxVotes);
+
+        $winnerId = $topCandidates->count() > 1
+            ? $topCandidates->random()->target_player_id
+            : $topCandidates->first()->target_player_id;
+
+        return GamePlayer::find($winnerId);
+    }
+
     public function castNightVote(GamePlayer $wolf, int $targetId): array
     {
         $game = $wolf->game;

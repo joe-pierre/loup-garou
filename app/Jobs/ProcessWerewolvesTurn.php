@@ -37,7 +37,7 @@ class ProcessWerewolvesTurn implements ShouldQueue
 
         broadcast(new WerewolvesTurnStarted($game, $eligibleTargets));
 
-        ProcessNightActions::dispatch($this->gameId)
+        ProcessNightActions::dispatch($this->gameId, $game->round)
             ->delay(now()->addSeconds($timer));
     }
 }
