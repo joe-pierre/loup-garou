@@ -7,15 +7,48 @@ use App\Models\Game;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
 use App\Services\GameService;
+use App\Services\VoteService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class GameController extends Controller
 {
-    public function __construct(private GameService $gameService) {}
+    public function __construct(
+        private GameService $gameService,
+        private VoteService $voteService,
+    ) {}
 
+
+    public function mayorElection(Request $request, string $code): View|RedirectResponse
+    {
+        $game = Game::where('code', strtoupper($code))->firstOrFail();
+
+        if ($game->status !== 'electing_mayor') {
+            return redirect()->route('game.role-reveal', ['code' => $code]);
+        }
+
+        $player = $game->players()
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        $players = $game->alivePlayers()->get();
+
+        $myVote = GameAction::where('game_id', $game->id)
+            ->where('player_id', $player->id)
+            ->where('type', 'mayor_vote')
+            ->where('round', $game->round)
+            ->value('target_player_id');
+
+        $currentVotes         = $this->voteService->getMayorVoteTotals($game);
+        $phaseRemainingSeconds = max(0, $game->phaseRemainingSeconds());
+
+        return view('game.mayor-election', compact(
+            'game', 'player', 'players', 'myVote', 'currentVotes', 'phaseRemainingSeconds'
+        ));
+    }
 
     public function finished(Request $request, string $code): View
     {

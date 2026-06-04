@@ -235,7 +235,7 @@ class VoteService
         ])->values()->toArray();
     }
 
-    private function getMayorVoteTotals(Game $game): array
+    public function getMayorVoteTotals(Game $game): array
     {
         return GameAction::where('game_actions.game_id', $game->id)
             ->where('game_actions.type', 'mayor_vote')
