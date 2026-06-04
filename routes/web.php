@@ -9,9 +9,7 @@ use App\Http\Controllers\Game\VoteController;
 use App\Http\Controllers\PushSubscriptionController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', fn () => view('landing'))->name('home');
 
 Route::get('/login', fn () => view('auth.login'))->name('login');
 

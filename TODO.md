@@ -84,10 +84,11 @@
 - [x] Scheduler CleanOldGames
 
 ## Phase 10 — UI
-- [ ] Écrans Blade (liste dans SPEC.md)
+- [x] Landing Page (Écran 1)
 - [x] Layout principal + composants Blade réutilisables
 - [x] Alpine.js store central gameState
-- [ ] GSAP animations (intégrées dans composants)
+- [x] GSAP animations (intégrées dans composants + landing)
+- [ ] Écrans Blade restants (tâche 29)
 - [ ] Responsive
 
 ## BUGS CONNUS
