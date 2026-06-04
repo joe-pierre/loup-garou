@@ -165,43 +165,38 @@
                 </div>
 
                 {{-- Face — rendu selon le rôle --}}
-                <div class="card-face card-front {{ $player->role }}" id="card-front">
-                    @switch($player->role)
-                        @case('werewolf')
-                            <div class="role-icon">🐺</div>
-                            <div class="role-name" style="color: #fca5a5;">Loup-Garou</div>
-                            <div class="role-desc" style="color: #fca5a5;">
-                                Chaque nuit, les loups choisissent une victime. Restez discrets le jour.
-                            </div>
-                            @break
-                        @case('seer')
-                            <div class="role-icon">👁️</div>
-                            <div class="role-name" style="color: #c4b5fd;">Voyante</div>
-                            <div class="role-desc" style="color: #c4b5fd;">
-                                Chaque nuit, tu découvres la vraie nature d'un joueur de ton choix.
-                            </div>
-                            @break
-                        @default
-                            <div class="role-icon">🏘️</div>
-                            <div class="role-name" style="color: #e8e0d0;">Villageois</div>
-                            <div class="role-desc" style="color: #e8e0d0;">
-                                Identifie et éliminine les loups-garous avant qu'ils ne vous déciment.
-                            </div>
-                    @endswitch
+                {{-- La classe de rôle est liée dynamiquement pour réagir au fetch syncRole() --}}
+                <div class="card-face card-front" :class="role" id="card-front">
+                    {{-- Loup-Garou --}}
+                    <div class="role-icon" x-show="role === 'werewolf'">🐺</div>
+                    <div class="role-name" x-show="role === 'werewolf'" style="color: #fca5a5;">Loup-Garou</div>
+                    <div class="role-desc" x-show="role === 'werewolf'" style="color: #fca5a5;">
+                        Chaque nuit, les loups choisissent une victime. Restez discrets le jour.
+                    </div>
+                    {{-- Voyante --}}
+                    <div class="role-icon" x-show="role === 'seer'">👁️</div>
+                    <div class="role-name" x-show="role === 'seer'" style="color: #c4b5fd;">Voyante</div>
+                    <div class="role-desc" x-show="role === 'seer'" style="color: #c4b5fd;">
+                        Chaque nuit, tu découvres la vraie nature d'un joueur de ton choix.
+                    </div>
+                    {{-- Villageois --}}
+                    <div class="role-icon" x-show="role !== 'werewolf' && role !== 'seer'">🏘️</div>
+                    <div class="role-name" x-show="role !== 'werewolf' && role !== 'seer'" style="color: #e8e0d0;">Villageois</div>
+                    <div class="role-desc" x-show="role !== 'werewolf' && role !== 'seer'" style="color: #e8e0d0;">
+                        Identifie et éliminine les loups-garous avant qu'ils ne vous déciment.
+                    </div>
                 </div>
             </div>
 
-            {{-- Alliés loups — visibles après reveal --}}
-            @if($player->isWerewolf() && count($allies) > 0)
-            <div x-show="revealed" x-transition class="mt-5 text-center">
+            {{-- Alliés loups — Alpine-reactive pour réagir au fetch syncRole() --}}
+            <div x-show="revealed && role === 'werewolf' && allies.length > 0" x-transition class="mt-5 text-center">
                 <p class="text-xs mb-2" style="color: #e8e0d0; opacity: 0.4; letter-spacing: 0.05em;">TES ALLIÉS LOUPS</p>
                 <div class="flex flex-wrap gap-2 justify-center">
-                    @foreach($allies as $ally)
-                        <span class="ally-chip">🐺 {{ $ally['pseudo'] }}</span>
-                    @endforeach
+                    <template x-for="ally in allies" :key="ally.id">
+                        <span class="ally-chip">🐺 <span x-text="ally.pseudo"></span></span>
+                    </template>
                 </div>
             </div>
-            @endif
         </div>
 
         {{-- Bouton "Entrer" (visible après reveal) --}}
@@ -239,6 +234,7 @@
                 total:       {{ $total }},
                 readyDone:   {{ $player->is_ready ? 'true' : 'false' }},
                 submitting:  false,
+                allies:      @json($allies),
 
                 init() {
                     // Entrée
@@ -285,12 +281,59 @@
                         .listen('.mayor.election.started', () => {
                             setTimeout(() => { this.redirect(); }, 1000);
                         });
+
+                    // Fallback : si le rôle était null côté serveur (race condition),
+                    // on le récupère depuis /state et on met à jour la carte
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.visibilityState === 'visible') { this.syncRole(); }
+                    });
+                    setTimeout(() => { this.syncRole(); }, 500);
                 },
 
                 redirect() {
                     clearInterval(this._gameTick);
                     gsap.killTweensOf('#game-timer-fill');
                     window.location.href = '/game/{{ $game->code }}/mayor-election';
+                },
+
+                async syncRole() {
+                    try {
+                        const res = await fetch('/game/{{ $game->code }}/state', {
+                            headers: {
+                                'Accept':       'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                        });
+                        if (! res.ok) return;
+                        const json = await res.json();
+                        if (! json.success) return;
+                        const data = json.data;
+
+                        // Met à jour le rôle si Blade avait retourné null
+                        if (data.my_role && ! this.role) {
+                            this.role     = data.my_role;
+                            this.roleName = ROLE_NAMES[this.role] ?? this.role;
+                            if (Array.isArray(data.allies) && data.allies.length) {
+                                this.allies = data.allies;
+                            }
+                        }
+
+                        // Redirige uniquement si la phase a DÉPASSÉ role-reveal.
+                        // 'electing_mayor' est absent : c'est le status normal pendant role-reveal,
+                        // on ne redirige pas vers mayor-election ici (géré par le listener WS
+                        // .mayor.election.started + le gameTick 60s).
+                        const targets = {
+                            'night':    '/game/{{ $game->code }}/night',
+                            'day':      '/game/{{ $game->code }}/day',
+                            'finished': '/game/{{ $game->code }}/finished',
+                        };
+                        const target = targets[data.phase];
+                        if (target && window.location.pathname !== target) {
+                            window.location.href = target;
+                        }
+                    } catch {
+                        // silencieux
+                    }
                 },
 
                 flipCard() {

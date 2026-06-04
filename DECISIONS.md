@@ -1,3 +1,12 @@
+## [RÉSOLU] Carte de rôle affichait Villageois pour tous — contenu statique Blade
+
+**Contexte :** `role-reveal.blade.php`, `GameService::joinGame()`
+**Symptôme :** Tous les joueurs voyaient la carte Villageois sur role-reveal, quel que soit leur rôle réel.
+**Cause :** Le contenu de la carte était rendu par `@switch($player->role)` côté Blade. Dans certains cas (joueur arrivant sur role-reveal via resync 500ms pendant que la transaction `joinGame()` est encore ouverte), `$player->role` pouvait être null. `@switch(null)` tombait dans `@default` → Villageois pour tous. De plus, `PlayerJoined(slots_remaining=0)` est broadcasté AVANT que `startGame()` soit appelé (ligne 98 vs 102 dans `joinGame()`), créant une fenêtre de race condition.
+**Fix :** Remplacer `@switch` par des éléments Alpine `x-show="role === 'werewolf'"` liés à `this.role`. Ajouter `syncRole()` qui fetch `/game/{code}/state` à 500ms et met à jour `this.role` + `this.allies` si null. La carte se corrige dynamiquement sans rechargement.
+**Leçon :** Tout contenu conditionnel lié à un état pouvant être null au rendu Blade doit utiliser Alpine `x-show`/`:class` au lieu de directives Blade statiques, dès lors qu'un fetch de rattrapage est prévu côté client.
+**Statut :** ✅ Résolu
+
 ## [RÉSOLU] remember_token sur modèle User OAuth
 
 **Contexte :** Tâche 2 — Authentification Google
