@@ -78,6 +78,7 @@
 ## Phase 9 — Fin de partie
 - [x] Event GameFinished
 - [x] Push notifications (fin de partie, mort, exclusion)
+- [x] Historique de partie (Écran 13)
 - [ ] Scheduler CleanOldGames
 
 ## Phase 10 — UI
