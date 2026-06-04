@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+    <style>[x-cloak] { display: none !important; }
+    #wr-header, #wr-progress, #wr-players { opacity: 0; }</style>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loup-Garou Undu — Salle d'attente</title>
@@ -83,6 +85,7 @@
     </header>
 
     <main
+        x-cloak
         class="max-w-2xl mx-auto px-4 py-10"
         x-data="waitingRoom()"
         x-init="init()"
@@ -284,9 +287,18 @@
                 },
 
                 init() {
-                    gsap.from('#wr-header',   { opacity: 0, y: 20, duration: 0.6, ease: 'power2.out' });
-                    gsap.from('#wr-progress', { opacity: 0, y: 20, duration: 0.6, delay: 0.1, ease: 'power2.out' });
-                    gsap.from('#wr-players',  { opacity: 0, y: 20, duration: 0.6, delay: 0.2, ease: 'power2.out' });
+                    gsap.fromTo('#wr-header',
+                        { opacity: 0, y: 20 },
+                        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }
+                    );
+                    gsap.fromTo('#wr-progress',
+                        { opacity: 0, y: 15 },
+                        { opacity: 1, y: 0, duration: 0.6, delay: 0.1, ease: 'power2.out' }
+                    );
+                    gsap.fromTo('#wr-players',
+                        { opacity: 0, y: 20 },
+                        { opacity: 1, y: 0, duration: 0.6, delay: 0.2, ease: 'power2.out' }
+                    );
 
                     this.animateProgress(this.players.length);
                     this.pulseEmptySlots();

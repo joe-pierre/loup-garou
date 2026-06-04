@@ -12,6 +12,7 @@
     <style>
         body { font-family: 'EB Garamond', serif; background-color: #0a0f1e; }
         h1, h2, h3 { font-family: 'Cinzel', serif; }
+        #login-card { opacity: 0; }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center relative overflow-hidden"
@@ -75,7 +76,10 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script>
-        gsap.from('#login-card', { opacity: 0, y: 30, duration: 0.8, ease: 'power2.out' });
+        gsap.fromTo('#login-card',
+            { opacity: 0, y: 30 },
+            { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out' }
+        );
     </script>
 </body>
 </html>

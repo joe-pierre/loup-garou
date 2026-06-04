@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+    <style>[x-cloak] { display: none !important; }
+    #lobby-title, #panel-create, #panel-join { opacity: 0; }</style>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loup-Garou Undu — Lobby</title>
@@ -34,7 +36,8 @@
         </div>
     </header>
 
-    <main class="max-w-4xl mx-auto px-4 py-10"
+    <main x-cloak
+          class="max-w-4xl mx-auto px-4 py-10"
           x-data="lobbyApp()"
           x-init="init()">
 
@@ -71,8 +74,8 @@
 
             {{-- ── PANNEAU CRÉER ── --}}
             <div id="panel-create"
+                 x-show="activeTab === 'create' || window.innerWidth >= 768"
                  class="rounded-2xl p-6 flex flex-col gap-5"
-                 :class="{ 'hidden md:flex': activeTab !== 'create', 'flex': activeTab === 'create' }"
                  style="background-color: #111827; border: 1px solid rgba(201,168,76,0.35);">
 
                 <h2 class="font-cinzel text-xl font-semibold" style="color: #c9a84c;">Créer une partie</h2>
@@ -90,7 +93,7 @@
                                         @click="createForm.maxPlayers = n"
                                         :style="createForm.maxPlayers === n
                                             ? 'background-color:#c9a84c;color:#0a0f1e;border-color:#c9a84c;'
-                                            : 'background-color:transparent;color:#e8e0d0;border-color:rgba(201,168,76,0.3);'"
+                                            : 'background-color:transparent;color:#e8e0d0;border-color:#c9a84c;'"
                                         class="py-2 rounded-lg border font-semibold text-sm transition-colors"
                                         x-text="n">
                                 </button>
@@ -111,8 +114,8 @@
                                maxlength="20"
                                placeholder="Ex: LoupSolitaire"
                                class="w-full px-4 py-2 rounded-lg text-sm outline-none focus:ring-2"
-                               style="background-color: #0a0f1e; border: 1px solid rgba(201,168,76,0.3);
-                                      color: #e8e0d0; focus-ring-color: #c9a84c;"
+                               style="background-color: #0a0f1e; border: 1px solid #c9a84c;
+                                      color: #e8e0d0;"
                                :class="{ 'border-red-700': createErrors.pseudo }">
                         <p x-show="createErrors.pseudo" x-text="createErrors.pseudo"
                            class="mt-1 text-xs" style="color: #fca5a5;"></p>
@@ -134,8 +137,8 @@
 
             {{-- ── PANNEAU REJOINDRE ── --}}
             <div id="panel-join"
+                 x-show="activeTab === 'join' || window.innerWidth >= 768"
                  class="rounded-2xl p-6 flex flex-col gap-5"
-                 :class="{ 'hidden md:flex': activeTab !== 'join', 'flex': activeTab === 'join' }"
                  style="background-color: #111827; border: 1px solid rgba(201,168,76,0.35);">
 
                 <h2 class="font-cinzel text-xl font-semibold" style="color: #c9a84c;">Rejoindre une partie</h2>
@@ -148,7 +151,7 @@
                             Code de la partie
                         </label>
                         <div class="flex gap-2 justify-between" @paste.prevent="onPaste($event)">
-                            <template x-for="i in 6" :key="i">
+                            <template x-for="i in [1, 2, 3, 4, 5, 6]" :key="i">
                                 <input
                                     type="text"
                                     inputmode="text"
@@ -228,9 +231,18 @@
                     }
 
                     // Animations GSAP
-                    gsap.from('#lobby-title', { opacity: 0, y: 20, duration: 0.6, ease: 'power2.out' });
-                    gsap.from('#panel-create', { opacity: 0, y: 40, duration: 0.7, delay: 0.1, ease: 'power2.out' });
-                    gsap.from('#panel-join',   { opacity: 0, y: 40, duration: 0.7, delay: 0.2, ease: 'power2.out' });
+                    gsap.fromTo('#lobby-title',
+                        { opacity: 0, y: 20 },
+                        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }
+                    );
+                    gsap.fromTo('#panel-create',
+                        { opacity: 0, y: 40 },
+                        { opacity: 1, y: 0, duration: 0.7, delay: 0.1, ease: 'power2.out' }
+                    );
+                    gsap.fromTo('#panel-join',
+                        { opacity: 0, y: 40 },
+                        { opacity: 1, y: 0, duration: 0.7, delay: 0.2, ease: 'power2.out' }
+                    );
                 },
 
                 // ── OTP helpers ──

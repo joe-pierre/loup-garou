@@ -107,6 +107,7 @@
             font-size: 0.8rem; color: #c9a84c; flex-shrink: 0;
         }
         .avatar.dead { opacity: 0.4; filter: grayscale(100%); }
+        #players-section { opacity: 0; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -356,7 +357,10 @@ document.addEventListener('DOMContentLoaded', () => {
       .to('#history-buttons',{ opacity: 1, duration: 0.4 }, '-=0.2');
 
     // Joueurs (section active par défaut)
-    gsap.from('#players-section', { opacity: 0, y: 20, duration: 0.5, delay: 0.4 });
+    gsap.fromTo('#players-section',
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.5, delay: 0.4 }
+    );
     gsap.to('.player-row', {
         opacity: 1,
         y: 0,

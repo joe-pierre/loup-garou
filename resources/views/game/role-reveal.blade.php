@@ -14,7 +14,8 @@
         body { font-family: 'EB Garamond', serif; background-color: #0a0f1e; }
         h1, h2, h3, .font-cinzel { font-family: 'Cinzel', serif; }
 
-        #card-wrap { perspective: 1200px; }
+        #rr-title  { opacity: 0; }
+        #card-wrap { perspective: 1200px; opacity: 0; }
         #role-card {
             width: 240px;
             height: 340px;
@@ -235,8 +236,14 @@
 
                 init() {
                     // Entrée
-                    gsap.from('#rr-title',  { opacity: 0, y: -20, duration: 0.6, ease: 'power2.out' });
-                    gsap.from('#card-wrap', { opacity: 0, y: 40,  duration: 0.7, delay: 0.1, ease: 'power2.out' });
+                    gsap.fromTo('#rr-title',
+                        { opacity: 0, y: -20 },
+                        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }
+                    );
+                    gsap.fromTo('#card-wrap',
+                        { opacity: 0, y: 40 },
+                        { opacity: 1, y: 0, duration: 0.7, delay: 0.1, ease: 'power2.out' }
+                    );
 
                     // Compte à rebours avant flip automatique
                     const tick = setInterval(() => {

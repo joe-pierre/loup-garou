@@ -45,7 +45,10 @@
             x-init="
                 const noMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
                 if (!noMotion && typeof gsap !== 'undefined') {
-                    gsap.from($el, { x: 60, opacity: 0, duration: 0.3, ease: 'power2.out' });
+                    gsap.fromTo($el,
+                        { x: 60, opacity: 0 },
+                        { x: 0, opacity: 1, duration: 0.3, ease: 'power2.out' }
+                    );
                 }
             "
             class="rounded-xl px-4 py-3 text-sm shadow-xl flex items-start gap-3 pointer-events-auto cursor-pointer"
