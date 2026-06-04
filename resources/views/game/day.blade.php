@@ -70,10 +70,24 @@
     </header>
 
     <main
-        class="max-w-2xl mx-auto px-4 py-10"
+        class="game-screen max-w-2xl mx-auto px-4 py-10"
         x-data="dayScreen()"
         x-init="init()"
     >
+        {{-- ══ Bandeau mort (visible uniquement si le joueur vient de mourir) ══ --}}
+        <div
+            x-show="showDeathBanner"
+            x-transition.opacity
+            class="mb-5 flex items-center gap-3 px-4 py-3 rounded-xl"
+            style="background-color:#1a0000;border:1px solid rgba(139,0,0,0.6);"
+        >
+            <span class="text-2xl">💀</span>
+            <div>
+                <p class="font-cinzel font-semibold text-sm" style="color:#ef4444;">Tu as été éliminé.</p>
+                <p class="text-xs italic" style="color:rgba(232,224,208,0.5);">Tu observes la suite en silence.</p>
+            </div>
+        </div>
+
         {{-- Placeholder tâche 29 --}}
         <div class="text-center py-20">
             <p class="font-cinzel text-2xl mb-2" style="color: #c9a84c;">Phase Jour</p>
@@ -189,6 +203,9 @@
                 submitting:       false,
                 _timerInterval:   null,
                 _timerTween:      null,
+                // Mort
+                isAlive:          MY_IS_ALIVE,
+                showDeathBanner:  false,
 
                 init() {
                     window.Echo.channel(`game.${GAME_ID}`)
@@ -197,7 +214,20 @@
                         })
                         .listen('.mayor.succession.done', (data) => {
                             this.closeSuccessionModal();
-                            // Mettre à jour le badge couronne (tâche 29)
+                        })
+                        .listen('.game.finished', (data) => {
+                            setTimeout(() => {
+                                window.location.href = data.winner_team !== null
+                                    ? `/game/${GAME_CODE}/finished`
+                                    : `/game/${GAME_CODE}/cancelled`;
+                            }, 2000);
+                        })
+                        .listen('.player.eliminated', (data) => {
+                            if (data.player_id === MY_PLAYER_ID) {
+                                this.isAlive        = false;
+                                this.showDeathBanner = true;
+                                gsap.to('.game-screen', { filter: 'grayscale(30%)', duration: 1 });
+                            }
                         });
                 },
 

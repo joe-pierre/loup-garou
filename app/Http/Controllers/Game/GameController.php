@@ -17,6 +17,44 @@ class GameController extends Controller
     public function __construct(private GameService $gameService) {}
 
 
+    public function finished(Request $request, string $code): View
+    {
+        $game = Game::where('code', strtoupper($code))->firstOrFail();
+
+        abort_unless($game->status === 'finished' && $game->winner_team !== null, 404);
+
+        $player     = $game->players()->where('user_id', $request->user()->id)->firstOrFail();
+        $allPlayers = $game->players()->get();
+
+        return view('game.finished', compact('game', 'player', 'allPlayers'));
+    }
+
+    public function cancelled(Request $request, string $code): View
+    {
+        $game = Game::where('code', strtoupper($code))->firstOrFail();
+
+        abort_unless($game->status === 'finished' && $game->winner_team === null, 404);
+
+        $player     = $game->players()->where('user_id', $request->user()->id)->firstOrFail();
+        $allPlayers = $game->players()->get();
+
+        return view('game.cancelled', compact('game', 'player', 'allPlayers'));
+    }
+
+    public function spectator(Request $request, string $code): View
+    {
+        $game = Game::where('code', strtoupper($code))->firstOrFail();
+
+        $player = $game->players()
+            ->where('user_id', $request->user()->id)
+            ->where('is_alive', false)
+            ->firstOrFail();
+
+        $allPlayers = $game->players()->get();
+
+        return view('game.dead-spectator', compact('game', 'player', 'allPlayers'));
+    }
+
     public function day(Request $request, string $code): View
     {
         $game = Game::where('code', strtoupper($code))->firstOrFail();

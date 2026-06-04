@@ -79,6 +79,8 @@
 - [x] Event GameFinished
 - [x] Push notifications (fin de partie, mort, exclusion)
 - [x] Historique de partie (Écran 13)
+- [x] Écran Fin de partie (Écran 11) + Annulation
+- [x] Écran Spectateur mort (Écran 12)
 - [ ] Scheduler CleanOldGames
 
 ## Phase 10 — UI
