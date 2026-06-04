@@ -86,7 +86,7 @@
 ## Phase 10 — UI
 - [ ] Écrans Blade (liste dans SPEC.md)
 - [x] Layout principal + composants Blade réutilisables
-- [ ] Alpine.js store central gameState (tâche 30)
+- [x] Alpine.js store central gameState
 - [ ] GSAP animations (intégrées dans composants)
 - [ ] Responsive
 

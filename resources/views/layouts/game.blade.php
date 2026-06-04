@@ -11,10 +11,9 @@
     <meta name="player-pseudo" content="{{ $player->pseudo }}">
     <meta name="vapid-public-key" content="{{ config('webpush.vapid.public_key', '') }}">
     @endisset
-    {{-- Alpine.js (defer = disponible avant DOMContentLoaded) --}}
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
-    {{-- GSAP --}}
+    {{-- GSAP (synchrone : disponible dans tous les handlers Alpine) --}}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    {{-- Vite bundle (inclut Alpine + gameState + timerState) --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
 </head>

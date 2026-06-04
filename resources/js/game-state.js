@@ -1,121 +1,449 @@
 /**
- * game-state.js — Gestion déconnexion / reconnexion en temps réel
+ * gameState(gameId, userId) — Store Alpine central pour toutes les vues de jeu.
  *
- * Usage dans une vue Blade :
- *   import { initGameState } from './game-state.js';
- *   initGameState({ gameId: {{ $game->id }}, gameCode: '{{ $game->code }}', playerId: {{ $player->id }} });
+ * Usage dans Blade :
+ *   <div x-data="gameState({{ $game->id }}, {{ auth()->id() }})"
+ *        data-game-code="{{ $game->code }}"
+ *        data-player-id="{{ $player->id }}">
+ *
+ * Les vues existantes (day.blade.php, etc.) peuvent continuer à utiliser leurs
+ * propres fonctions locales ; ce store s'y substitue progressivement (tâche 29).
  */
+export function gameState(gameId, userId) {
+    return {
+        // ── Identifiants ────────────────────────────────────────────────────
+        gameId,
+        userId,
+        playerId:   null,  // game_players.id — lu depuis le DOM
+        gameCode:   null,  // code 6 chars — lu depuis le DOM ou window.GAME_CODE
 
-/**
- * @param {{ gameId: number, gameCode: string, playerId: number }} config
- */
-export function initGameState({ gameId, gameCode, playerId }) {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+        // ── État de jeu ──────────────────────────────────────────────────────
+        phase:                null,
+        round:                0,
+        players:              [],
+        myRole:               null,
+        isMayor:              false,
+        isAlive:              true,
+        winnerTeam:           null,
+        nightVictim:          null,
 
-    // --- Presence channel : détection leaving() ---
-    window.Echo.join(`game.${gameId}.presence`)
-        .here(members => {
-            // Membres déjà connectés à l'arrivée — pas d'action nécessaire
-        })
-        .joining(member => {
-            // Autre joueur vient de rejoindre/se reconnecter
-        })
-        .leaving(member => {
-            if (member.id !== playerId) {
-                showToast(`${member.pseudo} s'est déconnecté`, 'info');
-            }
-        });
+        // ── Phases nuit ──────────────────────────────────────────────────────
+        seerTurnActive:       false,
+        werewolvesTurnActive: false,
+        seerResult:           null,
 
-    // --- Écoute des événements de déconnexion/reconnexion ---
-    window.Echo.channel(`game.${gameId}`)
-        .listen('.player.disconnected', data => {
-            showToast(`${data.pseudo} se reconnecte…`, 'info');
-            if (data.pseudo === getCurrentPseudo()) {
-                showReconnectingOverlay();
-            }
-        })
-        .listen('.player.inactive', data => {
-            showToast(`${data.pseudo} est inactif`, 'warning');
-            if (data.pseudo === getCurrentPseudo()) {
-                hideReconnectingOverlay();
-            }
-        })
-        .listen('.player.reconnected', data => {
-            showToast(`${data.pseudo} est de retour`, 'success');
-            if (data.pseudo === getCurrentPseudo()) {
-                hideReconnectingOverlay();
-            }
-        })
-        .listen('.game.finished', data => {
-            if (data.winner_team === null) {
-                showToast('Partie annulée — trop de joueurs inactifs', 'error');
-            }
-        });
+        // ── Chat ─────────────────────────────────────────────────────────────
+        chat:       [],
+        wolvesChat: [],
 
-    // --- beforeunload : POST best-effort vers /disconnect ---
-    window.addEventListener('beforeunload', () => {
-        const url = `/game/${gameId}/disconnect`;
-        // sendBeacon est synchrone et ne nécessite pas de réponse
-        const formData = new FormData();
-        formData.append('_token', csrfToken);
-        navigator.sendBeacon(url, formData);
-    });
+        // ── Votes ────────────────────────────────────────────────────────────
+        votes:       {},   // { player_id: total_weight }
+        wolvesVotes: {},   // { player_id: count }
 
-    // --- Reconnexion automatique à l'arrivée sur la page si marqué inactif ---
-    fetch(`/game/${gameCode}/reconnect`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': csrfToken,
-            'X-Requested-With': 'XMLHttpRequest',
-            'Content-Type': 'application/json',
+        // ── Internes ─────────────────────────────────────────────────────────
+        _csrf:     '',
+        _motion:   true,   // !prefers-reduced-motion
+        _allies:   [],     // alliés loups (pour les loups)
+
+        // ── Dérivés ──────────────────────────────────────────────────────────
+        get isWerewolf() {
+            return ['werewolf', 'white_wolf'].includes(this.myRole);
         },
-    }).catch(() => {});
-}
 
-// --- Helpers UI ---
+        // ════════════════════════════════════════════════════════════════════
+        // INIT
+        // ════════════════════════════════════════════════════════════════════
+        async init() {
+            this._csrf   = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+            this._motion = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-function getCurrentPseudo() {
-    return document.querySelector('[data-player-pseudo]')?.dataset?.playerPseudo ?? '';
-}
+            // Lire les identifiants depuis les attributs data ou les constantes globales
+            this.gameCode = this.$el?.dataset?.gameCode ?? window.GAME_CODE ?? null;
+            this.playerId = parseInt(this.$el?.dataset?.playerId ?? window.MY_PLAYER_ID ?? 0, 10) || null;
 
-function showToast(message, type = 'info') {
-    const colors = {
-        info:    'bg-[#111827] border-[#c9a84c] text-[#e8e0d0]',
-        warning: 'bg-[#111827] border-[#f97316] text-[#f97316]',
-        success: 'bg-[#111827] border-[#16a34a] text-[#16a34a]',
-        error:   'bg-[#111827] border-[#8b0000] text-[#e8e0d0]',
+            // Charger l'état initial depuis le serveur
+            if (this.gameCode) {
+                await this._loadState();
+            }
+
+            this.initWebSocket();
+            this._setupBeforeUnload();
+            this._reconnect();
+        },
+
+        async _loadState() {
+            try {
+                const res  = await fetch(`/game/${this.gameCode}/state`, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const json = await res.json();
+                if (!json.success) return;
+                const d               = json.data;
+                this.phase                = d.phase;
+                this.round                = d.round;
+                this.myRole               = d.my_role;
+                this.isAlive              = d.is_alive;
+                this.isMayor              = d.is_mayor;
+                this.seerTurnActive       = d.seer_turn_active;
+                this.werewolvesTurnActive = d.werewolves_turn_active;
+                this._allies              = d.allies ?? [];
+            } catch {
+                // silencieux — état sera reconstruit via WebSocket
+            }
+        },
+
+        // ════════════════════════════════════════════════════════════════════
+        // WEBSOCKET
+        // ════════════════════════════════════════════════════════════════════
+        initWebSocket() {
+            const echo = window.Echo;
+            if (!echo) return;
+
+            // ── Canal public ─────────────────────────────────────────────────
+            echo.channel(`game.${this.gameId}`)
+                .listen('.night.started',              e => this.handleNightStarted(e))
+                .listen('.day.started',                e => this.handleDayStarted(e))
+                .listen('.mayor.election.started',     e => this._handleMayorElectionStarted(e))
+                .listen('.mayor.elected',              e => this.handleMayorElected(e))
+                .listen('.mayor.vote.cast',            e => this._handleMayorVoteCast(e))
+                .listen('.mayor.succession.started',   e => this.$dispatch('mayor-succession-started', e))
+                .listen('.mayor.succession.done',      e => this.handleMayorSuccessionDone(e))
+                .listen('.day.vote.cast',              e => this._handleDayVoteCast(e))
+                .listen('.player.eliminated',          e => this.handlePlayerEliminated(e))
+                .listen('.no.elimination',             e => this._dispatchToast(
+                    e.reason === 'equality' ? 'Égalité — personne éliminé.' : 'Aucun vote exprimé.', 'info'
+                ))
+                .listen('.chat.message.sent',          e => this._handleChatMessage(e))
+                .listen('.player.disconnected',        e => this._handlePlayerDisconnected(e))
+                .listen('.player.reconnected',         e => this._handlePlayerReconnected(e))
+                .listen('.player.inactive',            e => this._handlePlayerInactive(e))
+                .listen('.game.finished',              e => this.handleGameFinished(e));
+
+            // Présence (détection leaving)
+            echo.join(`game.${this.gameId}.presence`)
+                .leaving(member => {
+                    if (member.id !== this.playerId) {
+                        this._dispatchToast(`${member.pseudo} s'est déconnecté`, 'info');
+                    }
+                });
+
+            // ── Canal joueur individuel ──────────────────────────────────────
+            if (this.playerId) {
+                echo.private(`game.${this.gameId}.player.${this.playerId}`)
+                    .listen('.game.started',       e => this._handleRoleAssigned(e))
+                    .listen('.seer.turn.started',  e => {
+                        this.seerTurnActive = true;
+                        this.$dispatch('seer-turn-started', e);
+                    })
+                    .listen('.seer.result',        e => {
+                        this.seerResult = e;
+                        this.$dispatch('seer-result', e);
+                    });
+            }
+
+            // ── Canal loups (si loup) ────────────────────────────────────────
+            if (this.isWerewolf) {
+                echo.private(`game.${this.gameId}.werewolves`)
+                    .listen('.werewolves.turn.started', e => {
+                        this.werewolvesTurnActive = true;
+                        this.$dispatch('werewolves-turn-started', e);
+                    })
+                    .listen('.werewolves.vote.cast', e => {
+                        this.wolvesVotes = this._buildVoteMap(e.votes ?? []);
+                        this.$dispatch('wolves-vote-cast', e);
+                    })
+                    .listen('.werewolf.chat.message', e => {
+                        this.wolvesChat.push(e);
+                    });
+            }
+
+            // ── Reconnexion WebSocket (Pusher/Reverb) ────────────────────────
+            try {
+                const conn = echo.connector.pusher.connection;
+                conn.bind('disconnected', () => {
+                    this._dispatchToast('Connexion perdue. Reconnexion…', 'warning');
+                });
+                conn.bind('connected', () => {
+                    this._dispatchToast('Reconnecté !', 'success');
+                });
+            } catch {}
+        },
+
+        // ════════════════════════════════════════════════════════════════════
+        // HANDLERS — PHASES
+        // ════════════════════════════════════════════════════════════════════
+        handleNightStarted(e) {
+            this.phase             = 'night';
+            this.round             = e.round ?? this.round;
+            this.votes             = {};
+            this.wolvesVotes       = {};
+            this.seerTurnActive    = true;
+            this.nightVictim       = null;
+
+            if (this._motion) {
+                gsap.to(document.body, { backgroundColor: '#030712', duration: 1.5, ease: 'power2.inOut' });
+            }
+        },
+
+        handleDayStarted(e) {
+            this.phase             = 'day';
+            this.seerTurnActive    = false;
+            this.werewolvesTurnActive = false;
+            this.nightVictim       = e.killed ?? null;
+
+            // Marquer mort le joueur tué la nuit
+            if (e.killed?.player_id) {
+                this._markPlayerDead(e.killed.player_id);
+            }
+
+            if (this._motion) {
+                // Transition nuit → jour (fond)
+                gsap.to(document.body, { backgroundColor: '#0a0f1e', duration: 2, ease: 'power2.out' });
+                // Halo solaire (si l'élément existe)
+                const sun = document.getElementById('sun-glow');
+                if (sun) {
+                    gsap.from(sun, { y: '100%', opacity: 0, duration: 2.5, ease: 'power2.out' });
+                }
+            }
+        },
+
+        handleMayorElected(e) {
+            // Retirer couronne du précédent maire
+            this.players = this.players.map(p => ({
+                ...p,
+                is_mayor: p.id === e.player_id,
+            }));
+            // Mettre à jour le DOM
+            document.querySelectorAll('[data-player-id]').forEach(el => {
+                const pid       = parseInt(el.dataset.playerId, 10);
+                const crownEl   = el.querySelector('[data-badge="mayor"]');
+                if (crownEl) crownEl.style.display = pid === e.player_id ? '' : 'none';
+            });
+        },
+
+        handleMayorSuccessionDone(e) {
+            this.handleMayorElected({ player_id: e.new_mayor_id });
+        },
+
+        handlePlayerEliminated(e) {
+            this._markPlayerDead(e.player_id);
+
+            // Animation grayscale sur la carte joueur
+            const card = document.querySelector(`[data-player-id="${e.player_id}"]`);
+            if (card && this._motion) {
+                gsap.to(card, { opacity: 0.3, filter: 'grayscale(100%)', duration: 0.8 });
+            }
+
+            // Si c'est le joueur courant
+            if (e.player_id === this.playerId) {
+                this.isAlive = false;
+
+                const screen = document.querySelector('.game-screen');
+                if (screen && this._motion) {
+                    gsap.to(screen, { filter: 'grayscale(30%)', duration: 1 });
+                }
+
+                this.$dispatch('i-was-eliminated', e);
+            }
+        },
+
+        handleGameFinished(e) {
+            this.winnerTeam = e.winner_team;
+            this.phase      = 'finished';
+
+            // Toast puis redirect après 2s
+            const msg = e.winner_team === 'villagers' ? '🏆 Le village a gagné !'
+                      : e.winner_team === 'werewolves' ? '🐺 Les loups ont gagné !'
+                      : '🏁 Partie annulée.';
+            this._dispatchToast(msg, e.winner_team ? 'success' : 'warning');
+
+            if (this._motion) {
+                // Bannière victoire (si l'élément existe dans la vue)
+                const banner = document.getElementById('victory-banner');
+                if (banner) {
+                    gsap.fromTo(banner, { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.7, ease: 'back.out(1.4)' });
+                }
+            }
+
+            setTimeout(() => {
+                if (this.gameCode) {
+                    window.location.href = e.winner_team !== null
+                        ? `/game/${this.gameCode}/finished`
+                        : `/game/${this.gameCode}/cancelled`;
+                }
+            }, 2000);
+        },
+
+        // ════════════════════════════════════════════════════════════════════
+        // HANDLERS — CHAT / VOTES (privés)
+        // ════════════════════════════════════════════════════════════════════
+        _handleChatMessage(e) {
+            if (e.channel === 'general') {
+                this.chat.push(e);
+            }
+        },
+
+        _handleDayVoteCast(e) {
+            this.votes = this._buildVoteMap(e.votes ?? []);
+        },
+
+        _handleMayorVoteCast(e) {
+            // e.votes = [{ target_player_id, vote_count }]
+            this.votes = {};
+            (e.votes ?? []).forEach(v => { this.votes[v.target_player_id] = v.vote_count; });
+        },
+
+        _handleMayorElectionStarted(e) {
+            this.phase = 'electing_mayor';
+            this.votes = {};
+        },
+
+        _handleRoleAssigned(e) {
+            if (e.role) this.myRole = e.role;
+            if (e.allies) this._allies = e.allies;
+        },
+
+        // ════════════════════════════════════════════════════════════════════
+        // HANDLERS — DÉCONNEXION
+        // ════════════════════════════════════════════════════════════════════
+        _handlePlayerDisconnected(e) {
+            this._dispatchToast(`${e.pseudo} se reconnecte…`, 'info');
+            if (e.pseudo === this._myPseudo()) {
+                document.getElementById('reconnecting-overlay')
+                    ?? this._showReconnectingOverlay();
+            }
+        },
+
+        _handlePlayerReconnected(e) {
+            this._dispatchToast(`${e.pseudo} est de retour !`, 'success');
+            if (e.pseudo === this._myPseudo()) {
+                this._hideReconnectingOverlay();
+            }
+        },
+
+        _handlePlayerInactive(e) {
+            this._dispatchToast(`${e.pseudo} est inactif`, 'warning');
+            if (e.pseudo === this._myPseudo()) {
+                this._hideReconnectingOverlay();
+            }
+        },
+
+        // ════════════════════════════════════════════════════════════════════
+        // ACTIONS
+        // ════════════════════════════════════════════════════════════════════
+        async sendMessage(message, channel = 'general') {
+            if (!this.isAlive) return;
+            const allowedPhases = channel === 'general'
+                ? ['day', 'electing_mayor']
+                : ['night'];
+            if (!allowedPhases.includes(this.phase)) return;
+
+            try {
+                await fetch(`/game/${this.gameId}/chat`, {
+                    method:  'POST',
+                    headers: this._headers(),
+                    body:    JSON.stringify({ message, channel }),
+                });
+            } catch {}
+        },
+
+        async castVote(type, targetPlayerId) {
+            const endpoints = { mayor: 'mayor', day: 'day', night: 'night' };
+            const path      = endpoints[type];
+            if (!path) return;
+
+            try {
+                const res  = await fetch(`/game/${this.gameId}/vote/${path}`, {
+                    method:  'POST',
+                    headers: this._headers(),
+                    body:    JSON.stringify({ target_player_id: targetPlayerId }),
+                });
+                const json = await res.json();
+
+                // Mettre à jour les barres de votes
+                if (json.success && this._motion) {
+                    document.querySelectorAll('[data-vote-bar]').forEach(bar => {
+                        const pid   = parseInt(bar.dataset.voteBar, 10);
+                        const total = this.votes[pid] ?? 0;
+                        const max   = Math.max(1, ...Object.values(this.votes));
+                        gsap.to(bar, { width: `${(total / max) * 100}%`, duration: 0.4, ease: 'power2.out' });
+                    });
+                }
+            } catch {}
+        },
+
+        // ════════════════════════════════════════════════════════════════════
+        // UTILITAIRES INTERNES
+        // ════════════════════════════════════════════════════════════════════
+        _setupBeforeUnload() {
+            window.addEventListener('beforeunload', () => {
+                const fd = new FormData();
+                fd.append('_token', this._csrf);
+                navigator.sendBeacon(`/game/${this.gameId}/disconnect`, fd);
+            });
+        },
+
+        _reconnect() {
+            if (!this.gameCode) return;
+            fetch(`/game/${this.gameCode}/reconnect`, {
+                method:  'POST',
+                headers: this._headers(),
+            }).catch(() => {});
+        },
+
+        _markPlayerDead(playerId) {
+            this.players = this.players.map(p =>
+                p.id === playerId ? { ...p, is_alive: false } : p
+            );
+        },
+
+        _buildVoteMap(votes) {
+            const map = {};
+            votes.forEach(v => {
+                const id = v.target_player_id ?? v.player_id;
+                map[id]  = v.vote_weight ?? v.vote_count ?? 1;
+            });
+            return map;
+        },
+
+        _myPseudo() {
+            return document.querySelector('[data-player-pseudo]')?.dataset?.playerPseudo
+                ?? document.querySelector('meta[name="player-pseudo"]')?.content
+                ?? '';
+        },
+
+        _dispatchToast(message, type = 'info') {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: { message, type } }));
+        },
+
+        _headers() {
+            return {
+                'Content-Type':     'application/json',
+                'Accept':           'application/json',
+                'X-CSRF-TOKEN':     this._csrf,
+                'X-Requested-With': 'XMLHttpRequest',
+            };
+        },
+
+        _showReconnectingOverlay() {
+            if (document.getElementById('reconnecting-overlay')) return;
+            const el    = document.createElement('div');
+            el.id        = 'reconnecting-overlay';
+            el.className = 'fixed inset-0 z-40 flex items-center justify-center pointer-events-none';
+            el.style.backgroundColor = 'rgba(3,7,18,0.8)';
+            el.innerHTML = `<div class="text-center">
+                <svg class="animate-spin h-10 w-10 mx-auto mb-4" style="color:#c9a84c;"
+                     xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                <p style="color:#c9a84c;font-family:Cinzel,serif;">Reconnexion…</p>
+            </div>`;
+            document.body.appendChild(el);
+        },
+
+        _hideReconnectingOverlay() {
+            document.getElementById('reconnecting-overlay')?.remove();
+        },
     };
-
-    const toast = document.createElement('div');
-    toast.className = `fixed bottom-6 right-6 z-50 px-5 py-3 rounded border font-[EB_Garamond] text-sm shadow-lg transition-opacity duration-500 ${colors[type] ?? colors.info}`;
-    toast.textContent = message;
-
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 500);
-    }, 3500);
-}
-
-function showReconnectingOverlay() {
-    if (document.getElementById('reconnecting-overlay')) return;
-
-    const overlay = document.createElement('div');
-    overlay.id = 'reconnecting-overlay';
-    overlay.className = 'fixed inset-0 z-40 bg-[#030712]/80 flex items-center justify-center pointer-events-none';
-    overlay.innerHTML = `
-        <div class="text-center">
-            <svg class="animate-spin h-10 w-10 text-[#c9a84c] mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-            </svg>
-            <p class="text-[#c9a84c] font-[Cinzel] text-lg">Reconnexion en cours…</p>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-}
-
-function hideReconnectingOverlay() {
-    document.getElementById('reconnecting-overlay')?.remove();
 }
