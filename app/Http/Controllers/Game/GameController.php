@@ -4,11 +4,16 @@ namespace App\Http\Controllers\Game;
 
 use App\Http\Controllers\Controller;
 use App\Models\Game;
+use App\Services\GameService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class GameController extends Controller
 {
+    public function __construct(private GameService $gameService) {}
+
+
     public function day(Request $request, string $code): View
     {
         $game = Game::where('code', strtoupper($code))->firstOrFail();
@@ -41,5 +46,33 @@ class GameController extends Controller
         $alivePlayers = $game->alivePlayers()->get();
 
         return view('game.night', compact('game', 'player', 'alivePlayers'));
+    }
+
+    public function disconnect(Request $request, int $id): JsonResponse
+    {
+        $game = Game::findOrFail($id);
+
+        $player = $game->players()
+            ->where('user_id', $request->user()->id)
+            ->first();
+
+        if ($player) {
+            $this->gameService->handleDisconnection($player);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    public function reconnect(Request $request, string $code): JsonResponse
+    {
+        $game = Game::where('code', strtoupper($code))->firstOrFail();
+
+        $player = $game->players()
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        $this->gameService->handleReconnection($player);
+
+        return response()->json(['success' => true]);
     }
 }

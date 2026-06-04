@@ -2,11 +2,15 @@
 
 namespace App\Services;
 
+use App\Events\Game\GameFinished;
 use App\Events\Game\GameStarted;
 use App\Events\Game\MayorElectionStarted;
+use App\Events\Game\PlayerDisconnected;
 use App\Events\Game\PlayerExcluded;
 use App\Events\Game\PlayerJoined;
 use App\Events\Game\PlayerReady;
+use App\Events\Game\PlayerReconnected;
+use App\Jobs\CheckReconnectionTimeout;
 use App\Jobs\ProcessMayorElection;
 use App\Jobs\WaitForReadyPlayers;
 use App\Models\Exclusion;
@@ -14,6 +18,7 @@ use App\Models\Game;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -295,6 +300,54 @@ class GameService
         $this->phaseManager->startNight($game);
 
         return $target;
+    }
+
+    public function handleDisconnection(GamePlayer $player): void
+    {
+        $timer = config('game.timers.reconnection', 30);
+        $token = Str::uuid()->toString();
+
+        // Stocker le token 2× le timer pour couvrir les retards de queue
+        Cache::put("player_disconnected.{$player->id}", $token, now()->addSeconds($timer * 2));
+
+        broadcast(PlayerDisconnected::fromPlayer($player, $timer));
+
+        CheckReconnectionTimeout::dispatch($player->id, $token)
+            ->delay(now()->addSeconds($timer));
+    }
+
+    public function handleReconnection(GamePlayer $player): void
+    {
+        // Invalider le token → le Job en attente détectera la reconnexion et s'arrêtera
+        Cache::forget("player_disconnected.{$player->id}");
+
+        $player->update(['is_inactive' => false]);
+
+        broadcast(PlayerReconnected::fromPlayer($player));
+    }
+
+    public function cancelGame(Game $game): void
+    {
+        DB::transaction(function () use ($game) {
+            $locked = Game::where('id', $game->id)
+                ->whereNotIn('status', ['finished', 'waiting'])
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked) {
+                return;
+            }
+
+            $locked->update([
+                'status'      => 'finished',
+                'winner_team' => null,
+                'finished_at' => now(),
+            ]);
+
+            $players = $locked->players()->get();
+
+            broadcast(new GameFinished($locked, $players, null));
+        });
     }
 
     private function generateUniqueCode(): string

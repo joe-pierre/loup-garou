@@ -30,3 +30,16 @@ Broadcast::channel('game.{gameId}.werewolves', function ($user, $gameId) {
 
     return $player && $player->isWerewolf();
 });
+
+// Canal presence — détection déconnexion via leaving()
+Broadcast::channel('game.{gameId}.presence', function ($user, $gameId) {
+    $player = GamePlayer::where('game_id', $gameId)
+        ->where('user_id', $user->id)
+        ->first();
+
+    if (! $player) {
+        return false;
+    }
+
+    return ['id' => $player->id, 'pseudo' => $player->pseudo];
+});

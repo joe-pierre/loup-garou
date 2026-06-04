@@ -33,4 +33,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/game/{id}/mayor/succession', [ActionController::class, 'mayorSuccession'])->name('game.mayor.succession');
     Route::get('/game/{code}/day', [GameController::class, 'day'])->name('game.day');
     Route::get('/game/{code}/night', [GameController::class, 'night'])->name('game.night');
+    Route::post('/game/{id}/disconnect', [GameController::class, 'disconnect'])->name('game.disconnect');
+    Route::post('/game/{code}/reconnect', [GameController::class, 'reconnect'])->name('game.reconnect');
 });

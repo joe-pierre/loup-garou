@@ -69,14 +69,14 @@
 - [ ] WinConditionChecker
 
 ## Phase 8 — Déconnexion
-- [ ] Détection déconnexion (Reverb presence channel)
-- [ ] Job CheckReconnectionTimeout (30s)
-- [ ] is_inactive logic
-- [ ] Annulation si > 50% inactifs
+- [x] Détection déconnexion (Reverb presence channel)
+- [x] Job CheckReconnectionTimeout (30s)
+- [x] is_inactive logic
+- [x] Annulation si > 50% inactifs
 - [ ] GET /game/{code}/state (reconnexion)
 
 ## Phase 9 — Fin de partie
-- [ ] Event GameFinished
+- [x] Event GameFinished
 - [ ] Push notifications (fin de partie, mort, exclusion)
 - [ ] Scheduler CleanOldGames
 
