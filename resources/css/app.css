@@ -1,3 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    /* Masquer les éléments Alpine avant initialisation pour éviter le flash */
+    [x-cloak] { display: none !important; }
+}
+
+@layer components {
+    /* Alias CSS pour la rétrocompat avec les vues existantes */
+    .font-cinzel { font-family: 'Cinzel', serif; }
+}
+
+/* Désactiver toutes les animations si l'utilisateur le préfère */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
