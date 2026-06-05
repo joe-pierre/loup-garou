@@ -99,18 +99,14 @@ class LobbyController extends Controller
     {
         $game = Game::where('code', strtoupper($code))->firstOrFail();
 
-        $currentPlayer = $game->players()
+        $player = $game->players()
             ->where('user_id', auth()->id())
             ->firstOrFail();
 
         $players = $game->players()
-            ->select(['id', 'pseudo', 'is_host'])
+            ->select(['id', 'pseudo', 'is_host', 'is_ready'])
             ->get();
 
-        return view('lobby.waiting-room', [
-            'game'          => $game,
-            'currentPlayer' => $currentPlayer,
-            'players'       => $players,
-        ]);
+        return view('game.waiting-room', compact('game', 'player', 'players'));
     }
 }

@@ -1,272 +1,235 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <style>[x-cloak] { display: none !important; }
-    #me-header, #me-timer, #me-candidates { opacity: 0; }</style>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loup-Garou Undu — Élection du Maire</title>
-    <meta name="description" content="Jeu Loup-Garou multijoueur en temps réel. Crée une partie, invite tes amis et découvre ton rôle.">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <style>
-        body { font-family: 'EB Garamond', serif; background-color: #0a0f1e; }
-        h1, h2, h3, .font-cinzel { font-family: 'Cinzel', serif; }
+@extends('layouts.game')
 
-        .candidate-card {
-            background-color: #111827;
-            border: 1px solid rgba(201,168,76,0.2);
-            border-radius: 0.875rem;
-            padding: 1rem 0.75rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.6rem;
-            cursor: pointer;
-            transition: border-color 0.25s, box-shadow 0.25s;
-            user-select: none;
-        }
-        .candidate-card:not(.has-voted):hover {
-            border-color: rgba(201,168,76,0.5);
-        }
-        .candidate-card.is-selected {
-            border-color: #c9a84c;
-            box-shadow: 0 0 18px rgba(201,168,76,0.18);
-        }
-        .candidate-card.is-dimmed {
-            opacity: 0.45;
-            cursor: default;
-        }
-        .avatar {
-            width: 2.75rem;
-            height: 2.75rem;
-            border-radius: 9999px;
-            background-color: rgba(201,168,76,0.12);
-            border: 1px solid rgba(201,168,76,0.35);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Cinzel', serif;
-            font-weight: 600;
-            font-size: 0.95rem;
-            color: #c9a84c;
-            flex-shrink: 0;
-        }
-        .vote-badge {
-            font-family: 'Cinzel', serif;
-            font-size: 0.7rem;
-            padding: 0.1rem 0.55rem;
-            border-radius: 9999px;
-            background-color: rgba(201,168,76,0.1);
-            border: 1px solid rgba(201,168,76,0.25);
-            color: #c9a84c;
-        }
-        .timer-track {
-            background-color: rgba(201,168,76,0.12);
-            border-radius: 9999px;
-            height: 5px;
-            overflow: hidden;
-        }
-    </style>
-</head>
-<body class="min-h-screen flex flex-col" style="background-color: #0a0f1e; color: #e8e0d0;">
+@section('title', 'Loup-Garou Undu — Élection du Maire')
 
-    <header class="flex items-center justify-between px-6 py-4 border-b" style="border-color: rgba(201,168,76,0.2);">
-        <span class="font-cinzel text-xl font-bold" style="color: #c9a84c;">Loup-Garou Undu</span>
-        <span class="text-sm" style="color: #e8e0d0; opacity: 0.5;">{{ $player->pseudo }}</span>
-    </header>
+@push('styles')
+<style>
+    [x-cloak] { display: none !important; }
+    #me-header, #me-timer, #me-candidates { opacity: 0; }
+    body { background-color: #0a0f1e; font-family: 'Crimson Text', serif; }
 
-    <main
-        x-cloak
-        class="flex-1 max-w-2xl mx-auto w-full px-4 py-8"
-        x-data="mayorElection()"
-        x-init="init()"
-    >
-        {{-- En-tête phase --}}
-        <div id="me-header" class="text-center mb-6">
-            <p class="text-xs mb-1" style="color: #e8e0d0; opacity: 0.4; letter-spacing: 0.12em;">PHASE 1</p>
-            <h1 class="font-cinzel text-2xl font-bold mb-1" style="color: #c9a84c;">Élection du Maire</h1>
-            <p class="text-sm" style="color: #e8e0d0; opacity: 0.55;">
-                Vote pour le joueur que tu veux voir prendre ce rôle.
-                <span x-show="myVote === null"> Tu peux voter pour toi-même.</span>
-                <span x-show="myVote !== null" style="color: #c9a84c;"> Vote enregistré.</span>
-            </p>
+    .candidate-card {
+        background-color: #111827;
+        border: 1px solid rgba(201,168,76,0.2);
+        border-radius: 0.875rem;
+        padding: 1rem 0.75rem;
+        display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
+        cursor: pointer; transition: border-color 0.25s, box-shadow 0.25s;
+        user-select: none;
+    }
+    .candidate-card:not(.has-voted):hover {
+        border-color: rgba(201,168,76,0.5);
+        transform: translateY(-3px);
+        transition: transform 0.15s ease;
+    }
+    .candidate-card.is-selected {
+        border-color: rgba(201,168,76,0.8) !important;
+        box-shadow: 0 0 18px rgba(201,168,76,0.5);
+    }
+    .candidate-card.is-dimmed { opacity: 0.45; cursor: default; }
+    .avatar {
+        width: 2.75rem; height: 2.75rem; border-radius: 9999px;
+        background-color: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.35);
+        display: flex; align-items: center; justify-content: center;
+        font-family: 'Cinzel', serif; font-weight: 600; font-size: 0.95rem; color: #c9a84c; flex-shrink: 0;
+    }
+    .vote-badge {
+        font-family: 'Cinzel', serif; font-size: 0.7rem;
+        padding: 0.1rem 0.55rem; border-radius: 9999px;
+        background-color: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.25); color: #c9a84c;
+    }
+    .timer-track { background-color: rgba(201,168,76,0.12); border-radius: 9999px; height: 5px; overflow: hidden; }
+    .btn-primary { background-color: #c9a84c; color: #0a0f1e; transition: background-color .3s, transform .2s; }
+    .btn-primary:hover { background-color: #e0c068; transform: translateY(-2px); }
+    .btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+</style>
+@endpush
+
+@section('header-phase')
+    <span class="text-xs font-medieval tracking-widest" style="color: rgba(201,168,76,0.7);">👑 ÉLECTION DU MAIRE</span>
+@endsection
+
+@section('content')
+@include('partials.game.quit-button')
+@include('partials.game.quit-modal')
+<div
+    x-cloak
+    class="flex-1 max-w-2xl mx-auto w-full px-4 py-8 min-h-screen"
+    style="background-color: #0a0f1e; color: #e8e0d0;"
+    x-data="mayorElection()"
+    x-init="init()"
+>
+    {{-- En-tête phase --}}
+    <div id="me-header" class="text-center mb-6">
+        <p class="text-xs mb-1" style="color: #e8e0d0; opacity: 0.4; letter-spacing: 0.12em;">PHASE 1</p>
+        <h1 class="font-medieval text-2xl font-bold mb-1" style="color: #c9a84c;">Élection du Maire</h1>
+        <p class="text-sm" style="color: #e8e0d0; opacity: 0.55;">
+            Vote pour le joueur que tu veux voir prendre ce rôle.
+            <span x-show="myVote === null"> Tu peux voter pour toi-même.</span>
+            <span x-show="myVote !== null" style="color: #c9a84c;"> Vote enregistré.</span>
+        </p>
+    </div>
+
+    {{-- Timer --}}
+    <div id="me-timer" class="mb-7">
+        <div class="flex justify-between text-xs mb-2" style="color: #e8e0d0; opacity: 0.45;">
+            <span x-text="timerSeconds > 0 ? 'Résolution dans ' + timerSeconds + 's' : 'Résolution en cours…'"></span>
+            <span x-text="totalVotes + ' / {{ count($players) }} vote' + (totalVotes > 1 ? 's' : '')"></span>
         </div>
-
-        {{-- Timer --}}
-        <div id="me-timer" class="mb-7">
-            <div class="flex justify-between text-xs mb-2" style="color: #e8e0d0; opacity: 0.45;">
-                <span x-text="timerSeconds > 0 ? 'Résolution dans ' + timerSeconds + 's' : 'Résolution en cours…'"></span>
-                <span x-text="totalVotes + ' / {{ count($players) }} vote' + (totalVotes > 1 ? 's' : '')"></span>
-            </div>
-            <div class="timer-track">
-                <div
-                    id="election-timer-fill"
-                    :style="'background-color:' + (timerSeconds <= 5 ? '#8b0000' : timerSeconds <= 10 ? '#f97316' : '#c9a84c')"
-                    style="height: 100%; width: 100%; border-radius: 9999px; background-color: #c9a84c;"
-                ></div>
-            </div>
-        </div>
-
-        {{-- Grille des candidats --}}
-        <div id="me-candidates" class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            @foreach ($players as $candidate)
+        <div class="timer-track">
             <div
-                class="candidate-card"
-                :class="{
-                    'is-selected': myVote === {{ $candidate->id }},
-                    'is-dimmed':   myVote !== null && myVote !== {{ $candidate->id }},
-                    'has-voted':   myVote !== null,
-                }"
-                @click="castVote({{ $candidate->id }})"
-            >
-                <div class="avatar">{{ strtoupper(mb_substr($candidate->pseudo, 0, 1)) }}</div>
-
-                <div class="text-center w-full px-1">
-                    <p class="text-sm font-cinzel font-semibold truncate" style="color: #e8e0d0;">
-                        {{ $candidate->pseudo }}
-                    </p>
-                    @if ($candidate->id === $player->id)
-                        <p class="text-xs mt-0.5" style="color: rgba(201,168,76,0.55); font-family: 'EB Garamond';">toi</p>
-                    @endif
-                </div>
-
-                <div
-                    class="vote-badge"
-                    x-text="voteCount({{ $candidate->id }}) + ' vote' + (voteCount({{ $candidate->id }}) !== 1 ? 's' : '')"
-                ></div>
-
-                <div x-show="myVote === {{ $candidate->id }}" class="text-xs font-cinzel" style="color: #c9a84c;">
-                    ✓ Ton vote
-                </div>
-            </div>
-            @endforeach
+                id="election-timer-fill"
+                :style="'background-color:' + (timerSeconds <= 5 ? '#8b0000' : timerSeconds <= 10 ? '#f97316' : '#c9a84c')"
+                style="height: 100%; width: 100%; border-radius: 9999px; background-color: #c9a84c;"
+            ></div>
         </div>
+    </div>
 
-        {{-- Overlay résultat --}}
+    {{-- Grille des candidats --}}
+    <div id="me-candidates" class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        @foreach ($players as $candidate)
         <div
-            x-show="showResult"
-            x-transition.opacity
-            class="fixed inset-0 flex flex-col items-center justify-center z-50 text-center px-6"
-            style="background-color: rgba(10,15,30,0.93);"
+            class="candidate-card"
+            :class="{
+                'is-selected': myVote === {{ $candidate->id }},
+                'is-dimmed':   myVote !== null && myVote !== {{ $candidate->id }},
+                'has-voted':   myVote !== null,
+            }"
+            @click="castVote({{ $candidate->id }})"
         >
-            <div class="font-cinzel text-6xl mb-6" style="filter: drop-shadow(0 0 24px rgba(201,168,76,0.5));">👑</div>
-            <p class="font-cinzel text-3xl font-bold mb-2" style="color: #c9a84c;"
-               x-text="electedMayor"></p>
-            <p class="font-cinzel text-base mb-4" style="color: #e8e0d0;">est élu Maire</p>
-            <p x-show="wasRandom" class="text-sm mb-6" style="color: #e8e0d0; opacity: 0.45;">
-                Désigné par tirage au sort (égalité ou aucun vote)
-            </p>
-            <p x-show="!wasRandom" class="text-sm mb-6" style="color: #e8e0d0; opacity: 0.45;">
-                Élu à la majorité
-            </p>
-            <p class="text-xs" style="color: #e8e0d0; opacity: 0.3; letter-spacing: 0.08em;">LA NUIT TOMBE…</p>
+            @php
+            $avatarColors = ['#c9a84c','#a78bfa','#4ade80','#ff4444','#38bdf8','#fb923c','#f472b6','#34d399'];
+            $avatarColor  = $avatarColors[$candidate->id % count($avatarColors)];
+            @endphp
+            <div class="avatar"
+                 style="background-color: {{ $avatarColor }}; color: #0a0f1e; border: none; font-weight: 700;">
+                {{ strtoupper(mb_substr($candidate->pseudo, 0, 1)) }}
+            </div>
+
+            <div class="text-center w-full px-1">
+                <p class="text-sm font-medieval font-semibold truncate" style="color: #e8e0d0;">
+                    {{ $candidate->pseudo }}
+                </p>
+                @if ($candidate->id === $player->id)
+                    <p class="text-xs mt-0.5" style="color: rgba(201,168,76,0.55); font-family: 'Crimson Text';">toi</p>
+                @endif
+            </div>
+
+            <div
+                class="vote-badge"
+                x-text="voteCount({{ $candidate->id }}) + ' vote' + (voteCount({{ $candidate->id }}) !== 1 ? 's' : '')"
+            ></div>
+
+            <div x-show="myVote === {{ $candidate->id }}" class="text-xs font-medieval" style="color: #c9a84c;">
+                ✓ Ton vote
+            </div>
         </div>
-    </main>
+        @endforeach
+    </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <script>
-        function mayorElection() {
-            return {
-                gameId:          {{ $game->id }},
-                gameCode:        '{{ $game->code }}',
-                currentPlayerId: {{ $player->id }},
-                phaseSeconds:    {{ max(0, $phaseRemainingSeconds) }},
-                timerSeconds:    {{ max(0, $phaseRemainingSeconds) }},
+    <p x-show="myVote !== null" x-cloak
+       class="mt-6 text-center font-title text-sm tracking-wide"
+       style="color:#4ade80;">
+        ✓ Vote enregistré
+    </p>
 
-                votes:      @json(collect($currentVotes)->keyBy('target_player_id')),
-                myVote:     {{ $myVote ?? 'null' }},
-                submitting: false,
+    {{-- Overlay résultat --}}
+    <div
+        x-show="showResult"
+        x-transition.opacity
+        class="fixed inset-0 flex flex-col items-center justify-center z-50 text-center px-6"
+        style="background-color: rgba(10,15,30,0.93);"
+    >
+        <div class="font-medieval text-6xl mb-6" style="filter: drop-shadow(0 0 24px rgba(201,168,76,0.5));">👑</div>
+        <p class="font-medieval text-3xl font-bold mb-2" style="color: #c9a84c;" x-text="electedMayor"></p>
+        <p class="font-medieval text-base mb-4" style="color: #e8e0d0;">est élu Maire</p>
+        <p x-show="wasRandom" class="text-sm mb-6" style="color: #e8e0d0; opacity: 0.45;">
+            Désigné par tirage au sort (égalité ou aucun vote)
+        </p>
+        <p x-show="!wasRandom" class="text-sm mb-6" style="color: #e8e0d0; opacity: 0.45;">
+            Élu à la majorité
+        </p>
+        <p class="text-xs" style="color: #e8e0d0; opacity: 0.3; letter-spacing: 0.08em;">LA NUIT TOMBE…</p>
+    </div>
+</div>
+@endsection
 
-                electedMayor: null,
-                wasRandom:    false,
-                showResult:   false,
+@push('scripts')
+<script>
+    function mayorElection() {
+        return {
+            confirmQuit:     false,
 
-                get totalVotes() {
-                    return Object.values(this.votes)
-                        .reduce((sum, v) => sum + (v.vote_count ?? 0), 0);
-                },
+            gameId:          {{ $game->id }},
+            gameCode:        '{{ $game->code }}',
+            currentPlayerId: {{ $player->id }},
+            phaseSeconds:    {{ max(0, $phaseRemainingSeconds) }},
+            timerSeconds:    {{ max(0, $phaseRemainingSeconds) }},
 
-                voteCount(playerId) {
-                    return this.votes[playerId]?.vote_count ?? 0;
-                },
+            votes:      @json(collect($currentVotes)->keyBy('target_player_id')),
+            myVote:     {{ $myVote ?? 'null' }},
+            submitting: false,
 
-                init() {
-                    gsap.fromTo('#me-header',
-                        { opacity: 0, y: -20 },
-                        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }
-                    );
-                    gsap.fromTo('#me-timer',
-                        { opacity: 0 },
-                        { opacity: 1, duration: 0.5, delay: 0.05, ease: 'power2.out' }
-                    );
-                    gsap.fromTo('#me-candidates',
-                        { opacity: 0, y: 20 },
-                        { opacity: 1, y: 0, duration: 0.6, delay: 0.15, ease: 'power2.out' }
-                    );
+            electedMayor: null,
+            wasRandom:    false,
+            showResult:   false,
 
-                    if (this.phaseSeconds > 0) {
-                        gsap.to('#election-timer-fill', {
-                            width:    '0%',
-                            duration: this.phaseSeconds,
-                            ease:     'none',
-                        });
-                    } else {
-                        document.getElementById('election-timer-fill').style.width = '0%';
-                    }
+            get totalVotes() {
+                return Object.values(this.votes).reduce((sum, v) => sum + (v.vote_count ?? 0), 0);
+            },
 
-                    const tick = setInterval(() => {
-                        this.timerSeconds--;
-                        if (this.timerSeconds <= 0) clearInterval(tick);
-                    }, 1000);
+            voteCount(playerId) {
+                return this.votes[playerId]?.vote_count ?? 0;
+            },
 
-                    window.Echo.channel(`game.${this.gameId}`)
-                        .listen('.mayor.vote.cast', (data) => {
-                            const updated = {};
-                            (data.votes ?? []).forEach(v => { updated[v.target_player_id] = v; });
-                            this.votes = updated;
-                        })
-                        .listen('.mayor.elected', (data) => {
-                            this.electedMayor = data.pseudo;
-                            this.wasRandom    = data.was_random;
-                            this.showResult   = true;
-                            setTimeout(() => {
-                                window.location.href = `/game/${this.gameCode}/night`;
-                            }, 2000);
-                        })
-                        .listen('.night.started', () => {
-                            window.location.href = `/game/${this.gameCode}/night`;
-                        });
-                },
+            init() {
+                gsap.fromTo('#me-header', { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' });
+                gsap.fromTo('#me-timer', { opacity: 0 }, { opacity: 1, duration: 0.5, delay: 0.05, ease: 'power2.out' });
+                gsap.fromTo('#me-candidates', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, delay: 0.15, ease: 'power2.out' });
 
-                async castVote(targetId) {
-                    if (this.myVote !== null || this.submitting) return;
-                    this.submitting = true;
-                    try {
-                        const res = await fetch(`/game/${this.gameId}/vote/mayor`, {
-                            method:  'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept':       'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                            },
-                            body: JSON.stringify({ target_player_id: targetId }),
-                        });
-                        const json = await res.json();
-                        if (json.success) {
-                            this.myVote = targetId;
-                        }
-                    } catch {
-                        // silencieux — le WS met à jour les compteurs
-                    } finally {
-                        this.submitting = false;
-                    }
-                },
-            };
-        }
-    </script>
-</body>
-</html>
+                if (this.phaseSeconds > 0) {
+                    gsap.to('#election-timer-fill', { width: '0%', duration: this.phaseSeconds, ease: 'none' });
+                } else {
+                    document.getElementById('election-timer-fill').style.width = '0%';
+                }
+
+                const tick = setInterval(() => {
+                    this.timerSeconds--;
+                    if (this.timerSeconds <= 0) clearInterval(tick);
+                }, 1000);
+
+                window.Echo.channel(`game.${this.gameId}`)
+                    .listen('.mayor.vote.cast', (data) => {
+                        const updated = {};
+                        (data.votes ?? []).forEach(v => { updated[v.target_player_id] = v; });
+                        this.votes = updated;
+                    })
+                    .listen('.mayor.elected', (data) => {
+                        this.electedMayor = data.pseudo;
+                        this.wasRandom    = data.was_random;
+                        this.showResult   = true;
+                        setTimeout(() => { window.location.href = `/game/${this.gameCode}/night`; }, 2000);
+                    })
+                    .listen('.night.started', () => {
+                        window.location.href = `/game/${this.gameCode}/night`;
+                    });
+            },
+
+            async castVote(targetId) {
+                if (this.myVote !== null || this.submitting) return;
+                this.submitting = true;
+                try {
+                    const res = await fetch(`/game/${this.gameId}/vote/mayor`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                        body: JSON.stringify({ target_player_id: targetId }),
+                    });
+                    const json = await res.json();
+                    if (json.success) { this.myVote = targetId; }
+                } catch { }
+                finally { this.submitting = false; }
+            },
+        };
+    }
+</script>
+@endpush

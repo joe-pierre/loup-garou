@@ -89,6 +89,8 @@
 - [x] Alpine.js store central gameState
 - [x] GSAP animations (intégrées dans composants + landing)
 - [x] Écrans Blade restants (tâche 29 — night + day)
+- [x] Intégration templates HTML → vues Blade @extends (waiting-room, role-reveal, mayor-election, night, day, finished)
+- [x] Font Crimson Text (remplace EB Garamond) + window.gameId/playerId dans layout
 - [ ] Responsive
 
 ## Phase 11 — Tests

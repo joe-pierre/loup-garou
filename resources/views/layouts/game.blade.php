@@ -15,6 +15,73 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     {{-- Vite bundle (inclut Alpine + gameState + timerState) --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <style>
+:root {
+    --bg-main: #0a0f1e;
+    --bg-panel: #111827;
+    --gold: #c9a84c;
+    --parchment: #e8e0d0;
+    --blood: #8b0000;
+}
+.star {
+    position: absolute;
+    background: #fff;
+    border-radius: 50%;
+    opacity: 0.7;
+    animation: twinkle 4s infinite ease-in-out;
+}
+@keyframes twinkle {
+    0%, 100% { opacity: 0.2; }
+    50%       { opacity: 0.9; }
+}
+.moon {
+    position: absolute;
+    top: 8%; left: 50%;
+    transform: translateX(-50%);
+    width: 110px; height: 110px;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle at 35% 35%,
+        #f5e6a8, #c9a84c 65%, #8a6f2a
+    );
+    box-shadow:
+        0 0 40px 10px rgba(201,168,76,.35),
+        0 0 90px 30px rgba(201,168,76,.12);
+}
+.moon::after {
+    content: "";
+    position: absolute;
+    top: 18%; left: 22%;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: rgba(138,111,42,.4);
+    box-shadow:
+        34px 22px 0 -4px rgba(138,111,42,.35),
+        12px 52px 0 2px rgba(138,111,42,.3);
+}
+.btn-secondary {
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    background: transparent;
+    transition: background-color .3s, transform .2s;
+}
+.btn-secondary:hover {
+    background-color: rgba(201,168,76,.1);
+    transform: translateY(-2px);
+}
+.fog {
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 100%; height: 35%;
+    background: linear-gradient(
+        to top,
+        rgba(3,7,18,0.95) 0%,
+        rgba(3,7,18,0.5) 40%,
+        rgba(3,7,18,0) 100%
+    );
+    pointer-events: none;
+}
+    </style>
     @stack('styles')
 </head>
 <body class="h-full bg-night-deep text-parchment font-body">
@@ -73,6 +140,10 @@
     {{-- ═══════════════ TOAST GLOBAL ═══════════════ --}}
     <x-toast />
 
+    <script>
+        @isset($game) window.gameId = {{ $game->id }}; @endisset
+        @isset($player) window.playerId = {{ $player->id }}; @endisset
+    </script>
     @stack('scripts')
 </body>
 </html>

@@ -1,6 +1,8 @@
 /_notes
 /.editorconfig
 /template_accueil.html
+/z_templates_05_06_2026
+/build_local.sh
 
 /.phpunit.cache
 /node_modules

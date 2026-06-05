@@ -29,9 +29,9 @@ export default {
                 seer: '#7c3aed',
             },
             fontFamily: {
-                sans:     ['EB Garamond', ...defaultTheme.fontFamily.serif],
+                sans:     ['Crimson Text', ...defaultTheme.fontFamily.serif],
                 medieval: ['Cinzel', 'serif'],
-                body:     ['EB Garamond', 'serif'],
+                body:     ['Crimson Text', 'serif'],
                 // Alias rétrocompat (vues existantes utilisent font-cinzel en CSS inline)
                 cinzel:   ['Cinzel', 'serif'],
             },

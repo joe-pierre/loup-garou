@@ -56,10 +56,10 @@ class GameController extends Controller
 
         abort_unless($game->status === 'finished' && $game->winner_team !== null, 404);
 
-        $player     = $game->players()->where('user_id', $request->user()->id)->firstOrFail();
-        $allPlayers = $game->players()->get();
+        $player  = $game->players()->where('user_id', $request->user()->id)->firstOrFail();
+        $players = $game->players()->get();
 
-        return view('game.finished', compact('game', 'player', 'allPlayers'));
+        return view('game.finished', compact('game', 'player', 'players'));
     }
 
     public function cancelled(Request $request, string $code): View
@@ -100,9 +100,10 @@ class GameController extends Controller
             ->where('user_id', $request->user()->id)
             ->firstOrFail();
 
-        $alivePlayers = $game->alivePlayers()->get();
+        $players     = $game->alivePlayers()->get();
+        $nightVictim = null;
 
-        return view('game.day', compact('game', 'player', 'alivePlayers'));
+        return view('game.day', compact('game', 'player', 'players', 'nightVictim'));
     }
 
     public function night(Request $request, string $code): View
@@ -117,9 +118,9 @@ class GameController extends Controller
             ->where('user_id', $request->user()->id)
             ->firstOrFail();
 
-        $alivePlayers = $game->alivePlayers()->get();
+        $players = $game->alivePlayers()->get();
 
-        return view('game.night', compact('game', 'player', 'alivePlayers'));
+        return view('game.night', compact('game', 'player', 'players'));
     }
 
     public function history(Request $request, string $code): mixed
