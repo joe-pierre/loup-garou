@@ -14,6 +14,7 @@ class Exclusion extends Model
 
     protected $fillable = [
         'game_id',
+        'user_id',
         'player_id',
         'reason',
         'excluded_at',
@@ -29,6 +30,11 @@ class Exclusion extends Model
     public function game(): BelongsTo
     {
         return $this->belongsTo(Game::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function player(): BelongsTo

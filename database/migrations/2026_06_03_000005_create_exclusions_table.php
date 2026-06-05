@@ -11,7 +11,8 @@ return new class extends Migration
         Schema::create('exclusions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('game_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('player_id')->constrained('game_players')->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('player_id')->nullable()->constrained('game_players')->nullOnDelete();
             $table->text('reason');
             $table->timestamp('excluded_at')->useCurrent();
         });

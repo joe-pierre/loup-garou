@@ -81,7 +81,7 @@ class GameService
             }
 
             $excluded = Exclusion::where('game_id', $game->id)
-                ->whereHas('player', fn ($q) => $q->where('user_id', $user->id))
+                ->where('user_id', $user->id)
                 ->exists();
 
             if ($excluded) {
@@ -206,15 +206,16 @@ class GameService
         }
 
         DB::transaction(function () use ($game, $target, $reason) {
-            // Insérer dans exclusions avant suppression (FK) — $target reste en mémoire après delete()
+            $targetUser = $target->user;
+
             Exclusion::create([
                 'game_id'     => $game->id,
+                'user_id'     => $targetUser->id,
                 'player_id'   => $target->id,
                 'reason'      => $reason,
                 'excluded_at' => now(),
             ]);
 
-            $targetUser = $target->user;
             $target->delete();
 
             // Broadcast public (pseudo seulement) puis privé (avec motif)

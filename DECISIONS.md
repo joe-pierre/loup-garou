@@ -113,6 +113,17 @@ auth: {
 
 ---
 
+## [RÉSOLU] Exclusion cascade delete — joueur exclu pouvait rejoindre la partie
+
+**Contexte :** Tâche 27 — `database/migrations/2026_06_03_000005_create_exclusions_table.php`, `GameService::excludePlayer()`, `GameService::joinGame()`
+**Symptôme :** `excludePlayer()` crée un record `Exclusion` puis appelle `$target->delete()`. La FK `exclusions.player_id` avait `cascadeOnDelete()` : la suppression du `GamePlayer` détruisait le record d'exclusion en cascade → table vide → le joueur exclu pouvait rejoindre la partie (200 au lieu de 403). Révélé par les tests tâche 27.
+**Cause :** Double effet de bord : (1) cascade FK détruit le record d'exclusion au moment de `delete()` ; (2) la vérification d'exclusion dans `joinGame` utilisait `whereHas('player', fn($q) => $q->where('user_id', ...))`, qui tombe en court-circuit si le joueur est encore présent dans `game_players` (retourne 200 "déjà en partie").
+**Fix :** Trois changements coordonnés : (1) migration — ajout de `user_id` FK sur `exclusions` (cascadeOnDelete vers users), `player_id` rendu nullable avec `nullOnDelete` ; (2) `excludePlayer()` — sauvegarde `user_id` dans le record d'exclusion avant delete ; (3) `joinGame` — vérification par `Exclusion::where('user_id', $user->id)` au lieu de `whereHas('player')`. Le record d'exclusion persiste après la suppression du player (player_id passe à null, user_id reste intact).
+**Leçon :** Toute FK pointant vers un record destiné à être supprimé dans le même flux doit utiliser `nullOnDelete` ou `restrictOnDelete` si le record parent doit survivre. Ne jamais supposer qu'un record créé avant un `delete()` dans la même transaction sera préservé si une FK avec `cascadeOnDelete` pointe dessus.
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] SeerResult broadcasté sur canal privé joueur, jamais sur canal public
 
 **Contexte :** Tâche 13 — `SeerTurnStarted`, `SeerResult`

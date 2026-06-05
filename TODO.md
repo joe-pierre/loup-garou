@@ -91,5 +91,9 @@
 - [ ] Écrans Blade restants (tâche 29)
 - [ ] Responsive
 
+## Phase 11 — Tests
+- [x] Tests Feature Auth (GoogleAuthTest — 4 tests)
+- [x] Tests Feature Game/Lobby (CreateGameTest, JoinGameTest, ExcludePlayerTest — 20 tests)
+
 ## BUGS CONNUS
 (remplir au fur et à mesure)

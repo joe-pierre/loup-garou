@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Game;
-use App\Models\GamePlayer;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -15,7 +15,8 @@ class ExclusionFactory extends Factory
     {
         return [
             'game_id'     => Game::factory(),
-            'player_id'   => GamePlayer::factory(),
+            'user_id'     => User::factory(),
+            'player_id'   => null,
             'reason'      => fake()->sentence(),
             'excluded_at' => now(),
         ];
