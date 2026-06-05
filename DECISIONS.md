@@ -124,6 +124,17 @@ auth: {
 
 ---
 
+## [RÉSOLU] Phase nuit bloquée — broadcast synchrone dans DB::transaction
+
+**Contexte :** `PhaseManager::startDay()` et `startNight()`
+**Symptôme :** Partie bloquée en phase night après vote des loups en prod.
+**Cause :** Les 22 events utilisent `ShouldBroadcastNow` (TCP synchrone vers Reverb). Ces broadcasts étaient appelés à l'intérieur d'un `DB::transaction` avec `lockForUpdate()`. En prod, toute latence Reverb pendant que le verrou est tenu provoque une exception, un rollback, et status repasse à `'night'`. `ProcessDayVote` n'est jamais dispatché. Problème secondaire : `ProcessSeerTurn` dispatché sans delay à l'intérieur de la transaction — le queue worker pouvait lire `status='night'` avant le commit et skipper le tour voyante.
+**Fix :** Dans `PhaseManager` uniquement — `$locked` extrait par référence (`&$locked`), `broadcast()` et `dispatch()` déplacés après la fermeture du `DB::transaction`. La transaction ne contient plus que les UPDATE SQL. Les 22 events restent `ShouldBroadcastNow` (aucun changement sur les events).
+**Leçon :** `DB::transaction` = SQL uniquement. Jamais d'appels réseau (`broadcast`, HTTP) ni de `dispatch` sans delay à l'intérieur. Utiliser `&$locked` pour récupérer le modèle locké hors du closure.
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] SeerResult broadcasté sur canal privé joueur, jamais sur canal public
 
 **Contexte :** Tâche 13 — `SeerTurnStarted`, `SeerResult`

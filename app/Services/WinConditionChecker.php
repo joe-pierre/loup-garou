@@ -2,22 +2,45 @@
 
 namespace App\Services;
 
+use App\Events\Game\GameFinished;
 use App\Models\Game;
+use App\Notifications\GameFinishedNotification;
+use Illuminate\Support\Facades\Notification;
 
-// Implémenté en Tâche 21
 class WinConditionChecker
 {
     public function check(Game $game): bool
     {
-        // TODO (tâche 21) : après broadcast(new GameFinished(...)) :
-        // try {
-        //     $allPlayers = $game->players()->with('user')->get();
-        //     \Illuminate\Support\Facades\Notification::send(
-        //         $allPlayers->map->user->filter(),
-        //         new \App\Notifications\GameFinishedNotification($game->winner_team)
-        //     );
-        // } catch (\Throwable) {}
+        $game->refresh();
 
-        return false;
+        $alivePlayers    = $game->alivePlayers()->get();
+        $aliveWerewolves = $alivePlayers->filter(fn ($p) => $p->isWerewolf())->count();
+        $aliveOthers     = $alivePlayers->filter(fn ($p) => ! $p->isWerewolf())->count();
+
+        if ($aliveWerewolves > 0 && $aliveWerewolves >= $aliveOthers) {
+            $winnerTeam = 'werewolves';
+        } elseif ($aliveWerewolves === 0) {
+            $winnerTeam = 'villagers';
+        } else {
+            return false;
+        }
+
+        $game->update([
+            'status'      => 'finished',
+            'winner_team' => $winnerTeam,
+            'finished_at' => now(),
+        ]);
+
+        $allPlayers = $game->players()->with('user')->get();
+        broadcast(new GameFinished($game, $allPlayers, $winnerTeam));
+
+        try {
+            Notification::send(
+                $allPlayers->map->user->filter(),
+                new GameFinishedNotification($winnerTeam)
+            );
+        } catch (\Throwable) {}
+
+        return true;
     }
 }

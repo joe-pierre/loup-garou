@@ -28,6 +28,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/game/{code}/mayor-election', [GameController::class, 'mayorElection'])->name('game.mayor-election');
     Route::post('/game/{id}/ready', [ActionController::class, 'ready'])->name('game.ready');
     Route::post('/game/{id}/vote/mayor', [VoteController::class, 'mayor'])->name('game.vote.mayor');
+    Route::post('/game/{id}/vote/day', [VoteController::class, 'day'])->name('game.vote.day');
     Route::post('/game/{id}/vote/night', [VoteController::class, 'night'])->name('game.vote.night');
     Route::post('/game/{id}/chat', [ChatController::class, 'send'])->name('game.chat.send');
     Route::post('/game/{id}/seer/check', [ActionController::class, 'seerCheck'])->name('game.seer.check');

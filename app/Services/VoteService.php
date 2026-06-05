@@ -240,6 +240,65 @@ class VoteService
         });
     }
 
+    public function castDayVote(GamePlayer $voter, int $targetId): array
+    {
+        if ($voter->game->status !== 'day') {
+            abort(409, 'La partie n\'est pas en phase jour.');
+        }
+
+        if (! $voter->is_alive) {
+            abort(403, 'Vous êtes mort.');
+        }
+
+        DB::transaction(function () use ($voter, $targetId) {
+            $alreadyVoted = GameAction::where('game_id', $voter->game_id)
+                ->where('player_id', $voter->id)
+                ->where('type', 'day_vote')
+                ->where('round', $voter->game->round)
+                ->lockForUpdate()
+                ->exists();
+
+            if ($alreadyVoted) {
+                abort(409, 'Vous avez déjà voté ce round.');
+            }
+
+            $target = GamePlayer::where('id', $targetId)
+                ->where('game_id', $voter->game_id)
+                ->where('is_alive', true)
+                ->firstOrFail();
+
+            if ($target->id === $voter->id) {
+                abort(422, 'Vous ne pouvez pas voter contre vous-même.');
+            }
+
+            $freshVoter = GamePlayer::lockForUpdate()->find($voter->id);
+            $weight     = $freshVoter->is_mayor ? 2 : 1;
+
+            GameAction::create([
+                'game_id'          => $voter->game_id,
+                'player_id'        => $voter->id,
+                'type'             => 'day_vote',
+                'weight'           => $weight,
+                'target_player_id' => $target->id,
+                'round'            => $voter->game->round,
+                'phase'            => 'day',
+            ]);
+        });
+
+        return $this->getDayVoteSummary($voter->game);
+    }
+
+    private function getDayVoteSummary(Game $game): array
+    {
+        return GameAction::where('game_id', $game->id)
+            ->where('type', 'day_vote')
+            ->where('round', $game->round)
+            ->get()
+            ->groupBy('target_player_id')
+            ->map(fn ($group) => $group->sum('weight'))
+            ->toArray();
+    }
+
     private function getNightVoteState(Game $game): array
     {
         $aliveWolves = $game->alivePlayers()

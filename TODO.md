@@ -21,7 +21,7 @@
 - [x] POST /game (création)
 - [x] POST /game/{code}/join
 - [x] POST /game/{id}/exclude/{playerId}
-- [ ] POST /game/{id}/ready
+- [x] POST /game/{id}/ready  ← vérifié : route + ActionController::ready() présents
 - [x] Event PlayerJoined
 - [x] Event PlayerExcluded
 - [x] RoleDistributor (avec config extensible)
@@ -40,13 +40,13 @@
 - [x] CORS Reverb (allowed_origins: ['*'] pour dev)
 
 ## Phase 5 — Élection Maire
-- [ ] POST /game/{id}/vote/mayor
-- [ ] Job ProcessMayorElection (timer 30s)
-- [ ] VoteService::processMayorVote()
-- [ ] VoteService::resolveMayorElection()
-- [ ] Event MayorElectionStarted
-- [ ] Event MayorVoteCast
-- [ ] Event MayorElected
+- [x] POST /game/{id}/vote/mayor  ← vérifié : route + VoteController::mayor() présents
+- [x] Job ProcessMayorElection (timer 30s)  ← vérifié : guard + resolve + dispatch ProcessSeerTurn
+- [x] VoteService::castMayorVote()  (= processMayorVote)
+- [x] VoteService::resolveMayorElection()
+- [x] Event MayorElectionStarted
+- [x] Event MayorVoteCast
+- [x] Event MayorElected
 
 ## Phase 6 — Nuit
 - [x] POST /game/{id}/seer/check
@@ -59,14 +59,14 @@
 - [x] Chat loups (channel werewolves)
 
 ## Phase 7 — Jour
-- [ ] POST /game/{id}/vote/day
+- [x] POST /game/{id}/vote/day
 - [x] POST /game/{id}/mayor/succession
 - [x] Job ProcessDayVote (timer 90s)
 - [x] Event DayStarted
-- [ ] Event DayVoteCast
+- [x] Event DayVoteCast
 - [x] Event PlayerEliminated / NoElimination
 - [x] Event MayorSuccessionStarted + MayorSuccessionDone
-- [ ] WinConditionChecker
+- [x] WinConditionChecker
 
 ## Phase 8 — Déconnexion
 - [x] Détection déconnexion (Reverb presence channel)
@@ -96,4 +96,4 @@
 - [x] Tests Feature Game/Lobby (CreateGameTest, JoinGameTest, ExcludePlayerTest — 20 tests)
 
 ## BUGS CONNUS
-(remplir au fur et à mesure)
+- [x] Phase nuit bloquée — broadcast dans DB::transaction → fixed (PhaseManager::startDay + startNight)
