@@ -9,6 +9,7 @@ return [
         'day_vote'         => 90,
         'reconnection'     => 30,
         'ready_timeout'    => 60,
+        'mayor_reveal'     => 5,
     ],
 
     // 'auto' = floor(n * 0.2) min 1 | 'fill' = reste des joueurs | int = fixe

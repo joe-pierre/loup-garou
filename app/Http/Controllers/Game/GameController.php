@@ -359,6 +359,14 @@ class GameController extends Controller
         ]);
     }
 
+    public function quit(Request $request, int $id): JsonResponse
+    {
+        $game   = Game::findOrFail($id);
+        $player = $game->players()->where('user_id', auth()->id())->firstOrFail();
+        $this->gameService->quitGame($game, $player);
+        return response()->json(['success' => true]);
+    }
+
     public function disconnect(Request $request, int $id): JsonResponse
     {
         $game = Game::findOrFail($id);

@@ -635,6 +635,16 @@ gsap.fromTo('.reveal',
                 } catch { }
                 finally { this.submitting = false; }
             },
+
+            submitQuit() {
+                fetch(`/game/${GAME_ID}/quit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                }).then(() => { window.location.href = '/'; });
+            },
         };
     }
 </script>

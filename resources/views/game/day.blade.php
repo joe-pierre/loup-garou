@@ -442,6 +442,15 @@
                             ? 'Égalité — personne n\'est éliminé ce jour.'
                             : 'Aucun vote exprimé — personne n\'est éliminé.';
                     })
+                    .listen('.random.elimination', (data) => {
+                        const p = this.players.find(p => p.id === data.player_id);
+                        if (p) p.is_alive = false;
+                        if (data.player_id === MY_PLAYER_ID) {
+                            this.isAlive         = false;
+                            this.showDeathBanner = true;
+                        }
+                        this.noEliminationMessage = `☠️ Le destin a frappé ! ${data.pseudo} a été foudroyé par les dieux du village !`;
+                    })
                     .listen('.chat.message.sent', (data) => {
                         if (data.channel === 'general') {
                             this.chatMessages.push(data);
@@ -572,6 +581,16 @@
                     if (json.success) { this.closeSuccessionModal(); }
                 } catch { }
                 finally { this.submitting = false; }
+            },
+
+            submitQuit() {
+                fetch(`/game/${GAME_ID}/quit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                }).then(() => { window.location.href = '/'; });
             },
         };
     }

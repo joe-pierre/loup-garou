@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Events\Game\MayorSuccessionStarted;
 use App\Events\Game\NoElimination;
 use App\Events\Game\PlayerEliminated;
+use App\Events\Game\RandomElimination;
 use App\Jobs\ProcessMayorSuccession;
 use App\Models\Game;
 use App\Models\GameAction;
@@ -197,7 +198,14 @@ class VoteService
                 ->get();
 
             if ($votes->isEmpty()) {
-                broadcast(new NoElimination($locked, 'no_vote'));
+                $victim = $locked->alivePlayers()->inRandomOrder()->first();
+                if ($victim) {
+                    $victim->update(['is_alive' => false]);
+                    broadcast(new RandomElimination($locked, $victim));
+                    if ($this->winConditionChecker->check($locked)) {
+                        return;
+                    }
+                }
                 $this->phaseManager->startNight($locked);
                 return;
             }

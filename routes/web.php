@@ -40,6 +40,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/game/{code}/spectator', [GameController::class, 'spectator'])->name('game.spectator');
     Route::get('/game/{code}/day', [GameController::class, 'day'])->name('game.day');
     Route::get('/game/{code}/night', [GameController::class, 'night'])->name('game.night');
+    Route::post('/game/{id}/quit', [GameController::class, 'quit'])->name('game.quit');
     Route::post('/game/{id}/disconnect', [GameController::class, 'disconnect'])->name('game.disconnect');
     Route::post('/game/{code}/reconnect', [GameController::class, 'reconnect'])->name('game.reconnect');
     Route::post('/push/subscriptions', [PushSubscriptionController::class, 'store'])->name('push.subscribe');

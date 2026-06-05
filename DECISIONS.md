@@ -135,6 +135,16 @@ auth: {
 
 ---
 
+## [CHOIX] 0 votes jour → élimination aléatoire (changement de spec)
+**Contexte :** `VoteService::resolveDayVote()`, `ProcessDayVote`
+**Symptôme / Problème :** Spec initiale : 0 votes → personne éliminé.
+**Fix / Décision :** 0 votes → élimination aléatoire parmi les vivants.
+Notification fun broadcastée via `RandomElimination` event. `WinConditionChecker` appelé après l'élimination, comme pour un vote normal.
+**Leçon :** Règle modifiable dans `VoteService::resolveDayVote()`.
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] SeerResult broadcasté sur canal privé joueur, jamais sur canal public
 
 **Contexte :** Tâche 13 — `SeerTurnStarted`, `SeerResult`

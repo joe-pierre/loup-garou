@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Events\Game\GameFinished;
 use App\Events\Game\GameStarted;
+use App\Events\Game\PlayerEliminated;
 use App\Notifications\PlayerExcludedNotification;
 use App\Notifications\RoleAssignedNotification;
 use App\Events\Game\MayorElectionStarted;
@@ -336,6 +337,14 @@ class GameService
         $player->update(['is_inactive' => false]);
 
         broadcast(PlayerReconnected::fromPlayer($player));
+    }
+
+    public function quitGame(Game $game, GamePlayer $player): void
+    {
+        DB::transaction(function () use ($player) {
+            $player->update(['is_alive' => false, 'is_inactive' => true]);
+        });
+        broadcast(new PlayerEliminated($game, $player, 'quit'));
     }
 
     public function cancelGame(Game $game): void

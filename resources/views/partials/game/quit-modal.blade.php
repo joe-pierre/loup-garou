@@ -15,11 +15,12 @@
                     class="btn-secondary px-5 py-2 rounded-md font-title">
                 Annuler
             </button>
-            <a href="/lobby"
-               class="px-5 py-2 rounded-md font-title font-semibold"
-               style="background-color:#c9a84c; color:#0a0f1e;">
+            <button
+                @click="submitQuit()"
+                class="px-5 py-2 rounded-md font-title font-semibold"
+                style="background-color:#c9a84c; color:#0a0f1e;">
                 Confirmer
-            </a>
+            </button>
         </div>
     </div>
 </div>

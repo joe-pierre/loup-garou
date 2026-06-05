@@ -171,6 +171,7 @@
 
 @push('scripts')
 <script>
+    const GAME_ID    = {{ $game->id }};
     const ROLE_NAMES = { villager: 'Villageois', werewolf: 'Loup-Garou', seer: 'Voyante' };
 
     function roleReveal() {
@@ -208,7 +209,7 @@
                     if (this.countdown <= 0) { clearInterval(tick); this.flipCard(); }
                 }, 1000);
 
-                window.Echo.channel('game.{{ $game->id }}')
+                window.Echo.channel(`game.${GAME_ID}`)
                     .listen('.player.ready', (data) => { this.nbReady = data.nb_ready; })
                     .listen('.mayor.election.started', () => {
                         setTimeout(() => { this.redirect(); }, 1000);
@@ -267,7 +268,7 @@
                 if (this.readyDone || this.submitting) return;
                 this.submitting = true;
                 try {
-                    const res = await fetch('/game/{{ $game->id }}/ready', {
+                    const res = await fetch(`/game/${GAME_ID}/ready`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
                     });
@@ -275,6 +276,16 @@
                     if (json.success) this.readyDone = true;
                 } catch { }
                 finally { this.submitting = false; }
+            },
+
+            submitQuit() {
+                fetch(`/game/${GAME_ID}/quit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                }).then(() => { window.location.href = '/'; });
             },
         };
     }
