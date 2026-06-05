@@ -1,5 +1,13 @@
 # Loup-Garou Undu — Contexte projet Claude
 
+## RÈGLES OUTPUT CLAUDE CODE
+
+- Toujours préférer les diffs courts plutôt que les fichiers complets
+- Maximum 50 lignes par output affiché dans le terminal
+- Si le résultat dépasse 50 lignes, écrire dans /tmp/out.txt et afficher le chemin
+- Pour les fichiers longs, montrer uniquement les lignes concernées avec leur numéro
+- Ne jamais afficher les stack traces complètes — résumer en 3 lignes max
+
 ## Stack
 - Laravel 11.* (PHP 8.3+) + MySQL 8+
 - Laravel Reverb (WebSocket) + Laravel Echo (client)

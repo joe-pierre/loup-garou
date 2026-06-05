@@ -477,6 +477,13 @@ gsap.fromTo('.reveal',
                         }
                     });
 
+                window.Echo.channel(`game.${GAME_ID}`)
+                    .listen('.day.started', () => {
+                        setTimeout(() => {
+                            window.location.href = `/game/${GAME_CODE}/day`;
+                        }, 1500);
+                    });
+
                 if (this.isSeer) {
                     window.Echo.private(`game.${GAME_ID}.player.${MY_PLAYER_ID}`)
                         .listen('.seer.turn.started', () => {

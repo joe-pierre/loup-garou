@@ -357,6 +357,15 @@
 </div>
 @endsection
 
+@php
+    $playersJson = $players->map(fn ($p) => [
+        'id'       => $p->id,
+        'pseudo'   => $p->pseudo,
+        'is_mayor' => $p->is_mayor,
+        'is_alive' => $p->is_alive,
+    ])->values();
+@endphp
+
 @push('scripts')
 <script>
     const GAME_ID          = {{ $game->id }};
@@ -367,14 +376,7 @@
     const MY_IS_ALIVE      = {{ $player->is_alive ? 'true' : 'false' }};
     const SUCCESSION_TIMER = {{ config('game.timers.mayor_succession', 15) }};
     const PHASE_SECONDS    = {{ max(0, $game->phaseRemainingSeconds()) }};
-    const PLAYERS_DATA     = @json(
-        $players->map(fn ($p) => [
-            'id'       => $p->id,
-            'pseudo'   => $p->pseudo,
-            'is_mayor' => $p->is_mayor,
-            'is_alive' => true,
-        ])->values()
-    );
+    const PLAYERS_DATA     = @json($playersJson);
 
     function playerAvatarColor(id) {
         const colors = ['#c9a84c','#a78bfa','#4ade80','#ff4444','#38bdf8','#fb923c','#f472b6','#34d399'];

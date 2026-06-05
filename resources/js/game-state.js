@@ -205,6 +205,12 @@ export function gameState(gameId, userId) {
                     gsap.from(sun, { y: '100%', opacity: 0, duration: 2.5, ease: 'power2.out' });
                 }
             }
+
+            setTimeout(() => {
+                if (this.gameCode) {
+                    window.location.href = `/game/${this.gameCode}/day`;
+                }
+            }, 1500);
         },
 
         handleMayorElected(e) {

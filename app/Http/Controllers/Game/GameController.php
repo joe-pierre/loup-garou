@@ -88,12 +88,12 @@ class GameController extends Controller
         return view('game.dead-spectator', compact('game', 'player', 'allPlayers'));
     }
 
-    public function day(Request $request, string $code): View
+    public function day(Request $request, string $code): View|RedirectResponse
     {
         $game = Game::where('code', strtoupper($code))->firstOrFail();
 
         if ($game->status !== 'day') {
-            abort(404, 'La partie n\'est pas en phase jour.');
+            return $this->redirectToCurrentPhase($game, $code);
         }
 
         $player = $game->players()
@@ -106,12 +106,12 @@ class GameController extends Controller
         return view('game.day', compact('game', 'player', 'players', 'nightVictim'));
     }
 
-    public function night(Request $request, string $code): View
+    public function night(Request $request, string $code): View|RedirectResponse
     {
         $game = Game::where('code', strtoupper($code))->firstOrFail();
 
         if ($game->status !== 'night') {
-            abort(404, 'La partie n\'est pas en phase nuit.');
+            return $this->redirectToCurrentPhase($game, $code);
         }
 
         $player = $game->players()
@@ -121,6 +121,19 @@ class GameController extends Controller
         $players = $game->alivePlayers()->get();
 
         return view('game.night', compact('game', 'player', 'players'));
+    }
+
+    private function redirectToCurrentPhase(Game $game, string $code): RedirectResponse
+    {
+        return match ($game->status) {
+            'day'            => redirect()->route('game.day', ['code' => $code]),
+            'night'          => redirect()->route('game.night', ['code' => $code]),
+            'electing_mayor' => redirect()->route('game.mayor-election', ['code' => $code]),
+            'finished'       => $game->winner_team !== null
+                                    ? redirect()->route('game.finished', ['code' => $code])
+                                    : redirect()->route('game.cancelled', ['code' => $code]),
+            default          => redirect()->route('game.role-reveal', ['code' => $code]),
+        };
     }
 
     public function history(Request $request, string $code): mixed
