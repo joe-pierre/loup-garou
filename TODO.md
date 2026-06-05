@@ -88,7 +88,7 @@
 - [x] Layout principal + composants Blade réutilisables
 - [x] Alpine.js store central gameState
 - [x] GSAP animations (intégrées dans composants + landing)
-- [ ] Écrans Blade restants (tâche 29)
+- [x] Écrans Blade restants (tâche 29 — night + day)
 - [ ] Responsive
 
 ## Phase 11 — Tests
