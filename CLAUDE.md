@@ -1,4 +1,4 @@
-# Loup-Garou Undu — Contexte projet Claude
+# Loup-Garou Undu — Contexte projet Claude Code (PHP 8.3+)
 
 ## RÈGLES OUTPUT CLAUDE CODE
 
@@ -7,6 +7,7 @@
 - Si le résultat dépasse 50 lignes, écrire dans /tmp/out.txt et afficher le chemin
 - Pour les fichiers longs, montrer uniquement les lignes concernées avec leur numéro
 - Ne jamais afficher les stack traces complètes — résumer en 3 lignes max
+- **Limiter chaque réponse à 50 lignes de code maximum par bloc. Décomposer en plusieurs étapes si nécessaire.**
 
 ## Stack
 - Laravel 11.* (PHP 8.3+) + MySQL 8+
@@ -47,7 +48,12 @@ FormRequest dédié pour chaque endpoint — jamais valider dans le Controller
 
 ## Modèles — méthodes importantes à toujours implémenter
 - GamePlayer::isWerewolf() → role IN ('werewolf', 'white_wolf')
+  ⚠️ `isWerewolf()` inclut intentionnellement 'white_wolf' bien que cette valeur soit absente
+  de l'enum DB en v1.1 et v1.2. C'est une anticipation v1.3+. Ne pas supprimer et ne pas
+  ajouter la valeur à l'enum avant la v1.3.
 - GamePlayer::isVillagerSide() → role IN ('villager', 'seer', 'witch', 'hunter')
+  ⚠️ `witch` et `hunter` absents de l'enum DB en v1.1. Anticipation v1.2.
+  Ne pas ajouter à l'enum avant la v1.2.
 - GameAction::scopeAnonymized() → select() toutes colonnes SAUF player_id
     NE PAS utiliser whereNotIn — toutes les lignes sont retournées, seul player_id est exclu
 
@@ -62,13 +68,45 @@ Solution : PresenceChannel("game.{gameId}.presence") côté Reverb
 + POST /game/{id}/disconnect déclenché par window.addEventListener('beforeunload') côté client
 CheckReconnectionTimeout dispatché avec delay 30s après déconnexion détectée
 
-## Timers (v1.1 — valeurs fixes, prévoir config pour v1.2)
+## Timers (v1.1)
+Timers gérés via `TimerCalculator` (app/Services/TimerCalculator.php) et accessibles
+via `$game->timer('phase_name')`. Ne pas utiliser `config('game.timers.x')` directement.
+Tous les timers sauf TIMER_RECONNECTION et TIMER_READY_TIMEOUT sont configurables
+par le host depuis la waiting-room (v1.2).
+
 - Élection maire : 30s
+- Révélation maire : 5s
 - Action voyante : 30s
 - Action loups : 30s
 - Succession maire : 15s
 - Débat + vote jour : 90s
-- Reconnexion : 30s
+- Reconnexion : 30s  ← fixe, non configurable (contrainte technique, pas gameplay)
+- Ready timeout : 60s  ← fixe, non configurable (attente écran révélation rôle)
+
+## Méthodes utilitaires
+- `$game->timer('mayor_election')` → secondes du timer
+- `$game->phaseRemainingSeconds()` → secondes restantes dans la phase courante
+- `Game::timer()` → accès générique aux timers via TimerCalculator
+
+## Architecture Alpine.js — Règles critiques
+
+`game-state.js` est le **seul store source de vérité** pour : `role`, `allies`, `phase`,
+`players[]`, `mayorId`.
+
+**Règles :**
+- Les vues ne doivent pas dupliquer ces propriétés dans un store local
+- Pour réagir à un event WebSocket reçu après chargement : utiliser `$watch`, **jamais** `setTimeout`
+- Toute variable Blade injectée dans un store Alpine risque d'être `null` si la vue se charge après un changement d'état — voir CONVENTIONS.md §Partials Alpine
+
+**Propriétés publiques du store `gameState` :**
+`role`, `allies`, `phase`, `players[]`, `mayorId`, `isConnected`
+
+**Méthodes publiques :**
+`syncRole()`, `handleSeerTurnReady()`, `handleWerewolvesTurnReady()`
+
+**Flag `seerWatchTriggered` dans `night.blade.php` :** guard anti-double exécution du
+`$watch` sur `pendingSeerEvent`. Ne pas supprimer — sans ce flag, `handleSeerTurnReady()`
+peut être appelé deux fois si Alpine réévalue le `$watch`.
 
 ## Règles métier critiques (ne jamais oublier)
 - Un joueur ne vote pas pour lui-même (sauf élection maire)
@@ -79,16 +117,27 @@ CheckReconnectionTimeout dispatché avec delay 30s après déconnexion détecté
 - Égalité vote jour → personne éliminé
 - Égalité vote loups/maire → aléatoire parmi ex-aequo
 - > 50% inactifs → partie annulée (winner_team = null, rôles non révélés)
+- Quitter depuis waiting-room → DELETE game_players (pas quitGame())
+- Quitter depuis une vue de jeu → quitGame() → is_alive = false
 
 ## Distribution rôles (RoleDistributor)
-- Toujours 1 Voyante
-- Loups ≈ 20% (arrondi inf, min 1)
-  - 6j → 1L | 8j → 2L | 10j → 2L | 12j → 3L
-- Utiliser pattern Strategy ou config array pour extensibilité v1.2
+Lit `$game->settings['roles']` en priorité, fallback sur `config('game.roles')`.
+Ne jamais hardcoder la composition dans RoleDistributor.
+
+Villageois = toujours fill (max_players - tous les autres). Non configurable par le host.
+
+Validation serveur (GameService::validateRoleSettings()) :
+- nb_loups >= 1 et <= Max loups défini dans le tableau de fourchettes (SPEC.md §4)
+- chaque rôle spécial : 0 ou 1 max
+- villageois résultants >= 1
+- Modifiable uniquement si status = waiting
+
+v1.1 par défaut : 6j→1L|4V, 8j→2L|5V, 10j→2L|7V, 12j→3L|8V (toujours 1 voyante)
 
 ## Versioning
 - v1.1 (en cours) : Villageois, Loup-Garou, Voyante, Maire électif
-- v1.2 (anticiper) : Sorcier, Cupidon, Loup Blanc, timers/joueurs customisables
+- v1.2 (anticiper) : Sorcière, Chasseur — timers + composition rôles configurables par le host (waiting-room)
+- v1.3+ (ne pas anticiper) : Loup Blanc, Cupidon, Petite Fille
 
 ## DECISIONS.md — Mise à jour obligatoire
 

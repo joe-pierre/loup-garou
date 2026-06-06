@@ -2,7 +2,9 @@
 /.editorconfig
 /template_accueil.html
 /z_templates_05_06_2026
+/deploy.sh
 /build_local.sh
+/save_contexte.sh
 
 /.phpunit.cache
 /node_modules

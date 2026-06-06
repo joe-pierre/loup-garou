@@ -41,10 +41,12 @@ id | google_id (unique) | email (unique) | name | created_at | updated_at
 ```
 id | code (6 chars, unique) | status (enum) | max_players | round (default 0)
    | phase_deadline (nullable timestamp) | winner_team (enum, nullable)
+   | settings (json, nullable)
    | started_at (nullable) | finished_at (nullable) | created_at | updated_at
 
 status: waiting | electing_mayor | night | day | finished
 winner_team: villagers | werewolves | null
+null = partie en cours OU annulée (status = finished + winner_team = null → annulée)
 ```
 
 ### Table `game_players`
@@ -54,6 +56,7 @@ id | game_id (FK) | user_id (FK) | pseudo | role (enum, nullable)
    | is_inactive (bool) | is_ready (bool) | joined_at
 
 role: villager | werewolf | seer | null (null jusqu'à distribution)
+⚠️ witch et hunter absents en v1.1 — anticipation v1.2. white_wolf absent en v1.1 et v1.2 — anticipation v1.3+.
 ```
 
 ### Table `game_actions`
@@ -77,7 +80,9 @@ channel: general | werewolves
 
 ### Table `exclusions`
 ```
-id | game_id (FK) | player_id (FK) | reason (text) | excluded_at
+id | game_id (FK cascadeOnDelete) | user_id (FK users, cascadeOnDelete)
+   | player_id (FK game_players, nullOnDelete, nullable)
+   | reason (text) | excluded_at
 ```
 
 ### Index importants
@@ -103,23 +108,46 @@ id | game_id (FK) | player_id (FK) | reason (text) | excluded_at
 - Quand `count == max_players` → démarrage automatique
 
 ### Distribution des rôles
-```
+Gérée par RoleDistributor. Lit games.settings['roles'] en priorité,
+fallback sur config/game.php.
+
+v1.1 (valeurs par défaut si settings null) :
 6 joueurs  → 1 loup, 1 voyante, 4 villageois
 8 joueurs  → 2 loups, 1 voyante, 5 villageois
 10 joueurs → 2 loups, 1 voyante, 7 villageois
 12 joueurs → 3 loups, 1 voyante, 8 villageois
-Formule: floor(n * 0.2), min 1. Cas spécial: 8 joueurs → 2 loups.
-```
+Formule loups (valeur par défaut) : floor(n * 0.25), min 1.
+Max configurable par le host : voir tableau de fourchettes ci-dessous.
+Ces deux valeurs sont distinctes — la formule donne le défaut, le max définit la fourchette haute.
 
-### Timers (v1.1 fixes, viendront de config en v1.2)
+v1.2 : host configure depuis la waiting-room (status = waiting).
+Villageois = toujours calculé automatiquement (fill) : non configurable.
+
+Règles de validation serveur (GameService, status = waiting uniquement) :
+- nb_loups >= 1
+- nb_loups <= Max loups du tableau de fourchettes ci-dessous
+- chaque rôle spécial (voyante, sorcière, chasseur...) : 0 ou 1 exemplaire max
+- villageois résultants >= 1  →  max_players - loups - spéciaux >= 1
+- total = max_players exactement (garanti par le fill villageois)
+
+Fourchettes par nombre de joueurs :
+| Joueurs | Min loups | Max loups |
+|---------|-----------|-----------|
+| 6       | 1         | 2         |
+| 8       | 1         | 2         |
+| 10      | 2         | 3         |
+| 12      | 2         | 3         |
+
+
+### Timers (v1.1 fixes, configurables par le host en v1.2 sauf TIMER_RECONNECTION et TIMER_READY_TIMEOUT)
 ```
 TIMER_MAYOR_ELECTION   = 30s
 TIMER_SEER             = 30s
 TIMER_WEREWOLVES       = 30s
 TIMER_MAYOR_SUCCESSION = 15s
 TIMER_DAY_VOTE         = 90s
-TIMER_RECONNECTION     = 30s
-TIMER_READY_TIMEOUT    = 60s
+TIMER_RECONNECTION  = 30s  ← fixe, non configurable (contrainte technique, pas gameplay)
+TIMER_READY_TIMEOUT = 60s  ← fixe, non configurable
 ```
 
 ### Phase nuit — ordre des actions
@@ -129,6 +157,7 @@ TIMER_READY_TIMEOUT    = 60s
 ### Votes — règles générales
 - Égalité → sélection **aléatoire** parmi les ex-aequo (sauf vote jour → personne éliminé)
 - Vote jour en égalité → `NoElimination` (reason: `equality`)
+- 0 votes jour → élimination aléatoire parmi les vivants (RandomElimination event)
 - Maire : `weight = 2` sur `day_vote` uniquement
 - Loups ne peuvent pas voter pour un autre loup (nuit)
 - Joueur ne peut pas voter pour lui-même (jour) — autorisé pour l'élection maire
@@ -300,14 +329,22 @@ game.{gameId}.player.{playerId}  → privé (joueur individuel)
 
 ---
 
-## 8. EXTENSIBILITÉ V1.2 (anticiper, ne pas implémenter)
+## 8. EXTENSIBILITÉ (anticiper, ne pas implémenter)
 
 - `RoleDistributor` : tableau de config des rôles, pas de hardcode
 - `PhaseManager` : hooks `before`/`after` chaque phase pour nouveaux rôles
-- Timers : viendront d'un champ `game` ou d'une config
+- Timers : configurables par le host via `games.settings['timers']` (JSON).
+  Fallback `config('game.timers.x')`. TIMER_RECONNECTION et TIMER_READY_TIMEOUT : fixes, non configurables par le host.
+  Accessibles via `$game->timer('phase_name')` uniquement — jamais config() directement.
 - `GamePlayer::isWerewolf()` → `role IN ('werewolf', 'white_wolf')`
+  ⚠️ white_wolf absent de l'enum DB en v1.1 et v1.2 — anticipation v1.3+. Ne pas ajouter à l'enum avant v1.3.
 - `GamePlayer::isVillagerSide()` → `role IN ('villager', 'seer', 'witch', 'hunter')`
+  ⚠️ `witch` et `hunter` absents de l'enum DB en v1.1. Anticipation v1.2.
+  Ne pas ajouter à l'enum avant la v1.2.
 - Ne pas hardcoder les checks `role === 'werewolf'`, toujours passer par les méthodes du modèle
+- `max_players` : extensible à [14, 16, 18] en v1.3+ ou v1.4+.
+   Formule défaut loups `floor(n * 0.25)` reste valide jusqu'à 18 joueurs.
+   Max loups : étendre le tableau de fourchettes §4 pour les nouvelles tailles.
 
 ---
 
@@ -499,7 +536,9 @@ VAPID_PRIVATE_KEY=...
 
 ## 15. NOTES IMPORTANTES POUR CLAUDE CODE
 
-1. **Ne jamais implémenter les fonctionnalités v1.2** (Sorcier, Cupidon, Loup Blanc, timers custom) — préparer l'extensibilité uniquement via l'architecture.
+1. **Ne jamais implémenter les fonctionnalités non planifiées pour la version en cours.**
+v1.2 : Sorcière, Chasseur — timers + composition rôles configurables par le host
+v1.3+ : Loup Blanc, Cupidon, Petite Fille
 
 2. **Toujours utiliser `GamePlayer::isWerewolf()`** plutôt que comparer `role === 'werewolf'` directement.
 
@@ -510,11 +549,11 @@ VAPID_PRIVATE_KEY=...
 
 4. **Les payloads WebSocket** ne doivent jamais exposer le rôle d'un joueur vivant à d'autres joueurs (sauf loups entre eux, et voyante pour le résultat de son inspection).
 
-5. **`PhaseManager`** centralise tous les timers — ne pas hardcoder les valeurs en secondes ailleurs que dans les constantes de `PhaseManager`.
+5. **`PhaseManager`** centralise tous les timers — ne pas hardcoder les valeurs en secondes ailleurs que dans les constantes de `PhaseManager`. Les valeurs listées en §4 sont documentaires uniquement, pas des sources d'implémentation.
 
 6. **Chaque Job** doit vérifier en début de `handle()` que la phase/status correspond encore à ce qu'il attend (un autre Job peut avoir déjà changé l'état).
 
-7. **La suppression en cascade** doit être configurée sur toutes les FK (`cascadeOnDelete`) pour que le scheduler `CleanOldGames` fonctionne correctement.
+7. **La suppression en cascade** (`cascadeOnDelete`) doit être configurée sur toutes les FK, sauf `exclusions.player_id` qui est `nullOnDelete` (voir DECISIONS.md tâche 27).
 
 8.  **SEO meta tags** :
    - Title : `Loup-Garou Undu — Joue en ligne avec tes amis`

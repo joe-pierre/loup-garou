@@ -32,6 +32,14 @@
 - [x] Event PlayerReady
 - [x] Vue game/role-reveal.blade.php (Écran 5)
 
+### Recette manuelle Couche 2 (lobby)
+- [ ] Créer une partie → redirige vers /game/{code}/lobby
+- [ ] Rejoindre avec un code valide → redirige vers /game/{code}/lobby
+- [ ] Rejoindre avec un code invalide → message d'erreur affiché
+- [ ] Pseudo vide → message de validation affiché
+- [ ] OTP : navigation automatique entre les cases
+- [ ] OTP : pré-remplissage via ?code=XXXXXX dans l'URL
+
 ## Phase 4 — WebSocket Setup
 - [x] Reverb config (config/broadcasting.php + config/reverb.php)
 - [x] Echo config (resources/js/echo.js) — CSRF token dans auth.headers
@@ -80,7 +88,7 @@
 - [x] Push notifications (fin de partie, mort, exclusion)
 - [x] Historique de partie (Écran 13)
 - [x] Écran Fin de partie (Écran 11) + Annulation
-- [x] Écran Spectateur mort (Écran 12)
+- [x] Logique Écran Spectateur mort (Écran 12) — vue Blade dans Phase 10
 - [x] Scheduler CleanOldGames
 
 ## Phase 10 — UI
@@ -90,12 +98,23 @@
 - [x] GSAP animations (intégrées dans composants + landing)
 - [x] Écrans Blade restants (tâche 29 — night + day)
 - [x] Intégration templates HTML → vues Blade @extends (waiting-room, role-reveal, mayor-election, night, day, finished)
-- [x] Font Crimson Text (remplace EB Garamond) + window.gameId/playerId dans layout
+- [x] window.gameId/playerId dans layout
+- [ ] Vérifier et aligner la police de corps (EB Garamond en CSS, Crimson Text mentionné — choisir et uniformiser) ← SPEC.md §10 sera mis à jour en même temps
 - [ ] Responsive
+- [ ] cancelled.blade.php — afficher message d'annulation de partie + CTA retour accueil
+- [ ] spectator.blade.php — vue lecture seule pour joueurs morts (pas de vote, pas de chat loups, voit le chat village)
 
 ## Phase 11 — Tests
 - [x] Tests Feature Auth (GoogleAuthTest — 4 tests)
 - [x] Tests Feature Game/Lobby (CreateGameTest, JoinGameTest, ExcludePlayerTest — 20 tests)
+- [ ] Vérifier et écrire tests phases 5→9 (nuit, jour, chat, race conditions)
+
+## Phase v1.2 — Améliorations différées
+- [ ] Délai voyante : réduire de ~8s à ~5s (broadcaster SeerTurnStarted avec delay(5s) côté serveur — $watch déjà en place, setTimeout client déjà supprimé en v1.1)
+- [ ] Timers configurables par partie
+- [ ] Rôles v1.2 : Sorcière, Chasseur
+- [ ] Rôles v1.3+ : Loup Blanc, Cupidon, Petite Fille
+- [ ] ProcessMayorSuccession : flag `shouldStartNight` pour distinguer mort nuit vs mort jour
 
 ## BUGS CONNUS
 - [x] Phase nuit bloquée — broadcast dans DB::transaction → fixed (PhaseManager::startDay + startNight)

@@ -38,3 +38,20 @@ Code HTTP : 200/201 succès, 422 validation, 403 interdit, 409 conflit métier
 - Toujours utiliser Gate::authorize() ou $this->authorize() avant une action
 - Ne jamais exposer le rôle d'un joueur dans une réponse publique
 - Toujours vérifier game_id + player_id cohérents (anti-spoofing)
+
+## Partials Alpine : injection des variables Blade
+
+Pour tout partial Blade contenant un bloc `<script>` avec de la logique Alpine :
+
+```javascript
+// ✅ Correct — toujours en haut du <script> du partial
+const GAME_ID = @json($game->id);
+
+// ❌ Interdit
+this.gameId          // référence au store Alpine parent — fragile
+@json($game->id)     // injecté directement dans un store Alpine x-data={...}
+```
+
+**Règle :** `const GAME_ID = @json($game->id)` est la seule façon d'accéder à l'ID de partie dans un partial.
+
+**Raison :** Une variable Blade injectée dans un `x-data` est évaluée une seule fois au rendu serveur. Si la variable est `null` au moment du rendu (ex: vue chargée après un changement d'état), le store Alpine l'aura `null` indéfiniment, sans possibilité de correction côté client.

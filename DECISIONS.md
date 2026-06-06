@@ -140,6 +140,7 @@ auth: {
 **Symptôme / Problème :** Spec initiale : 0 votes → personne éliminé.
 **Fix / Décision :** 0 votes → élimination aléatoire parmi les vivants.
 Notification fun broadcastée via `RandomElimination` event. `WinConditionChecker` appelé après l'élimination, comme pour un vote normal.
+SPEC.md §4 mis à jour pour refléter ce choix.
 **Leçon :** Règle modifiable dans `VoteService::resolveDayVote()`.
 **Statut :** 🔵 Choix assumé
 
@@ -151,4 +152,50 @@ Notification fun broadcastée via `RandomElimination` event. `WinConditionChecke
 **Problème :** Le résultat d'inspection de la voyante ne doit jamais fuiter aux autres joueurs, même en cas d'erreur de routing.
 **Décision :** Les deux events voyante passent exclusivement par `PrivateChannel("game.{id}.player.{seer->id}")` — jamais sur `game.{id}`.
 **Leçon :** Toute information de rôle privée (résultat voyante, composition loups) → canal privé individuel obligatoire. Canal public = informations visibles par tous.
+**Statut :** 🔵 Choix assumé
+
+---
+
+## [RÉSOLU] Pattern $watch vs setTimeout pour événements broadcast
+
+**Contexte :** `night.blade.php`, `ProcessSeerTurn`, store Alpine `gameState`
+**Symptôme :** La voyante ne voyait jamais son interface de tirage malgré le bon broadcast.
+**Cause :** `setTimeout` s'exécutait à l'initialisation de la page, avant qu'Echo soit souscrit au channel privé. Le broadcast `SeerTurnStarted` arrivait avant la souscription → event manqué.
+**Fix :** Remplacer le `setTimeout` par `$watch('pendingSeerEvent', ...)` dans le composant Alpine de `night.blade.php`. La réaction se déclenche quand la donnée arrive, pas au chargement de la page.
+**Leçon :** Pour toute vue chargée après un broadcast, toujours utiliser `$watch` plutôt que `setTimeout` sur l'init Alpine. `setTimeout` suppose que l'event arrive après l'init — faux si la page se charge après le broadcast.
+**Statut :** ✅ Résolu
+
+---
+
+## [RÉSOLU] Deux stores Alpine dans night.blade.php — source de vérité `myRole`
+
+**Contexte :** `night.blade.php`, `game-state.js`
+**Symptôme :** `myRole === null` dans le store local de `night.blade.php` alors que `gameState().role` était correctement initialisé.
+**Cause :** Deux stores Alpine coexistants : `gameState()` global (dans `game-state.js`) et un store local inline dans `night.blade.php`. Le store local initialisait `myRole` depuis une variable Blade `MY_ROLE`, mais cette variable était `null` au moment du chargement de la vue nuit (rôle pas encore disponible dans le contexte Blade).
+**Fix :** Le store local de `night.blade.php` lit toujours `myRole` depuis `gameState().role`, jamais depuis une variable Blade injectée directement.
+**Leçon :** Un seul store Alpine est source de vérité pour le rôle du joueur. Ne jamais dupliquer `role` ou `allies` dans un store local. Toute variable Blade injectée dans un store Alpine risque d'être null si la vue se charge après un changement d'état côté serveur.
+**Statut :** ✅ Résolu
+
+---
+
+## [CHOIX] Quitter le lobby ≠ quitter une partie en cours — deux chemins de sortie
+
+**Contexte :** `waiting-room.blade.php`, `LobbyController`, `GameService`
+**Symptôme :** Risque d'appeler `quitGame()` (qui pose `is_alive=false`) depuis la waiting-room par analogie avec les vues de jeu.
+**Cause :** Règle métier non documentée : en waiting-room, le joueur n'a pas encore de statut vivant/mort.
+**Fix / Décision :** Deux chemins distincts :
+- Depuis `waiting-room` → DELETE sur `game_players` (le joueur n'a pas encore de statut vivant/mort, il quitte simplement la file)
+- Depuis une vue de jeu (night, day, etc.) → `quitGame()` → `is_alive = false`
+**Leçon :** Documenter explicitement les deux chemins de sortie. Ne pas réutiliser `quitGame()` hors du contexte de jeu actif.
+**Statut :** 🔵 Choix assumé
+
+---
+
+## [CHOIX] Convention GAME_ID dans les partials Alpine
+
+**Contexte :** Tous les partials Blade avec `x-data`, notamment `night.blade.php`, `day.blade.php`
+**Symptôme :** Deux patterns coexistants dans les partials : `this.gameId` (référence au store Alpine) et `const GAME_ID = @json(...)` (injection Blade locale).
+**Cause :** Convention absente dans CONVENTIONS.md — chaque partial a choisi son pattern indépendamment.
+**Fix / Décision :** Convention unique → toujours déclarer `const GAME_ID = @json($game->id)` en haut du bloc `<script>` du partial. Jamais `this.gameId`. Jamais de variable Blade injectée directement dans un store Alpine (risque null au chargement).
+**Leçon :** Ajouter la règle dans CONVENTIONS.md. Une variable Blade dans un store Alpine est évaluée une fois au rendu serveur — si l'état change côté client après, le store ne se met pas à jour.
 **Statut :** 🔵 Choix assumé
