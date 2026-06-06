@@ -16,6 +16,7 @@ class Game extends Model
         'max_players',
         'round',
         'phase_deadline',
+        'timers',
         'winner_team',
         'started_at',
         'finished_at',
@@ -27,7 +28,13 @@ class Game extends Model
             'phase_deadline' => 'datetime',
             'started_at'     => 'datetime',
             'finished_at'    => 'datetime',
+            'timers'         => 'array',
         ];
+    }
+
+    public function timer(string $key): int
+    {
+        return $this->timers[$key] ?? config("game.timers.{$key}");
     }
 
     public function players(): HasMany

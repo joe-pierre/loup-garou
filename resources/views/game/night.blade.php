@@ -107,7 +107,7 @@
     <div class="mist-overlay" aria-hidden="true"></div>
 
     {{-- ── 1. ÉCRAN GÉNÉRIQUE — "Le village dort..." ── --}}
-    <div x-show="!seerTurnActive && !werewolvesTurnActive">
+    <div x-show="nightPhase === 'village_sleeping'">
         <div class="relative min-h-screen overflow-hidden"
              style="background-color:#030712;">
 
@@ -162,7 +162,7 @@
     </div>
 
     {{-- ── 2. ÉCRAN VOYANTE ── --}}
-    <div x-show="isSeer && seerTurnActive" x-cloak
+    <div x-show="nightPhase === 'seer_turn' && isSeer" x-cloak
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0 translate-y-4"
          x-transition:enter-end="opacity-100 translate-y-0"
@@ -175,59 +175,84 @@
             <p class="font-medieval text-xl font-bold mb-1 text-center" style="color:#a78bfa;">
                 🔮 C'est ton tour, Voyante...
             </p>
-            <p class="text-xs italic text-center mb-5" style="color:rgba(232,224,208,0.85);">
-                Inspecte un joueur pour découvrir s'il est un loup.
+            <p class="text-xs italic text-center mb-4" style="color:rgba(232,224,208,0.85);">
+                Choisis un joueur pour lire dans son âme.
             </p>
 
-            {{-- Résultat inspection --}}
-            <div x-show="seerResult" x-cloak class="mb-5" x-ref="seerResultCard">
-                <div class="seer-result-card"
-                     :class="seerResult?.isWerewolf ? 'seer-result-werewolf' : 'seer-result-innocent'">
-                    <p class="text-4xl mb-2" x-text="seerResult?.isWerewolf ? '🐺' : '🌾'"></p>
-                    <p class="font-medieval text-sm font-semibold mb-1"
-                       :style="'color:#e8e0d0'"
-                       x-text="seerResult?.pseudo"></p>
-                    <p class="text-xs"
-                       :style="'color:#e8e0d0'"
-                       x-text="seerResult?.isWerewolf ? '🐺 Loup-Garou — méfie-toi !' : (seerResult?.role === 'seer' ? '🔮 Voyante — une alliée !' : '🪓 Villageois — innocent.')"></p>
-                </div>
+            {{-- Timer bar --}}
+            <div class="night-timer-bar mb-5">
+                <div id="seer-timer-bar" class="timer-fill" style="width:100%;background-color:#7c3aed;"></div>
             </div>
 
-            {{-- Liste cibles (avant résultat) --}}
-            <div x-show="!seerResult">
-                <p class="text-xs mb-3" style="color:rgba(232,224,208,0.85);">Joueurs inspectables :</p>
-                <div class="flex flex-col gap-2 mb-4" style="max-height:220px;overflow-y:auto;">
-                    @foreach($players->filter(fn($p) => $p->id !== $player->id)->values() as $seerTarget)
-                    <button
-                        type="button"
-                        class="target-btn"
-                        :class="seerSelectedTarget === {{ $seerTarget->id }} ? 'seer-sel' : ''"
-                        @click="seerSelectedTarget = {{ $seerTarget->id }}"
-                    >
-                        <div class="avatar" style="background:#1a1035;border:1px solid rgba(167,139,250,0.3);color:#e8e0d0;">
-                            {{ strtoupper(substr($seerTarget->pseudo, 0, 1)) }}
-                        </div>
-                        <span class="text-sm" style="color:#e8e0d0;">{{ $seerTarget->pseudo }}</span>
-                        <span x-show="seerSelectedTarget === {{ $seerTarget->id }}" class="ml-auto text-xs" style="color:#a78bfa;">✓</span>
-                    </button>
-                    @endforeach
-                </div>
-
+            {{-- Liste cibles --}}
+            <p class="text-xs mb-3" style="color:rgba(232,224,208,0.85);">Joueurs inspectables :</p>
+            <div class="flex flex-col gap-2 mb-4" style="max-height:220px;overflow-y:auto;">
+                @foreach($players->filter(fn($p) => $p->id !== $player->id && $p->is_alive)->values() as $seerTarget)
                 <button
-                    @click="seerInspect()"
-                    :disabled="!seerSelectedTarget || seerSubmitting"
-                    class="w-full py-3 rounded-xl font-medieval font-semibold text-sm disabled:opacity-50 transition-all"
-                    style="background:#a78bfa;color:#0a0f1e;"
+                    type="button"
+                    class="target-btn seer-player-row"
+                    :class="seerSelectedTarget === {{ $seerTarget->id }} ? 'seer-sel' : ''"
+                    :disabled="seerActionDone"
+                    @click="seerSelectedTarget = {{ $seerTarget->id }}"
                 >
-                    <span x-show="!seerSubmitting">🔍 Inspecter</span>
-                    <span x-show="seerSubmitting">Inspection…</span>
+                    <div class="avatar" style="background:#1a1035;border:1px solid rgba(167,139,250,0.3);color:#e8e0d0;">
+                        {{ strtoupper(substr($seerTarget->pseudo, 0, 1)) }}
+                    </div>
+                    <span class="text-sm" style="color:#e8e0d0;">{{ $seerTarget->pseudo }}</span>
+                    <span x-show="seerSelectedTarget === {{ $seerTarget->id }}" class="ml-auto text-xs" style="color:#a78bfa;">✓</span>
                 </button>
+                @endforeach
             </div>
+
+            <button
+                @click="seerInspect()"
+                :disabled="!seerSelectedTarget || seerSubmitting || seerActionDone"
+                class="w-full py-3 rounded-xl font-medieval font-semibold text-sm disabled:opacity-50 transition-all"
+                style="background:#a78bfa;color:#0a0f1e;"
+            >
+                <span x-show="!seerSubmitting && !seerActionDone">🔍 Inspecter</span>
+                <span x-show="seerSubmitting">Inspection…</span>
+                <span x-show="seerActionDone && !seerSubmitting">✓ Inspecté</span>
+            </button>
+        </div>
+    </div>
+
+    {{-- ── 2b. RÉSULTAT VOYANTE ── --}}
+    <div x-show="nightPhase === 'seer_result' && isSeer" x-cloak
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-4"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         class="relative min-h-screen flex items-center justify-center px-4 py-10"
+         style="background: linear-gradient(135deg, #1a0a2e 0%, #0d0518 100%);">
+        @include('partials.game.quit-button')
+        @include('partials.game.quit-modal')
+        <div class="seer-panel p-6 w-full max-w-lg text-center">
+            <p class="font-medieval text-xl font-bold mb-5" style="color:#a78bfa;">🔮 Résultat de l'inspection</p>
+
+            <div id="seer-result-card" class="seer-result-card mb-5"
+                 :class="seerResult?.isWerewolf ? 'seer-result-werewolf' : 'seer-result-innocent'">
+                <p class="text-4xl mb-2" x-text="seerResult?.isWerewolf ? '🐺' : '🧑‍🌾'"></p>
+                <p class="font-medieval text-sm font-semibold mb-2" style="color:#e8e0d0;"
+                   x-text="seerResult?.pseudo"></p>
+                <p class="text-xs"
+                   :style="seerResult?.isWerewolf ? 'color:#f87171' : 'color:#4ade80'"
+                   x-text="seerResult?.isWerewolf
+                       ? 'Méfie-toi. C\'est un Loup-Garou.'
+                       : 'C\'est un Innocent. Tu peux lui faire confiance.'">
+                </p>
+            </div>
+
+            <button
+                @click="nightPhase = 'village_sleeping'"
+                class="w-full py-3 rounded-xl font-medieval font-semibold text-sm"
+                style="background-color:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.4);color:#a78bfa;">
+                J'ai compris
+            </button>
         </div>
     </div>
 
     {{-- ── 3. ÉCRAN LOUPS ── --}}
-    <div x-show="isWerewolf && werewolvesTurnActive" x-cloak
+    <div x-show="nightPhase === 'werewolves_turn' && isWerewolf" x-cloak
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0 translate-y-4"
          x-transition:enter-end="opacity-100 translate-y-0"
@@ -240,9 +265,14 @@
             <p class="font-medieval text-xl font-bold mb-1 text-center" style="color:#ff4444;">
                 🐺 C'est votre tour, mes frères...
             </p>
-            <p class="text-xs italic text-center mb-5" style="color:rgba(232,224,208,0.85);">
+            <p class="text-xs italic text-center mb-4" style="color:rgba(232,224,208,0.85);">
                 Désignez votre victime. La décision est collective.
             </p>
+
+            {{-- Timer bar --}}
+            <div class="night-timer-bar mb-4">
+                <div id="wolf-timer-bar" class="timer-fill" style="width:100%;background-color:#dc2626;"></div>
+            </div>
 
             <div class="flex flex-col gap-2 mb-4" style="max-height:220px;overflow-y:auto;">
                 <template x-for="target in wolfEligibleTargets" :key="target.id">
@@ -250,26 +280,19 @@
                         type="button"
                         class="target-btn"
                         :class="wolfSelectedTarget === target.id ? 'wolf-sel' : ''"
-                        @click="wolfSelectedTarget = target.id"
+                        @click="wolfVote(target.id)"
                     >
                         <div class="avatar" style="background:#1f0a0a;border:1px solid rgba(255,68,68,0.3);color:#e8e0d0;">
                             <span x-text="target.pseudo.charAt(0).toUpperCase()"></span>
                         </div>
                         <span class="text-sm" style="color:#e8e0d0;" x-text="target.pseudo"></span>
-                        <span x-show="wolfSelectedTarget === target.id" class="ml-auto text-xs" style="color:#ef4444;">🗡</span>
+                        <span class="ml-auto text-xs"
+                              :style="wolfSelectedTarget === target.id ? 'color:#4ade80' : 'color:#ef4444'"
+                              x-text="wolfSelectedTarget === target.id ? '✓ Désigné' : '🗡️ Désigner'">
+                        </span>
                     </button>
                 </template>
             </div>
-
-            <button
-                @click="wolfVote()"
-                :disabled="!wolfSelectedTarget || wolfVoteSubmitting"
-                class="w-full py-3 rounded-xl font-medieval font-semibold text-sm disabled:opacity-40 transition-all mb-4"
-                style="background-color:#8b0000;color:#fff;"
-            >
-                <span x-show="!wolfVoteSubmitting">🗡 Cibler</span>
-                <span x-show="wolfVoteSubmitting">Vote en cours…</span>
-            </button>
 
             <div x-show="wolfVoteState.length > 0">
                 <p class="text-xs mb-2" style="color:rgba(232,224,208,0.85);">Votes de la meute :</p>
@@ -288,7 +311,7 @@
     </div>
 
     {{-- ── 4. CHAT LOUPS ── --}}
-    <div x-show="isWerewolf && werewolvesTurnActive" x-cloak
+    <div x-show="nightPhase === 'werewolves_turn' && isWerewolf" x-cloak
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0 translate-y-4"
          x-transition:enter-end="opacity-100 translate-y-0"
@@ -421,7 +444,9 @@ gsap.fromTo('.reveal',
     const MY_ROLE          = '{{ $player->role }}';
     const MY_IS_MAYOR      = {{ $player->is_mayor ? 'true' : 'false' }};
     const MY_IS_ALIVE      = {{ $player->is_alive ? 'true' : 'false' }};
-    const SUCCESSION_TIMER = {{ config('game.timers.mayor_succession', 15) }};
+    const SUCCESSION_TIMER = {{ $game->timer('mayor_succession') }};
+    const SEER_TIMER       = {{ $game->timer('seer') }};
+    const WOLVES_TIMER     = {{ $game->timer('werewolves') }};
     const PHASE_SECONDS    = {{ max(0, $game->phaseRemainingSeconds()) }};
 
     function nightScreen() {
@@ -439,11 +464,12 @@ gsap.fromTo('.reveal',
             isAlive:         MY_IS_ALIVE,
             showDeathBanner: false,
 
-            isWerewolf:           MY_ROLE === 'werewolf',
-            isSeer:               MY_ROLE === 'seer',
-            seerTurnActive:       false,
-            werewolvesTurnActive: false,
-            nightTimerSeconds:    PHASE_SECONDS,
+            isWerewolf:       MY_ROLE === 'werewolf',
+            isSeer:           MY_ROLE === 'seer',
+            nightPhase:          'village_sleeping',
+            pendingSeerEvent:    null,
+            seerActionDone:      false,
+            seerWatchTriggered:  false,
 
             seerSelectedTarget: null,
             seerResult:         null,
@@ -462,6 +488,14 @@ gsap.fromTo('.reveal',
                 window.Echo.channel(`game.${GAME_ID}`)
                     .listen('.mayor.succession.started', (data) => { this.openSuccessionModal(data); })
                     .listen('.mayor.succession.done', () => { this.closeSuccessionModal(); })
+                    .listen('.night.started', () => {
+                        this.nightPhase          = 'village_sleeping';
+                        this.pendingSeerEvent    = null;
+                        this.seerWatchTriggered  = false;
+                    })
+                    .listen('.day.started', () => {
+                        setTimeout(() => { window.location.href = `/game/${GAME_CODE}/day`; }, 1500);
+                    })
                     .listen('.game.finished', (data) => {
                         setTimeout(() => {
                             window.location.href = data.winner_team !== null
@@ -477,31 +511,35 @@ gsap.fromTo('.reveal',
                         }
                     });
 
-                window.Echo.channel(`game.${GAME_ID}`)
-                    .listen('.day.started', () => {
-                        setTimeout(() => {
-                            window.location.href = `/game/${GAME_CODE}/day`;
-                        }, 1500);
-                    });
-
                 if (this.isSeer) {
                     window.Echo.private(`game.${GAME_ID}.player.${MY_PLAYER_ID}`)
-                        .listen('.seer.turn.started', () => {
-                            this.seerTurnActive = true;
-                            this.$nextTick(() => this._animateSeerEntry());
+                        .listen('.seer.turn.started', (e) => {
+                            this.pendingSeerEvent = e;
                         })
                         .listen('.seer.result', (data) => {
                             this.seerResult = { pseudo: data.pseudo, role: data.role, isWerewolf: data.role === 'werewolf' };
-                            this.$nextTick(() => this._revealSeerResult(this.seerResult.isWerewolf));
+                            this.nightPhase = 'seer_result';
+                            this.$nextTick(() => {
+                                if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+                                gsap.fromTo('#seer-result-card',
+                                    { opacity: 0, scale: 0.9 },
+                                    { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(1.4)' }
+                                );
+                                const color = this.seerResult.isWerewolf ? '#8b0000' : '#16a34a';
+                                gsap.to('#seer-result-card', { boxShadow: `0 0 30px ${color}`, duration: 0.5 });
+                            });
                         });
                 }
 
                 if (this.isWerewolf) {
                     window.Echo.private(`game.${GAME_ID}.werewolves`)
                         .listen('.werewolves.turn.started', (data) => {
-                            this.werewolvesTurnActive = true;
-                            this.wolfEligibleTargets  = data.eligible_targets ?? [];
-                            this.$nextTick(() => this._animateWolfEntry());
+                            this.nightPhase          = 'werewolves_turn';
+                            this.wolfEligibleTargets = data.eligible_targets ?? [];
+                            this.$nextTick(() => {
+                                if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+                                gsap.to('#wolf-timer-bar', { width: '0%', duration: WOLVES_TIMER, ease: 'none' });
+                            });
                         })
                         .listen('.werewolves.vote.cast', (data) => { this.wolfVoteState = data.wolves ?? []; })
                         .listen('.werewolf.chat.message', (data) => {
@@ -513,13 +551,38 @@ gsap.fromTo('.reveal',
                         });
                 }
 
-                this._startNightTimer();
+                this.$watch('pendingSeerEvent', (value) => {
+                    if (value !== null && this.isSeer && !this.seerWatchTriggered) {
+                        this.seerWatchTriggered = true;
+                        setTimeout(() => this.handleSeerTurnReady(), 5000);
+                    }
+                });
+
                 this.$nextTick(() => {
                     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                         const moon = this.$refs.moon;
                         if (moon) gsap.from(moon, { y: 40, opacity: 0, duration: 2.5, ease: 'power2.out' });
                     }
                 });
+            },
+
+            handleSeerTurnReady() {
+                if (this.isSeer && this.pendingSeerEvent !== null) {
+                    this.nightPhase = 'seer_turn';
+                    this.$nextTick(() => {
+                        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+                        gsap.fromTo('.seer-player-row',
+                            { opacity: 0, x: 20 },
+                            { opacity: 1, x: 0, stagger: 0.1, duration: 0.4 }
+                        );
+                        gsap.to('#seer-timer-bar', { width: '0%', duration: SEER_TIMER, ease: 'none' });
+                        if (SEER_TIMER > 5) {
+                            setTimeout(() => {
+                                gsap.to('#seer-timer-bar', { backgroundColor: '#f97316', duration: 0.3 });
+                            }, (SEER_TIMER - 5) * 1000);
+                        }
+                    });
+                }
             },
 
             _startNightTimer() {
@@ -553,7 +616,7 @@ gsap.fromTo('.reveal',
             },
 
             async seerInspect() {
-                if (!this.seerSelectedTarget || this.seerSubmitting) return;
+                if (!this.seerSelectedTarget || this.seerSubmitting || this.seerActionDone) return;
                 this.seerSubmitting = true;
                 try {
                     await fetch(`/game/${GAME_ID}/seer/check`, {
@@ -561,18 +624,22 @@ gsap.fromTo('.reveal',
                         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
                         body: JSON.stringify({ target_player_id: this.seerSelectedTarget }),
                     });
+                    this.seerActionDone = true;
                 } catch { }
                 finally { this.seerSubmitting = false; }
             },
 
-            async wolfVote() {
-                if (!this.wolfSelectedTarget || this.wolfVoteSubmitting) return;
+            async wolfVote(targetId) {
+                if (this.wolfVoteSubmitting) return;
+                const id = targetId ?? this.wolfSelectedTarget;
+                if (!id) return;
                 this.wolfVoteSubmitting = true;
+                this.wolfSelectedTarget = id;
                 try {
                     await fetch(`/game/${GAME_ID}/vote/night`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
-                        body: JSON.stringify({ target_player_id: this.wolfSelectedTarget }),
+                        body: JSON.stringify({ target_player_id: id }),
                     });
                 } catch { }
                 finally { this.wolfVoteSubmitting = false; }

@@ -38,12 +38,13 @@ class ProcessSeerTurn implements ShouldQueue
             return;
         }
 
-        $timer = config('game.timers.seer', 30);
+        $timer = $game->timer('seer');
         $game->update(['phase_deadline' => now()->addSeconds($timer)]);
 
         broadcast(new SeerTurnStarted($game, $seer));
 
-        ProcessWerewolvesTurn::dispatch($this->gameId)
-            ->delay(now()->addSeconds($timer));
+        $werewolvesTimer = $game->timer('werewolves');
+        ProcessWerewolvesTurn::dispatch($game->id)
+            ->delay(now()->addSeconds($werewolvesTimer));
     }
 }

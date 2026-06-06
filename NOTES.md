@@ -47,6 +47,18 @@
 
 ---
 
+## Amélioration identifiée — délai voyante légèrement supérieur à 5s
+
+**Contexte :** night.blade.php, $watch pendingSeerEvent
+**Observation :** La voyante attend ~8s au lieu de 5s avant de voir son interface.
+**Cause :** délai 5s (setTimeout) + temps init Echo (~2-3s) s'additionnent.
+**Solution envisagée :** Broadcaster SeerTurnStarted avec delay(5s) côté serveur
+(ProcessSeerTurn dispatché avec 5s de délai depuis startNight()), supprimer
+le setTimeout client. Le $watch reste mais déclenche handleSeerTurnReady()
+immédiatement (setTimeout 0).
+**Priorité :** faible — fonctionnel, pas bloquant
+**Statut :** 📋 À faire v1.2
+
 ## Prochaine étape
 Tester la Couche 2 — fonctionnel :
 - [ ] Créer une partie → redirige vers /game/{code}/lobby

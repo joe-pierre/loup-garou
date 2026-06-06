@@ -28,9 +28,9 @@ export function gameState(gameId, userId) {
         nightVictim:          null,
 
         // ── Phases nuit ──────────────────────────────────────────────────────
-        seerTurnActive:       false,
-        werewolvesTurnActive: false,
-        seerResult:           null,
+        nightPhase:       'village_sleeping',
+        pendingSeerEvent: null,
+        seerResult:       null,
 
         // ── Chat ─────────────────────────────────────────────────────────────
         chat:       [],
@@ -84,8 +84,8 @@ export function gameState(gameId, userId) {
                 this.myRole               = d.my_role;
                 this.isAlive              = d.is_alive;
                 this.isMayor              = d.is_mayor;
-                this.seerTurnActive       = d.seer_turn_active;
-                this.werewolvesTurnActive = d.werewolves_turn_active;
+                if (d.seer_turn_active)            this.nightPhase = 'seer_turn';
+                else if (d.werewolves_turn_active) this.nightPhase = 'werewolves_turn';
                 this._allies              = d.allies ?? [];
             } catch {
                 // silencieux — état sera reconstruit via WebSocket
@@ -132,11 +132,11 @@ export function gameState(gameId, userId) {
                 echo.private(`game.${this.gameId}.player.${this.playerId}`)
                     .listen('.game.started',       e => this._handleRoleAssigned(e))
                     .listen('.seer.turn.started',  e => {
-                        this.seerTurnActive = true;
-                        this.$dispatch('seer-turn-started', e);
+                        this.pendingSeerEvent = e;
                     })
                     .listen('.seer.result',        e => {
                         this.seerResult = e;
+                        this.nightPhase = 'seer_result';
                         this.$dispatch('seer-result', e);
                     });
             }
@@ -145,7 +145,7 @@ export function gameState(gameId, userId) {
             if (this.isWerewolf) {
                 echo.private(`game.${this.gameId}.werewolves`)
                     .listen('.werewolves.turn.started', e => {
-                        this.werewolvesTurnActive = true;
+                        this.nightPhase = 'werewolves_turn';
                         this.$dispatch('werewolves-turn-started', e);
                     })
                     .listen('.werewolves.vote.cast', e => {
@@ -177,19 +177,29 @@ export function gameState(gameId, userId) {
             this.round             = e.round ?? this.round;
             this.votes             = {};
             this.wolvesVotes       = {};
-            this.seerTurnActive    = true;
+            this.nightPhase        = 'village_sleeping';
+            this.pendingSeerEvent  = null;
             this.nightVictim       = null;
+
+            setTimeout(() => this.handleSeerTurnReady(), 5000);
 
             if (this._motion) {
                 gsap.to(document.body, { backgroundColor: '#030712', duration: 1.5, ease: 'power2.inOut' });
             }
         },
 
+        handleSeerTurnReady() {
+            if (this.myRole === 'seer' && this.pendingSeerEvent !== null) {
+                this.nightPhase = 'seer_turn';
+                this.$dispatch('seer-turn-ready', this.pendingSeerEvent);
+            }
+        },
+
         handleDayStarted(e) {
-            this.phase             = 'day';
-            this.seerTurnActive    = false;
-            this.werewolvesTurnActive = false;
-            this.nightVictim       = e.killed ?? null;
+            this.phase            = 'day';
+            this.nightPhase       = 'village_sleeping';
+            this.pendingSeerEvent = null;
+            this.nightVictim      = e.killed ?? null;
 
             // Marquer mort le joueur tué la nuit
             if (e.killed?.player_id) {

@@ -16,6 +16,7 @@ use App\Events\Game\PlayerReconnected;
 use App\Jobs\CheckReconnectionTimeout;
 use App\Jobs\ProcessMayorElection;
 use App\Jobs\WaitForReadyPlayers;
+use App\Services\TimerCalculator;
 use App\Models\Exclusion;
 use App\Models\Game;
 use App\Models\GameAction;
@@ -120,7 +121,11 @@ class GameService
                 return;
             }
 
-            $locked->update(['status' => 'electing_mayor', 'started_at' => now()]);
+            $locked->update([
+                'status'      => 'electing_mayor',
+                'started_at'  => now(),
+                'timers'      => TimerCalculator::forPlayerCount($locked->max_players),
+            ]);
 
             // Distribuer les rôles et persister
             $players     = $locked->players()->get();

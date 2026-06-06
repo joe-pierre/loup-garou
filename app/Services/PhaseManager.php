@@ -15,7 +15,7 @@ class PhaseManager
     public function startDay(Game $game, ?GamePlayer $victim): void
     {
         $locked = null;
-        $timer = config('game.timers.day_vote', 90);
+        $timer = $game->timer('day_vote');
 
         DB::transaction(function () use ($game, &$locked, $timer) {
             $locked = Game::where('id', $game->id)
@@ -45,7 +45,7 @@ class PhaseManager
     public function startNight(Game $game): void
     {
         $locked = null;
-        $timer = config('game.timers.seer', 30);
+        $timer = $game->timer('seer');
 
         DB::transaction(function () use ($game, &$locked, $timer) {
             $locked = Game::where('id', $game->id)
