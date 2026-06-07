@@ -1,10 +1,11 @@
+# My custom .gitignore file for the Loup Garou project
 /_notes
+/.claude
 /.editorconfig
-/template_accueil.html
-/z_templates_05_06_2026
-/deploy.sh
-/build_local.sh
-/save_contexte.sh
+/z_templates
+/z_tools
+/.treeignore
+----------------------------------------
 
 /.phpunit.cache
 /node_modules
