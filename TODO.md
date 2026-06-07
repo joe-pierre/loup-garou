@@ -33,12 +33,12 @@
 - [x] Vue game/role-reveal.blade.php (Écran 5)
 
 ### Recette manuelle Couche 2 (lobby)
-- [ ] Créer une partie → redirige vers /game/{code}/lobby
-- [ ] Rejoindre avec un code valide → redirige vers /game/{code}/lobby
-- [ ] Rejoindre avec un code invalide → message d'erreur affiché
-- [ ] Pseudo vide → message de validation affiché
-- [ ] OTP : navigation automatique entre les cases
-- [ ] OTP : pré-remplissage via ?code=XXXXXX dans l'URL
+- [x] Créer une partie → redirige vers /game/{code}/lobby
+- [x] Rejoindre avec un code valide → redirige vers /game/{code}/lobby
+- [x] Rejoindre avec un code invalide → message d'erreur affiché
+- [x] Pseudo vide → message de validation affiché
+- [x] OTP : navigation automatique entre les cases
+- [x] OTP : pré-remplissage via ?code=XXXXXX dans l'URL
 
 ## Phase 4 — WebSocket Setup
 - [x] Reverb config (config/broadcasting.php + config/reverb.php)

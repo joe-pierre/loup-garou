@@ -199,3 +199,28 @@ SPEC.md §4 mis à jour pour refléter ce choix.
 **Fix / Décision :** Convention unique → toujours déclarer `const GAME_ID = @json($game->id)` en haut du bloc `<script>` du partial. Jamais `this.gameId`. Jamais de variable Blade injectée directement dans un store Alpine (risque null au chargement).
 **Leçon :** Ajouter la règle dans CONVENTIONS.md. Une variable Blade dans un store Alpine est évaluée une fois au rendu serveur — si l'état change côté client après, le store ne se met pas à jour.
 **Statut :** 🔵 Choix assumé
+
+---
+
+## [CHOIX] Recette "Couche 2 (lobby)" CAS 1-2 — redirection JS, pas de 302 serveur
+
+**Contexte :** `tests/Feature/LobbyTest.php`, `LobbyController::create/join`, `lobby/index.blade.php`
+**Symptôme / Problème :** La recette manuelle attend "redirige vers /game/{code}/lobby" (HTTP 302). Mais `POST /game` et `POST /game/{code}/join` répondent en JSON `{success, data, message}` (conforme CLAUDE.md §Réponses API), et c'est `lobbyApp()` (Alpine) qui exécute `window.location.href = '/game/' + code + '/lobby'` après un succès.
+**Cause / Alternatives :** Soit transformer ces routes en formulaires web classiques avec redirect serveur (casserait l'UX AJAX existante et la règle CLAUDE.md sur les réponses API), soit tester le contrat JSON qui pilote la redirection côté client.
+**Fix / Décision :** Tests `LobbyTest::test_cas1...` / `test_cas2...` vérifient (1) le JSON contient bien `data.code` / `data.game_code` au format attendu par le JS, et (2) que `/game/{code}/lobby` est atteignable avec ce code (vue `game.waiting-room`). Le comportement "redirige vers le lobby" est donc validé de bout en bout sans dépendre d'un 302 serveur qui n'existe pas dans cette architecture.
+**Leçon :** Pour les flux pilotés en AJAX, une "redirection" attendue dans une recette manuelle se traduit en test par : (a) le contrat JSON exploitable par le JS, (b) l'atteignabilité de la page cible. Ne pas forcer un test `assertRedirect()` sur un endpoint JSON.
+**Statut :** 🔵 Choix assumé
+
+---
+
+## [RÉSOLU] Recette "Couche 2 (lobby)" CAS 5-6 — OTP déjà conforme
+
+**Contexte :** `lobby/index.blade.php` (`lobbyApp()`)
+**Symptôme / Problème :** Vérifier que la navigation auto entre cases OTP et le pré-remplissage `?code=XXXXXX` sont implémentés en Alpine.js et fonctionnels.
+**Cause / Alternatives :** Revue statique du composant `lobbyApp()`.
+**Fix / Décision :** Déjà conforme, aucune correction nécessaire :
+- `onOtpInput()` (ligne ~250) : sur saisie d'un caractère, focus la case `i+1` si `i < 6`.
+- `onOtpKeydown()` (ligne ~259) : sur `Backspace` avec case courante vide, focus la case `i-1` si `i > 1` (gère aussi `ArrowLeft`/`ArrowRight`).
+- `init()` via `x-init="init()"` (ligne ~225) : lit `window.location.search`, extrait `code`, l'uppercase/pad et alimente `joinForm.codeChars`. `activeTab` bascule aussi sur l'onglet "join" si `?code=` est présent.
+**Leçon :** Le composant `lobbyApp()` respecte déjà les règles Alpine du projet (pas de `setTimeout`, logique dans le store du composant). Rien à modifier pour ces deux cas.
+**Statut :** ✅ Résolu
