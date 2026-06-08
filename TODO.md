@@ -117,4 +117,4 @@
 - [ ] ProcessMayorSuccession : flag `shouldStartNight` pour distinguer mort nuit vs mort jour
 
 ## BUGS CONNUS
-- [x] Phase nuit bloquée — broadcast dans DB::transaction → fixed (PhaseManager::startDay + startNight)
+→ Voir BUGS_AND_ROADMAP.md (source de vérité unique pour les bugs)

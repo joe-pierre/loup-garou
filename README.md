@@ -1,66 +1,177 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Loup-Garou Undu
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Jeu Loup-Garou multijoueur en temps réel. Crée une partie, invite tes amis et découvre ton rôle.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Stack technique
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+| Composant | Technologie |
+|---|---|
+| Backend | Laravel 11 (PHP 8.3+) |
+| WebSocket | Laravel Reverb |
+| Frontend | Blade + Alpine.js + GSAP |
+| CSS | Tailwind CSS |
+| Base de données | MySQL 8+ |
+| Auth | Google OAuth (Socialite) |
+| Queue (dev / prod) | database / Redis |
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Installation
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Prérequis
+- PHP 8.3+
+- Node.js 20+
+- MySQL 8+
+- Compte Google Cloud (OAuth)
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+### Étapes
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```bash
+# 1. Cloner et installer les dépendances
+git clone <repo>
+cd loup-garou-undu
+composer install
+npm install
 
-## Laravel Sponsors
+# 2. Configurer l'environnement
+cp .env.example .env
+php artisan key:generate
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+# 3. Configurer .env (voir section Variables d'environnement)
 
-### Premium Partners
+# 4. Migrer et seeder la base de données
+php artisan migrate:fresh --seed
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+# 5. Générer les clés VAPID (push notifications)
+php artisan webpush:vapid
+```
 
-## Contributing
+### Variables d'environnement requises
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```env
+DB_DATABASE=loup_garou
 
-## Code of Conduct
+BROADCAST_CONNECTION=reverb
+QUEUE_CONNECTION=database
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback
 
-## Security Vulnerabilities
+REVERB_APP_ID=loup-garou-local
+REVERB_APP_KEY=loup-garou-key-local
+REVERB_APP_SECRET=loup-garou-secret-local
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+```
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Démarrage local
+
+Lancer les 4 processus dans des terminaux séparés :
+
+```bash
+# Terminal 1 — Serveur Laravel
+php artisan serve
+
+# Terminal 2 — WebSocket Reverb
+php artisan reverb:start
+
+# Terminal 3 — Queue worker
+php artisan queue:work
+
+# Terminal 4 — Assets frontend
+npm run dev
+```
+
+L'application est accessible sur `http://localhost:8000`.
+
+---
+
+## Règles du jeu
+
+### Objectif
+- **Village** : éliminer tous les loups-garous
+- **Loups** : être en nombre égal ou supérieur aux villageois
+
+### Déroulement d'une partie
+1. **Salle d'attente** — 6 à 12 joueurs rejoignent via un code
+2. **Révélation des rôles** — chaque joueur découvre son rôle en privé
+3. **Élection du Maire** — vote collectif, le maire a un poids de 2 au vote jour
+4. **Nuit** — la Voyante inspecte un joueur, les Loups votent une victime
+5. **Jour** — débat collectif puis vote d'élimination
+6. Répéter nuit/jour jusqu'à la victoire d'un camp
+
+### Rôles (v1.1)
+| Rôle | Camp | Pouvoir |
+|---|---|---|
+| Villageois | Village | Aucun |
+| Loup-Garou | Loups | Vote la nuit pour éliminer |
+| Voyante | Village | Inspecte le rôle d'un joueur chaque nuit |
+| Maire | — | Élu en début de partie, vote compte double le jour |
+
+### Composition par défaut
+| Joueurs | Loups | Voyante | Villageois |
+|---|---|---|---|
+| 6 | 1 | 1 | 4 |
+| 8 | 2 | 1 | 5 |
+| 10 | 2 | 1 | 7 |
+| 12 | 3 | 1 | 8 |
+
+---
+
+## Architecture
+
+```
+app/
+├── Http/Controllers/Game/   ← valident la request, appellent les Services
+├── Services/                ← toute la logique métier
+│   ├── GameService.php
+│   ├── PhaseManager.php
+│   ├── VoteService.php
+│   ├── RoleDistributor.php
+│   ├── WinConditionChecker.php
+│   └── ChatService.php
+├── Jobs/                    ← gestion des timers uniquement
+├── Events/Game/             ← events WebSocket
+└── Models/                  ← User, Game, GamePlayer, GameAction, ChatMessage, Exclusion
+```
+
+**Règle stricte :** toute logique métier est dans `Services/`, jamais dans les Controllers.
+
+---
+
+## Tests
+
+```bash
+php artisan test
+```
+
+Couverture actuelle : Auth, Lobby (création, join, exclusion). Tests phases 5→9 en cours.
+
+---
+
+## Versioning
+
+| Version | Contenu |
+|---|---|
+| v1.1 *(en cours)* | Villageois, Loup-Garou, Voyante, Maire électif |
+| v1.2 *(prévu)* | Sorcière, Chasseur — timers et rôles configurables par le host |
+| v1.3+ *(futur)* | Loup Blanc, Cupidon, Petite Fille |
+
+---
+
+## Documentation développeur
+
+| Fichier | Rôle |
+|---|---|
+| `SPEC.md` | Spécification complète (modèle de données, règles métier, endpoints, WebSocket) |
+| `CONVENTIONS.md` | Règles de codage (nommage, format API, Alpine.js) |
+| `DECISIONS.md` | Journal des choix techniques et bugs complexes résolus |
+| `BUGS_AND_ROADMAP.md` | Bugs corrigés + améliorations futures |
+| `TODO.md` | Avancement des tâches |
+| `CLAUDE.md` | Contexte pour Claude Code (lu automatiquement à chaque session) |

@@ -1,21 +1,66 @@
 # Loup-Garou Undu — Contexte projet Claude Code (PHP 8.3+)
 
-## RÈGLES OUTPUT CLAUDE CODE
+## Prompt d'amorçage (automatique à chaque session)
 
-- Toujours préférer les diffs courts plutôt que les fichiers complets
-- Maximum 50 lignes par output affiché dans le terminal
-- Si le résultat dépasse 50 lignes, écrire dans /tmp/out.txt et afficher le chemin
-- Pour les fichiers longs, montrer uniquement les lignes concernées avec leur numéro
-- Ne jamais afficher les stack traces complètes — résumer en 3 lignes max
-- **Limiter chaque réponse à 50 lignes de code maximum par bloc. Décomposer en plusieurs étapes si nécessaire.**
+Lis ces fichiers dans l'ordre avant de faire quoi que ce soit :
+- `SPEC.md`
+- `CONVENTIONS.md`
+- `TODO.md`
+- `DECISIONS.md`
+- `CODE_SNAPSHOT.md` (index structurel pour économiser les tokens)
 
-## Stack
-- Laravel 11.* (PHP 8.3+) + MySQL 8+
-- Laravel Reverb (WebSocket) + Laravel Echo (client)
-- Blade + Tailwind CSS + Alpine.js + GSAP
-- Auth : Google OAuth (Socialite)
-- Queue : database (dev) / Redis (prod)
-- Push : laravel-notification-channels/webpush
+Dis-moi ce que tu as compris du projet en 5 points clés, puis attends mes instructions.
+
+À la FIN de chaque tâche, avant de dire "terminé" :
+1. Détermine si un ajout dans `DECISIONS.md` est justifié (bug non évident, choix technique, contournement)
+2. Si oui → écris l'entrée dans `DECISIONS.md` en respectant le format défini ci-dessous
+3. Si non → dis explicitement "Rien à ajouter dans DECISIONS.md"
+4. Mets à jour `TODO.md` : coche `[x]` les tâches terminées
+5. Ajoute tout bug simple ou idée d'amélioration dans `BUGS_AND_ROADMAP.md` (respecte le format)
+
+## Formats des fichiers Markdown modifiables par Claude Code
+
+### `TODO.md`
+Checklist Markdown standard. Marqueurs autorisés :
+- `- [ ]` à faire · `- [x]` terminé · `- [~]` en cours · `- [!]` bug connu
+Ne pas inventer d'autres marqueurs.
+
+### `DECISIONS.md`
+Chaque nouvelle entrée doit suivre exactement ce modèle :
+
+## [RÉSOLU | CHOIX] Titre court
+**Contexte :** (tâche, fichiers concernés)
+**Symptôme / Problème :** (ce qui s'est produit ou le dilemme)
+**Cause / Alternatives :** (pourquoi, options envisagées)
+**Fix / Décision :** (ce qui a été retenu)
+**Leçon :** (règle générale pour la suite)
+**Statut :** ✅ Résolu | 🔵 Choix assumé
+
+### `BUGS_AND_ROADMAP.md`
+Deux sections obligatoires. Toujours respecter exactement ce format :
+
+# BUGS CORRIGÉS
+
+### [x] YYYY-MM-DD — Titre court
+
+- **Symptôme :** ce qui s'est produit
+- **Cause :** pourquoi
+- **Fix :** ce qui a été appliqué
+
+# ROADMAP (idées / améliorations futures)
+- [ ] Description de l'idée ou de l'amélioration
+
+Règles :
+- Date au format `YYYY-MM-DD`
+- Un bloc par bug, séparé par une ligne vide
+- ROADMAP : une ligne par idée, pas de bloc narratif
+
+## Règles complémentaires
+
+- `CODE_SNAPSHOT.md` est généré par l'utilisateur (script externe). **Claude Code ne doit jamais le modifier.** Il le lit uniquement pour comprendre la structure du code.
+- Ne pas dupliquer les informations : un bug complexe avec analyse va dans `DECISIONS.md` ; un bug simple (typo, oubli d'import) va dans `BUGS_AND_ROADMAP.md` section "BUGS CORRIGÉS".
+- Toujours lire `CODE_SNAPSHOT.md` avant d'entamer une modification pour cibler uniquement les fichiers nécessaires (économie de tokens).
+- `WORKFLOW.md` est destiné au développeur uniquement. **Ne jamais le lire ni le modifier.**
 
 ## Commandes utiles
 ```bash
@@ -139,25 +184,7 @@ v1.1 par défaut : 6j→1L|4V, 8j→2L|5V, 10j→2L|7V, 12j→3L|8V (toujours 1 
 - v1.2 (anticiper) : Sorcière, Chasseur — timers + composition rôles configurables par le host (waiting-room)
 - v1.3+ (ne pas anticiper) : Loup Blanc, Cupidon, Petite Fille
 
-## DECISIONS.md — Mise à jour obligatoire
-
-Après chaque tâche terminée, ajouter une entrée dans `DECISIONS.md` uniquement si :
-- Un bug non évident a été rencontré et résolu
-- Un choix technique a été fait parmi plusieurs options
-- Un comportement inattendu de Laravel/Reverb/Alpine a été contourné
-- Une race condition a été identifiée et une stratégie choisie
-
-Format :
-## [RÉSOLU | CHOIX] Titre court
-**Contexte :** tâche concernée, fichier(s)
-**Symptôme / Problème :** ce qui s'est passé ou le dilemme
-**Cause / Alternatives :** pourquoi, options envisagées
-**Fix / Décision :** ce qui a été retenu
-**Leçon :** règle générale pour la suite
-**Statut :** ✅ Résolu | 🔵 Choix assumé
-
-Ne pas documenter les implémentations qui suivent directement taches.md ou la SPEC.
-
 ## État d'avancement
-→ Voir TODO.md (source de vérité unique)
+→ Voir TODO.md (source de vérité unique pour les tâches)
+→ Voir TASK_PROMPTS_REMAINING.md (prompts des tâches A→D restantes à exécuter)
 → Voir DECISIONS.md (bugs résolus + décisions techniques)
