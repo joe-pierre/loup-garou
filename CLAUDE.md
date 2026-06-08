@@ -57,10 +57,12 @@ Règles :
 
 ## Règles complémentaires
 
+- `WORKFLOW.md` est destiné au développeur uniquement. **Ne jamais le lire ni le modifier.**
+- Ne jamais travailler directement sur `dev` ou `main`. Chaque tâche démarre sur une branche dédiée (indiquée dans TASK_PROMPTS_REMAINING.md).
+- Ne jamais merger une branche — c'est la responsabilité du développeur.
 - `CODE_SNAPSHOT.md` est généré par l'utilisateur (script externe). **Claude Code ne doit jamais le modifier.** Il le lit uniquement pour comprendre la structure du code.
 - Ne pas dupliquer les informations : un bug complexe avec analyse va dans `DECISIONS.md` ; un bug simple (typo, oubli d'import) va dans `BUGS_AND_ROADMAP.md` section "BUGS CORRIGÉS".
 - Toujours lire `CODE_SNAPSHOT.md` avant d'entamer une modification pour cibler uniquement les fichiers nécessaires (économie de tokens).
-- `WORKFLOW.md` est destiné au développeur uniquement. **Ne jamais le lire ni le modifier.**
 
 ## Commandes utiles
 ```bash

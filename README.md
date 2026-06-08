@@ -86,6 +86,9 @@ php artisan queue:work
 
 # Terminal 4 — Assets frontend
 npm run dev
+
+# Ou utiliser le combo
+./z_tools/build_local.sh
 ```
 
 L'application est accessible sur `http://localhost:8000`.

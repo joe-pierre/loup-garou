@@ -8,6 +8,9 @@
 ## TÂCHE A — UI : Police de corps + cancelled.blade.php + spectator.blade.php
 
 ```
+AVANT DE COMMENCER :
+git checkout -b feature/tache-A-ui-vues
+
 Contexte : lis SPEC.md §10 (Design), CONVENTIONS.md §Partials Alpine, TODO.md Phase 10.
 
 Fais dans l'ordre :
@@ -39,7 +42,10 @@ CONTRAINTES :
 - Aucune variable Blade injectée dans un store Alpine local
 - Respecter §Partials Alpine de CONVENTIONS.md
 
-Quand c'est fait, liste les fichiers créés ou modifiés.
+Quand c'est fait :
+1. Liste les fichiers créés ou modifiés
+2. Fais un commit : `git add -A && git commit -m "feat(ui): police EB Garamond unifiée, cancelled et spectator blade"`
+3. Ne merge pas sur dev.
 ```
 
 ---
@@ -49,6 +55,9 @@ Quand c'est fait, liste les fichiers créés ou modifiés.
 > Regroupe les tâches 38 et 39 de TASK_PROMPTS.md + couverture manquante phases 5→9.
 
 ```
+AVANT DE COMMENCER :
+git checkout -b feature/tache-B-tests
+
 Contexte : lis SPEC.md §4 (votes, anonymat), §13 (race conditions), CONVENTIONS.md §Tests.
 Tâches phases 5→9 terminées. Lis CODE_SNAPSHOT.md pour identifier les services et controllers concernés.
 
@@ -90,7 +99,10 @@ Crée les fichiers suivants dans l'ordre :
 
 CONVENTIONS : factories, RefreshDatabase, pas de mocks sauf pour les broadcasts.
 
-Quand c'est fait, liste les fichiers créés et le nombre de tests par fichier.
+Quand c'est fait :
+1. Liste les fichiers créés et le nombre de tests par fichier
+2. Fais un commit : `git add -A && git commit -m "test: couverture phases 5→9 nuit, jour, chat, race conditions"`
+3. Ne merge pas sur dev.
 ```
 
 ---
@@ -98,6 +110,9 @@ Quand c'est fait, liste les fichiers créés et le nombre de tests par fichier.
 ## TÂCHE C — Responsive
 
 ```
+AVANT DE COMMENCER :
+git checkout -b feature/tache-C-responsive
+
 Contexte : lis SPEC.md §10 (Design, breakpoints), CONVENTIONS.md §CSS.
 Lis CODE_SNAPSHOT.md pour identifier toutes les vues Blade.
 
@@ -123,7 +138,10 @@ CONTRAINTES :
 - Ne pas modifier les controllers ni les services
 - Modifier uniquement les classes HTML dans les vues Blade
 
-Quand c'est fait, liste les vues modifiées.
+Quand c'est fait :
+1. Liste les vues modifiées
+2. Fais un commit : `git add -A && git commit -m "feat(ui): responsive mobile-first toutes les vues"`
+3. Ne merge pas sur dev.
 ```
 
 ---
@@ -133,6 +151,9 @@ Quand c'est fait, liste les vues modifiées.
 > Correspond à la Tâche 40 de TASK_PROMPTS.md — à exécuter en dernier.
 
 ```
+AVANT DE COMMENCER :
+git checkout -b feature/tache-D-audit-final
+
 Contexte : toutes les tâches précédentes terminées. Lis SPEC.md en entier une dernière fois.
 
 Vérifie et corrige dans l'ordre :
@@ -162,5 +183,8 @@ PRODUCTION :
 16. php artisan config:cache && route:cache && view:cache en production
 17. RoleDistributor extensible : ajouter un rôle fictif 'witch'=>1 dans config/game.php et vérifier que distribute() l'intègre sans modifier la logique core
 
-Génère un rapport final : liste les points OK et ceux nécessitant une correction.
+Quand c'est fait :
+1. Génère un rapport final : liste les points OK et ceux nécessitant une correction
+2. Fais un commit : `git add -A && git commit -m "audit: recette finale sécurité, accessibilité, production"`
+3. Ne merge pas sur dev.
 ```

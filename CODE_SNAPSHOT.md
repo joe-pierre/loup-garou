@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 12h38
+Generated at: 11h15
 
 ## PHP Analysis (Core Logic)
 
@@ -793,6 +793,16 @@ JoinGameTest.php
 ExampleTest.php
     functions:
       - test_the_application_returns_a_successful_response() → void
+
+// tests/Feature/LobbyTest.php
+LobbyTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_cas1_creer_une_partie_fournit_le_code_qui_mene_au_lobby() → void
+      - test_cas2_rejoindre_avec_code_valide_fournit_le_code_qui_mene_au_lobby() → void
+      - test_cas3_rejoindre_avec_code_invalide_renvoie_un_message_derreur_exploitable() → void
+      - test_cas4_pseudo_vide_renvoie_une_erreur_de_validation_exploitable() → void
 
 // tests/Unit/ExampleTest.php
 ExampleTest.php
