@@ -5,7 +5,7 @@
 @push('styles')
 <style>
     [x-cloak] { display: none !important; }
-    body { background: linear-gradient(160deg, #0d1426 0%, #1a1f35 100%); font-family: 'Crimson Text', serif; }
+    body { background: linear-gradient(160deg, #0d1426 0%, #1a1f35 100%); font-family: 'EB Garamond', serif; }
 
     .player-card {
         background-color: #111827;

@@ -1,3 +1,14 @@
+## [CHOIX] cancelled/spectator réécrites en @extends('layouts.game') + gameState — fichier renommé dead-spectator → spectator
+
+**Contexte :** Tâche A (UI) — `resources/views/game/cancelled.blade.php`, `resources/views/game/dead-spectator.blade.php`, `GameController::spectator()`, `routes/web.php`
+**Symptôme / Problème :** Les deux vues existaient déjà (créées tâche 22, avant la tâche 30 « store gameState central ») sous forme de documents HTML autonomes avec leur propre composant Alpine local (`spectatorScreen()` dupliquant `chat`/`wolvesChat`/`tab`). La route s'appelle `game.spectator` mais pointait vers la vue `game.dead-spectator` — incohérence de nommage. La tâche A demandait explicitement `@extends` du layout principal, le store `gameState` central et `$watch` sur `gameState.phase`, alors que les fichiers existants n'utilisaient ni l'un ni l'autre.
+**Cause / Alternatives :** (1) Garder les fichiers tels quels (mais ils ne respectent ni la consigne de la tâche A ni la règle CLAUDE.md « gameState = seul store source de vérité », et dupliquent une logique déjà gérée par `gameState` — `chat`, `wolvesChat`, `handlePlayerEliminated`, `handleMayorElected`, `handleGameFinished`). (2) Réécrire en `@extends('layouts.game')` (cohérent avec `finished.blade.php`, l'écran jumeau le plus récent) et brancher sur `x-data="gameState($game->id, auth()->id())"`, en renommant `dead-spectator.blade.php` → `spectator.blade.php` pour aligner nom de fichier et nom de route.
+**Fix / Décision :** Option 2 retenue. `cancelled.blade.php` réécrite en `@extends('layouts.game')` (style aligné sur `finished.blade.php`). `dead-spectator.blade.php` supprimée, remplacée par `spectator.blade.php` qui utilise `x-data="gameState(...)"` : la liste des joueurs est rendue côté Blade avec `data-player-id`/`data-badge="mayor"` (les handlers WS du store `gameState` — déjà conçus pour manipuler le DOM via ces attributs — gèrent les mises à jour temps réel sans dupliquer `players[]`), le chat général/loups est lié à `chat`/`wolvesChat` du store, et un badge de phase utilise `x-text` + `$watch('phase', …)` pour l'affichage réactif et l'animation GSAP, sans dupliquer `phase`/`round`. `GameController::spectator()` mis à jour pour pointer vers `game.spectator`.
+**Leçon :** Avant de réécrire une vue listée comme « à créer » dans TODO.md, vérifier qu'elle n'existe pas déjà sous un nom proche (`git log -- <pattern>` / recherche par route). Une vue créée avant l'introduction d'un store central doit être migrée vers celui-ci plutôt que de garder un store Alpine local qui duplique sa logique — surtout quand le store expose déjà des handlers DOM-driven (`[data-player-id]`, `[data-badge="mayor"]`) prêts à l'emploi.
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [RÉSOLU] Carte de rôle affichait Villageois pour tous — contenu statique Blade
 
 **Contexte :** `role-reveal.blade.php`, `GameService::joinGame()`

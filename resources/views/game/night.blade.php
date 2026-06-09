@@ -5,7 +5,7 @@
 @push('styles')
 <style>
     [x-cloak] { display: none !important; }
-    body { background-color: #030712; font-family: 'Crimson Text', serif; }
+    body { background-color: #030712; font-family: 'EB Garamond', serif; }
 
     .succession-modal {
         background-color: #111827;
@@ -124,7 +124,7 @@
                     Le village dort...
                 </h1>
                 <p class="reveal italic text-lg mb-10"
-                   style="color:#e8e0d0; font-family:'Crimson Text',serif;">
+                   style="color:#e8e0d0; font-family:'EB Garamond',serif;">
                     Les forces de la nuit sont à l'œuvre.
                 </p>
 
@@ -154,7 +154,7 @@
                      style="background:rgba(201,168,76,0.08);
                             border:1px solid rgba(201,168,76,0.2);
                             color:rgba(232,224,208,0.6);
-                            font-family:'Crimson Text',serif;">
+                            font-family:'EB Garamond',serif;">
                     🔇 Le village est silencieux cette nuit...
                 </div>
             </div>

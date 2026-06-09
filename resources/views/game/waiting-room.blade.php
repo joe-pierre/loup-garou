@@ -6,7 +6,7 @@
 <style>
     [x-cloak] { display: none !important; }
     #wr-header, #wr-progress, #wr-players { opacity: 0; }
-    body { background-color: #0a0f1e; font-family: 'Crimson Text', serif; }
+    body { background-color: #0a0f1e; font-family: 'EB Garamond', serif; }
 
     .star { position: absolute; background: #fff; border-radius: 50%; opacity: .7; animation: twinkle 4s infinite ease-in-out; }
     @keyframes twinkle { 0%,100%{opacity:.2;}50%{opacity:.9;} }
@@ -129,6 +129,17 @@
                 <div class="progress-bar-fill" id="progress-fill" style="width: 0%;"></div>
             </div>
             <p class="text-center mt-3 text-sm font-medieval" style="color: #c9a84c;" x-text="statusMessage"></p>
+        </div>
+
+        {{-- Bouton exclure (host uniquement) --}}
+        <div class="text-center mb-4" x-show="isHost && players.length > 1">
+            <button
+                class="text-xs px-4 py-2 rounded-lg transition-opacity hover:opacity-75"
+                style="background-color: rgba(139,0,0,0.2); border: 1px solid rgba(139,0,0,0.4); color: #fca5a5;"
+                @click="openExcludeModal()"
+            >
+                Exclure un joueur
+            </button>
         </div>
 
         {{-- Liste des joueurs --}}

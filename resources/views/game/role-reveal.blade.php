@@ -8,7 +8,7 @@
     #rr-title  { opacity: 0; }
     #rr-timer  { opacity: 0; }
     #card-wrap { perspective: 1200px; opacity: 0; }
-    body { background: radial-gradient(ellipse at 50% 20%, #1a0a2e 0%, #030712 75%); font-family: 'Crimson Text', serif; }
+    body { background: radial-gradient(ellipse at 50% 20%, #1a0a2e 0%, #030712 75%); font-family: 'EB Garamond', serif; }
 
     #role-card {
         width: 240px; height: 340px;
@@ -48,7 +48,7 @@
     }
     .role-icon { font-size: 4rem; line-height: 1; }
     .role-name { font-family: 'Cinzel', serif; font-size: 1.35rem; font-weight: 700; text-align: center; }
-    .role-desc { font-family: 'Crimson Text', serif; font-size: 0.85rem; text-align: center; opacity: 0.65; line-height: 1.4; }
+    .role-desc { font-family: 'EB Garamond', serif; font-size: 0.85rem; text-align: center; opacity: 0.65; line-height: 1.4; }
     .ally-chip {
         display: inline-flex; align-items: center; gap: 0.4rem;
         padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8rem;
@@ -110,7 +110,7 @@
         Votre rôle est scellé...
     </h1>
     <p class="reveal text-center italic mb-10"
-       style="color:rgba(232,224,208,0.7); font-family:'Crimson Text',serif;">
+       style="color:rgba(232,224,208,0.7); font-family:'EB Garamond',serif;">
         Cliquez sur la carte pour la révéler.
     </p>
 

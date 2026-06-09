@@ -7,7 +7,7 @@
         <h3 class="font-title text-xl mb-6" style="color:#c9a84c;">
             Quitter la partie en cours ?
         </h3>
-        <p class="mb-6 italic" style="color:rgba(232,224,208,0.7); font-family:'Crimson Text',serif;">
+        <p class="mb-6 italic" style="color:rgba(232,224,208,0.7); font-family:'EB Garamond',serif;">
             Ta progression sera perdue.
         </p>
         <div class="flex gap-4 justify-center">

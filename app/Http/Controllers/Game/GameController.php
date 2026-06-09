@@ -85,7 +85,7 @@ class GameController extends Controller
 
         $allPlayers = $game->players()->get();
 
-        return view('game.dead-spectator', compact('game', 'player', 'allPlayers'));
+        return view('game.spectator', compact('game', 'player', 'allPlayers'));
     }
 
     public function day(Request $request, string $code): View|RedirectResponse

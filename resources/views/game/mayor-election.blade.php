@@ -6,7 +6,7 @@
 <style>
     [x-cloak] { display: none !important; }
     #me-header, #me-timer, #me-candidates { opacity: 0; }
-    body { background-color: #0a0f1e; font-family: 'Crimson Text', serif; }
+    body { background-color: #0a0f1e; font-family: 'EB Garamond', serif; }
 
     .candidate-card {
         background-color: #111827;
@@ -111,7 +111,7 @@
                     {{ $candidate->pseudo }}
                 </p>
                 @if ($candidate->id === $player->id)
-                    <p class="text-xs mt-0.5" style="color: rgba(201,168,76,0.55); font-family: 'Crimson Text';">toi</p>
+                    <p class="text-xs mt-0.5" style="color: rgba(201,168,76,0.55); font-family: 'EB Garamond';">toi</p>
                 @endif
             </div>
 

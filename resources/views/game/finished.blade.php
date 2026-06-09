@@ -20,7 +20,7 @@ $roleClass = fn(?string $r) => match($r) {
 @push('styles')
 <style>
     body {
-        font-family: 'Crimson Text', serif;
+        font-family: 'EB Garamond', serif;
         background: radial-gradient(ellipse at 50% 20%, {{ $isVillage ? '#0a2e16' : '#2e0a0a' }} 0%, #030712 75%);
         color: #e8e0d0; min-height: 100vh;
     }
@@ -89,7 +89,7 @@ $roleClass = fn(?string $r) => match($r) {
             {{ $isVillage ? 'Le Village a gagné !' : 'Les Loups ont gagné !' }}
         </h1>
         <p class="text-lg italic"
-           style="color:rgba(232,224,208,0.7); font-family:'Crimson Text',serif;">
+           style="color:rgba(232,224,208,0.7); font-family:'EB Garamond',serif;">
             {{ $isVillage ? 'Tous les loups ont été démasqués.' : 'La meute règne sur le village.' }}
         </p>
         <p class="text-sm mt-3" style="color:rgba(232,224,208,0.4);">
