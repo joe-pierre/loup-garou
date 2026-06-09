@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 11h15
+Generated at: 15h40
 
 ## PHP Analysis (Core Logic)
 
@@ -588,7 +588,7 @@ GameController.php
       - mayorElection(Request $request, string $code) → return view('game.mayor-election', compact('game', 'player', 'players', 'myVote', 'currentVotes', 'phaseRemainingSeconds'))
       - finished(Request $request, string $code) → return view('game.finished', compact('game', 'player', 'players'))
       - cancelled(Request $request, string $code) → return view('game.cancelled', compact('game', 'player', 'allPlayers'))
-      - spectator(Request $request, string $code) → return view('game.dead-spectator', compact('game', 'player', 'allPlayers'))
+      - spectator(Request $request, string $code) → return view('game.spectator', compact('game', 'player', 'allPlayers'))
       - day(Request $request, string $code) → return view('game.day', compact('game', 'player', 'players', 'nightVictim'))
       - night(Request $request, string $code) → return view('game.night', compact('game', 'player', 'players'))
       - redirectToCurrentPhase(Game $game, string $code) → return match ($game->status) { 'day' => redirect()->route('game.day', ['code' => $code]), 'night' => redirect()->route('game.night', ['code' => $code]), 'electing_mayor' => redirect()->route('game.mayor-election', ['code' => $code]), 'finished' => $game->winner_team !== null ? redirect()->route('game.finished', ['code' => $code]) : redirect()->route('game.cancelled', ['code' => $code]), default => redirect()->route('game.role-reveal', ['code' => $code]), }

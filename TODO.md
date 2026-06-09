@@ -107,7 +107,7 @@
 ## Phase 11 — Tests
 - [x] Tests Feature Auth (GoogleAuthTest — 4 tests)
 - [x] Tests Feature Game/Lobby (CreateGameTest, JoinGameTest, ExcludePlayerTest — 20 tests)
-- [ ] Vérifier et écrire tests phases 5→9 (nuit, jour, chat, race conditions)
+- [x] Vérifier et écrire tests phases 5→9 (nuit, jour, chat, race conditions)
 
 ## Phase v1.2 — Améliorations différées
 - [ ] Délai voyante : réduire de ~8s à ~5s (broadcaster SeerTurnStarted avec delay(5s) côté serveur — $watch déjà en place, setTimeout client déjà supprimé en v1.1)
