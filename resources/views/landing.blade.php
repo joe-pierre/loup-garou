@@ -278,7 +278,7 @@
 
         @auth
         <a href="/lobby"
-           class="inline-block px-12 py-4 rounded-2xl font-medieval font-bold text-base mb-4
+           class="inline-block px-6 sm:px-12 py-4 rounded-2xl font-medieval font-bold text-base mb-4
                   transition-all duration-200 hover:scale-105 hover:shadow-gold-lg
                   focus:ring-2 focus:ring-gold focus:outline-none"
            style="background-color:#c9a84c; color:#0a0f1e;
@@ -287,7 +287,7 @@
         </a>
         @else
         <a href="/auth/google"
-           class="inline-flex items-center gap-3 px-12 py-4 rounded-2xl font-medieval font-bold text-base mb-4
+           class="inline-flex items-center gap-3 px-6 sm:px-12 py-4 rounded-2xl font-medieval font-bold text-base mb-4
                   transition-all duration-200 hover:scale-105 hover:shadow-gold-lg
                   focus:ring-2 focus:ring-gold focus:outline-none"
            style="background-color:#c9a84c; color:#0a0f1e;

@@ -100,7 +100,7 @@
 - [x] Intégration templates HTML → vues Blade @extends (waiting-room, role-reveal, mayor-election, night, day, finished)
 - [x] window.gameId/playerId dans layout
 - [x] Vérifier et aligner la police de corps (EB Garamond conservée — toutes les références à Crimson Text supprimées dans app.css, tailwind.config.js et les vues Blade ; SPEC.md §10 était déjà correct)
-- [ ] Responsive
+- [x] Responsive
 - [x] cancelled.blade.php — réécrite en @extends('layouts.game') (alignée sur finished.blade.php), affiche message d'annulation + CTA retour accueil
 - [x] spectator.blade.php — réécrite en @extends('layouts.game') + store gameState central (renommée depuis dead-spectator.blade.php), lecture seule, voit le chat village, chat loups si ex-loup
 

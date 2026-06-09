@@ -113,7 +113,7 @@
         </div>
 
         {{-- ══════════ ONGLETS ══════════ --}}
-        <div class="flex gap-2 mb-4">
+        <div class="flex flex-wrap gap-2 mb-4">
             <button class="tab-btn" :class="{ active: tab === 'players' }" @click="tab = 'players'">Joueurs</button>
             <button class="tab-btn" :class="{ active: tab === 'chat' }"    @click="tab = 'chat'">Chat 💬</button>
             @if($isWolf)

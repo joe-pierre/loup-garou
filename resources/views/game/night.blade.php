@@ -315,7 +315,7 @@
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0 translate-y-4"
          x-transition:enter-end="opacity-100 translate-y-0"
-         class="max-w-lg mx-auto mt-4">
+         class="max-w-lg mx-auto mt-4 px-4">
         <p class="font-medieval text-xs mb-2 tracking-widest" style="color:rgba(232,224,208,0.85);">CANAL LOUPS</p>
         <div class="rounded-xl overflow-hidden" style="border:1px solid rgba(139,0,0,0.3);background:#1a0505;">
             <div class="p-3 overflow-y-auto flex flex-col gap-2" style="height:150px;" x-ref="wolfChatMessages">

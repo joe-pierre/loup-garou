@@ -102,8 +102,8 @@
                 Salle d'attente
             </h1>
             <p class="text-sm mb-2" style="color: #e8e0d0; opacity: 0.5; letter-spacing: 0.1em;">CODE DE LA PARTIE</p>
-            <div class="flex items-center justify-center gap-4">
-                <span class="font-medieval text-4xl font-bold tracking-widest" style="color: #c9a84c; letter-spacing: 0.25em;">{{ $game->code }}</span>
+            <div class="flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
+                <span class="font-medieval text-3xl sm:text-4xl font-bold tracking-widest" style="color: #c9a84c; letter-spacing: 0.25em;">{{ $game->code }}</span>
                 <button
                     @click="copyLink()"
                     class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medieval font-semibold transition-all"

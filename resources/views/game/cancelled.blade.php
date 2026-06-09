@@ -78,7 +78,7 @@
     </div>
 
     {{-- ══════════ BOUTONS ══════════ --}}
-    <div class="entrance flex gap-3 justify-center" id="action-buttons">
+    <div class="entrance flex gap-3 justify-center flex-wrap" id="action-buttons">
         <a href="/lobby?pseudo={{ urlencode($player->pseudo) }}"
            class="px-6 py-3 rounded-xl font-medieval font-semibold text-sm transition-all hover:opacity-90"
            style="background-color:#c9a84c;color:#0a0f1e;">

@@ -101,16 +101,16 @@ $roleClass = fn(?string $r) => match($r) {
     </div>
 
     {{-- ══════════ RÉVÉLATION JOUEURS ══════════ --}}
-    <div class="entrance w-full max-w-2xl mx-auto mb-8">
+    <div class="entrance w-full max-w-2xl mx-auto mb-8 overflow-x-auto">
         <table class="w-full text-left rounded-xl overflow-hidden"
                style="border:1px solid rgba(201,168,76,0.2);">
             <thead>
                 <tr style="background-color:#0d1426;">
-                    <th class="font-title text-sm px-4 py-3"
+                    <th class="font-title text-sm px-2 sm:px-4 py-3"
                         style="color:#c9a84c;">Joueur</th>
-                    <th class="font-title text-sm px-4 py-3"
+                    <th class="font-title text-sm px-2 sm:px-4 py-3"
                         style="color:#c9a84c;">Rôle</th>
-                    <th class="font-title text-sm px-4 py-3 text-right"
+                    <th class="font-title text-sm px-2 sm:px-4 py-3 text-right"
                         style="color:#c9a84c;">Statut</th>
                 </tr>
             </thead>
@@ -134,17 +134,17 @@ $roleClass = fn(?string $r) => match($r) {
                         : 'background-color:#111827;';
                 @endphp
                 <tr style="{{ $rowBg }}border-top:1px solid rgba(201,168,76,0.1);">
-                    <td class="px-4 py-3 text-sm" style="color:#e8e0d0;">
+                    <td class="px-2 sm:px-4 py-3 text-sm" style="color:#e8e0d0;">
                         {{ $p->pseudo }}
                         @if($p->is_mayor)
                             <span class="ml-1 text-xs" style="color:#c9a84c;">👑</span>
                         @endif
                     </td>
-                    <td class="px-4 py-3 text-sm font-semibold"
+                    <td class="px-2 sm:px-4 py-3 text-sm font-semibold"
                         style="color:{{ $roleColor }};">
                         {{ $roleLabel2 }}
                     </td>
-                    <td class="px-4 py-3 text-sm text-right"
+                    <td class="px-2 sm:px-4 py-3 text-sm text-right"
                         style="color:{{ $p->is_alive ? '#4ade80' : '#ef4444' }};">
                         {{ $p->is_alive ? 'Vivant' : 'Mort 💀' }}
                     </td>

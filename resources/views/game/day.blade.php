@@ -226,7 +226,7 @@
     <div>
         <p class="font-medieval text-sm tracking-widest mb-2" style="color:#c9a84c;">💬 PLACE DU VILLAGE</p>
         <div class="rounded-xl overflow-hidden" style="border:1px solid rgba(201,168,76,0.12);background:#0d1117;">
-            <div class="p-3 overflow-y-auto flex flex-col gap-2" style="height:320px;" x-ref="chatMessages">
+            <div class="p-3 overflow-y-auto flex flex-col gap-2 h-48 sm:h-80" x-ref="chatMessages">
                 <template x-for="(msg, i) in chatMessages" :key="i">
                     <div class="chat-bubble text-xs flex flex-col"
                          :class="msg.pseudo === MY_PSEUDO ? 'chat-own ml-auto' : ''">

@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 15h40
+Generated at: 16h13
 
 ## PHP Analysis (Core Logic)
 
@@ -751,6 +751,15 @@ GoogleAuthTest.php
       - test_authentifie_le_joueur_après_callback() → void
       - test_exception_socialite_redirige_vers_login_avec_erreur() → void
 
+// tests/Feature/Game/ChatTest.php
+ChatTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_message_loup_broadcasté_sur_channel_werewolves_uniquement() → void
+      - test_villageois_ne_peut_pas_écrire_sur_channel_werewolves_retourne_403() → void
+      - test_message_après_mort_retourne_403() → void
+
 // tests/Feature/Game/ExcludePlayerTest.php
 ExcludePlayerTest.php
     attributes:
@@ -789,6 +798,38 @@ JoinGameTest.php
       - test_code_inexistant_retourne_404() → void
       - test_race_condition_deux_joueurs_remplissent_le_dernier_slot() → void
 
+// tests/Feature/Game/NightPhaseTest.php
+NightPhaseTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - makeNightGame() → return Game::factory()->create(['status' => 'night', 'max_players' => 6, 'round' => 1])
+      - test_voyante_ne_peut_pas_sinspecter_elle_meme_retourne_422() → void
+      - test_loup_ne_peut_pas_voter_pour_un_autre_loup_retourne_422() → void
+      - test_action_voyante_hors_phase_night_retourne_409() → void
+      - test_vote_nuit_hors_phase_night_retourne_409() → void
+
+// tests/Feature/Game/RaceConditionTest.php
+RaceConditionTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_join_race_max_6_joueurs_jamais_dépassé() → void
+      - test_start_game_race_double_appel_idempotent() → void
+      - test_mayor_vote_race_double_vote_même_joueur_retourne_409() → void
+      - test_day_vote_mayor_weight_2_même_si_maire_assigné_en_cours() → void
+
+// tests/Feature/Game/DayPhaseTest.php
+DayPhaseTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - makeDayGame() → return Game::factory()->create(['status' => 'day', 'max_players' => 6, 'round' => 1])
+      - test_un_joueur_ne_peut_pas_voter_pour_lui_meme_retourne_422() → void
+      - test_égalité_vote_jour_élimine_personne_et_broadcast_no_elimination() → void
+      - test_vote_maire_weight_2_correctement_compté() → void
+      - test_vote_hors_phase_day_retourne_409() → void
+
 // tests/Feature/ExampleTest.php
 ExampleTest.php
     functions:
@@ -803,6 +844,25 @@ LobbyTest.php
       - test_cas2_rejoindre_avec_code_valide_fournit_le_code_qui_mene_au_lobby() → void
       - test_cas3_rejoindre_avec_code_invalide_renvoie_un_message_derreur_exploitable() → void
       - test_cas4_pseudo_vide_renvoie_une_erreur_de_validation_exploitable() → void
+
+// tests/Unit/Models/GameActionTest.php
+GameActionTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_scope_anonymized_exclut_player_id_des_colonnes() → void
+      - test_scope_anonymized_retourne_toutes_les_lignes_sans_filtre() → void
+      - test_scope_anonymized_retourne_target_player_id_type_weight_round_phase() → void
+
+// tests/Unit/Events/EventPayloadTest.php
+EventPayloadTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_mayor_vote_cast_payload_ne_contient_pas_player_id() → void
+      - test_day_vote_cast_payload_ne_contient_pas_player_id() → void
+      - test_seer_result_broadcasté_sur_channel_privé_uniquement() → void
+      - test_werewolf_chat_message_broadcasté_sur_channel_werewolves_uniquement() → void
 
 // tests/Unit/ExampleTest.php
 ExampleTest.php
