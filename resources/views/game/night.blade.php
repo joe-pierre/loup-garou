@@ -207,7 +207,8 @@
             <button
                 @click="seerInspect()"
                 :disabled="!seerSelectedTarget || seerSubmitting || seerActionDone"
-                class="w-full py-3 rounded-xl font-medieval font-semibold text-sm disabled:opacity-50 transition-all"
+                aria-label="Inspecter le joueur sélectionné"
+                class="w-full py-3 rounded-xl font-medieval font-semibold text-sm disabled:opacity-50 transition-all focus:outline-none focus:ring-2 focus:ring-[#a78bfa]"
                 style="background:#a78bfa;color:#0a0f1e;"
             >
                 <span x-show="!seerSubmitting && !seerActionDone">🔍 Inspecter</span>
@@ -346,7 +347,8 @@
                 <button
                     @click="sendWolfChat()"
                     :disabled="!wolfChatInput.trim() || !isAlive || wolfChatSending"
-                    class="px-3 text-xs font-medieval disabled:opacity-30 transition-opacity"
+                    aria-label="Envoyer le message aux loups"
+                    class="px-3 text-xs font-medieval disabled:opacity-30 transition-opacity focus:outline-none focus:ring-2 focus:ring-[#8b0000]"
                     style="color:#8b0000;"
                 >✉</button>
             </div>
@@ -391,7 +393,8 @@
                 <button
                     @click="designateSuccessor()"
                     :disabled="!successionTarget || submitting"
-                    class="w-full py-3 rounded-xl font-medieval font-semibold text-sm disabled:opacity-40"
+                    aria-label="Désigner le successeur"
+                    class="w-full py-3 rounded-xl font-medieval font-semibold text-sm disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[#c9a84c]"
                     style="background-color:#c9a84c;color:#0a0f1e;"
                 >
                     <span x-show="!submitting">👑 Désigner</span>
@@ -430,10 +433,12 @@
 @include('partials.game.stars-init')
 
 <script>
-gsap.fromTo('.reveal',
-    { opacity: 0, y: 40 },
-    { opacity: 1, y: 0, duration: .9, ease: 'power3.out', stagger: .2, delay: 0.3 }
-);
+if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    gsap.fromTo('.reveal',
+        { opacity: 0, y: 40 },
+        { opacity: 1, y: 0, duration: .9, ease: 'power3.out', stagger: .2, delay: 0.3 }
+    );
+}
 </script>
 
 <script>

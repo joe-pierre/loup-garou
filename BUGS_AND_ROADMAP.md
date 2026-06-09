@@ -44,6 +44,14 @@
 
 ---
 
+### [x] 2026-06-09 — GSAP entry non protégé prefers-reduced-motion (night + day)
+
+- **Symptôme :** utilisateurs `prefers-reduced-motion` voyaient quand même les animations d'entrée GSAP
+- **Cause :** les appels `gsap.fromTo('.reveal', ...)` à l'init n'étaient pas wrappés dans un check JS matchMedia
+- **Fix :** ajout de `if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches)` dans night.blade.php (script global) et day.blade.php (init())
+
+---
+
 # ROADMAP (idées / améliorations futures)
 
 - [ ] Délai voyante : réduire de ~8s à ~5s — broadcaster `SeerTurnStarted` avec `delay(5s)` côté serveur, supprimer le `setTimeout` client (v1.2)

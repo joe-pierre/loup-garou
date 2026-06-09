@@ -214,7 +214,8 @@
             x-show="isAlive && !myVoteTarget"
             x-cloak
             :disabled="!dayVoteTarget || dayVoteSubmitting"
-            class="w-full py-3 rounded-xl font-medieval font-semibold text-sm disabled:opacity-40 transition-all"
+            aria-label="Voter pour éliminer le joueur sélectionné"
+            class="w-full py-3 rounded-xl font-medieval font-semibold text-sm disabled:opacity-40 transition-all focus:outline-none focus:ring-2 focus:ring-[#c9a84c]"
             style="background-color:#c9a84c;color:#0a0f1e;"
         >
             <span x-show="!dayVoteSubmitting">Voter</span>
@@ -226,7 +227,8 @@
     <div>
         <p class="font-medieval text-sm tracking-widest mb-2" style="color:#c9a84c;">💬 PLACE DU VILLAGE</p>
         <div class="rounded-xl overflow-hidden" style="border:1px solid rgba(201,168,76,0.12);background:#0d1117;">
-            <div class="p-3 overflow-y-auto flex flex-col gap-2 h-48 sm:h-80" x-ref="chatMessages">
+            <div class="p-3 overflow-y-auto flex flex-col gap-2 h-48 sm:h-80" x-ref="chatMessages"
+                 role="log" aria-label="Messages du village" aria-live="polite">
                 <template x-for="(msg, i) in chatMessages" :key="i">
                     <div class="chat-bubble text-xs flex flex-col"
                          :class="msg.pseudo === MY_PSEUDO ? 'chat-own ml-auto' : ''">
@@ -259,7 +261,8 @@
                     <button
                         @click="sendChat()"
                         :disabled="!chatInput.trim() || !isAlive || chatSending"
-                        class="px-3 text-xs font-medieval disabled:opacity-30 transition-opacity"
+                        aria-label="Envoyer le message"
+                        class="px-3 text-xs font-medieval disabled:opacity-30 transition-opacity focus:outline-none focus:ring-2 focus:ring-[#c9a84c]"
                         style="color:#c9a84c;"
                     >✉</button>
                 </div>
@@ -323,7 +326,8 @@
                 <button
                     @click="designateSuccessor()"
                     :disabled="!successionTarget || submitting"
-                    class="w-full py-3 rounded-xl font-medieval font-semibold text-sm disabled:opacity-40 transition-all"
+                    aria-label="Désigner le successeur maire"
+                    class="w-full py-3 rounded-xl font-medieval font-semibold text-sm disabled:opacity-40 transition-all focus:outline-none focus:ring-2 focus:ring-[#c9a84c]"
                     style="background-color:#c9a84c;color:#0a0f1e;"
                 >
                     <span x-show="!submitting">👑 Désigner</span>
@@ -413,10 +417,12 @@
             chatSending:  false,
 
             init() {
-                gsap.fromTo('.reveal',
-                    { opacity: 0, y: 40 },
-                    { opacity: 1, y: 0, duration: .7, ease: 'power3.out', stagger: .12, delay: 0.2 }
-                );
+                if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                    gsap.fromTo('.reveal',
+                        { opacity: 0, y: 40 },
+                        { opacity: 1, y: 0, duration: .7, ease: 'power3.out', stagger: .12, delay: 0.2 }
+                    );
+                }
                 window.Echo.channel(`game.${GAME_ID}`)
                     .listen('.mayor.succession.started', (data) => { this.openSuccessionModal(data); })
                     .listen('.mayor.succession.done', () => { this.closeSuccessionModal(); })

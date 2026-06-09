@@ -109,6 +109,12 @@
 - [x] Tests Feature Game/Lobby (CreateGameTest, JoinGameTest, ExcludePlayerTest — 20 tests)
 - [x] Vérifier et écrire tests phases 5→9 (nuit, jour, chat, race conditions)
 
+## Phase 12 — Audit final (Tâche D)
+- [x] Sécurité : channels, anti-spoofing, exposition rôles, middleware auth
+- [x] Accessibilité : prefers-reduced-motion GSAP, aria-labels, focus:ring, role="log"
+- [x] Fonctionnel : points documentés dans rapport (recette manuelle)
+- [x] Production : config queue, RoleDistributor extensibilité
+
 ## Phase v1.2 — Améliorations différées
 - [ ] Délai voyante : réduire de ~8s à ~5s (broadcaster SeerTurnStarted avec delay(5s) côté serveur — $watch déjà en place, setTimeout client déjà supprimé en v1.1)
 - [ ] Timers configurables par partie

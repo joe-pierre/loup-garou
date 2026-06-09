@@ -224,6 +224,17 @@ SPEC.md §4 mis à jour pour refléter ce choix.
 
 ---
 
+## [RÉSOLU] Audit final — GSAP entry animations non protégées prefers-reduced-motion
+
+**Contexte :** Tâche D — `resources/views/game/night.blade.php`, `resources/views/game/day.blade.php`
+**Symptôme / Problème :** Les appels GSAP `fromTo('.reveal', ...)` en début de script (night) et dans `init()` (day) n'étaient pas wrappés dans un check `window.matchMedia('(prefers-reduced-motion: reduce)')`. Le CSS `app.css` neutralise CSS transitions/animations mais pas les tweens GSAP qui passent par `requestAnimationFrame`.
+**Cause / Alternatives :** GSAP ignore les media queries CSS — il faut le check JS explicite.
+**Fix / Décision :** Ajout d'un `if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches)` autour des deux appels. Cohérent avec tous les autres appels GSAP des mêmes fichiers qui étaient déjà correctement protégés.
+**Leçon :** Les appels GSAP à l'init (hors handlers WebSocket) sont les plus susceptibles d'être oubliés. Vérifier systématiquement les `gsap.*` hors handlers lors d'un audit.
+**Statut :** ✅ Résolu
+
+---
+
 ## [RÉSOLU] Recette "Couche 2 (lobby)" CAS 5-6 — OTP déjà conforme
 
 **Contexte :** `lobby/index.blade.php` (`lobbyApp()`)
