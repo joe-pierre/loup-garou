@@ -328,9 +328,14 @@
     {{-- ═══════ MODALE SUCCESSION — lecture seule (automatique) ═══════ --}}
     <div
         x-show="successionOpen"
-        x-transition.opacity
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
         class="fixed inset-0 flex items-center justify-center z-50 px-4"
-        style="background-color: rgba(3,7,18,0.9);"
+        style="background-color: rgba(10,15,30,0.65); backdrop-filter: blur(4px);"
     >
         <div class="succession-modal w-full max-w-sm p-6" x-ref="successionModal">
             <div class="text-center">

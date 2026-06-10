@@ -35,7 +35,9 @@ class ProcessMayorSuccession implements ShouldQueue
 
         $phaseToStart = in_array($game->status, ['night', 'processing_night']) ? 'night' : 'day';
 
-        $shouldTransition = DB::transaction(function () use ($game) {
+        // La transaction retourne les données nécessaires au broadcast
+        // mais ne broadcaste pas — le broadcast doit être HORS transaction
+        $result = DB::transaction(function () use ($game) {
             $locked = Game::where('id', $game->id)
                 ->whereIn('status', ['night', 'processing_night', 'day'])
                 ->where('round', $this->round)
@@ -43,7 +45,7 @@ class ProcessMayorSuccession implements ShouldQueue
                 ->first();
 
             if (! $locked) {
-                return false;
+                return null;
             }
 
             $alreadyDone = GameAction::where('game_id', $locked->id)
@@ -53,7 +55,7 @@ class ProcessMayorSuccession implements ShouldQueue
                 ->exists();
 
             if ($alreadyDone) {
-                return false;
+                return null;
             }
 
             $deadMayor = $locked->players()->where('is_mayor', true)->first();
@@ -62,7 +64,7 @@ class ProcessMayorSuccession implements ShouldQueue
             $successor = $locked->alivePlayers()->inRandomOrder()->first();
 
             if (! $successor) {
-                return false;
+                return null;
             }
 
             $successor->update(['is_mayor' => true]);
@@ -76,14 +78,16 @@ class ProcessMayorSuccession implements ShouldQueue
                 'phase'            => $locked->status,
             ]);
 
-            broadcast(new MayorSuccessionDone($locked, $successor, true));
-
-            return true;
+            // NE PAS broadcaster ici — la transaction n'est pas encore committée
+            return ['game' => $locked, 'successor' => $successor];
         });
 
-        if (! $shouldTransition) {
+        if (! $result) {
             return;
         }
+
+        // Broadcast APRÈS commit de la transaction
+        broadcast(new MayorSuccessionDone($result['game'], $result['successor'], true));
 
         $game->refresh();
 
