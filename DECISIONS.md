@@ -246,3 +246,91 @@ SPEC.md §4 mis à jour pour refléter ce choix.
 - `init()` via `x-init="init()"` (ligne ~225) : lit `window.location.search`, extrait `code`, l'uppercase/pad et alimente `joinForm.codeChars`. `activeTab` bascule aussi sur l'onglet "join" si `?code=` est présent.
 **Leçon :** Le composant `lobbyApp()` respecte déjà les règles Alpine du projet (pas de `setTimeout`, logique dans le store du composant). Rien à modifier pour ces deux cas.
 **Statut :** ✅ Résolu
+
+---
+
+## [RÉSOLU] Bouton "Tuer" inactif — castNightVote rejetait wolves_turn
+
+**Contexte :** `VoteService::castNightVote()`, `ProcessWerewolvesTurn`
+**Symptôme :** Les loups sélectionnaient une cible mais le bouton "Tuer" restait disabled. Le POST `/vote/night` retournait 409.
+**Cause :** `ProcessWerewolvesTurn` passe le status à `wolves_turn` avant de broadcaster `WerewolvesTurnStarted`. `castNightVote` vérifiait `$game->status !== 'night'` → 409 car status est `wolves_turn`. Le JS ne recevant pas `json.success = true`, `wolfVoteLocked` restait `false` et le bouton restait disabled.
+**Fix :** Remplacer le guard par `! in_array($game->status, ['night', 'wolves_turn'])`.
+**Leçon :** Toute action métier liée à une phase doit accepter tous les statuts intermédiaires légitimes de cette phase, pas seulement le statut "initial". Documenter les statuts intermédiaires dans `config/game.php` ou dans un commentaire.
+**Statut :** ✅ Résolu
+
+---
+
+## [RÉSOLU] SeerTurnStarted manqué — ProcessSeerTurn dispatché sans délai
+
+**Contexte :** `PhaseManager::startNight()`, `ProcessSeerTurn`, `night.blade.php`
+**Symptôme :** Voyante et loups ne voyaient jamais leur écran. Après un vote jour, les joueurs étaient redirigés vers `/night` mais aucun tour ne démarrait. `ProcessSeerTurn` tournait immédiatement et broadcastait `SeerTurnStarted` sur le canal privé avant que les clients soient abonnés.
+**Cause :** `startNight()` dispatchait `ProcessSeerTurn::dispatch($id)` sans délai. Le job s'exécutait en quelques dizaines de ms, soit avant que les clients aient eu le temps de : (1) recevoir `NightStarted`, (2) exécuter la redirection GSAP (1.5s d'animation), (3) charger `/night`, (4) initialiser Echo et s'abonner au canal privé `game.{id}.player.{playerId}`.
+**Fix :** `ProcessSeerTurn::dispatch($id)->delay(now()->addSeconds(config('game.timers.night_start_delay', 4)))`. Ajout de `night_start_delay = 4` dans `config/game.php`.
+**Leçon :** Tout broadcast sur un canal privé qui suit immédiatement une redirection de page doit être retardé d'au moins la durée de l'animation de transition + le temps de chargement de la page. 4 secondes couvrent l'animation GSAP (1.5s) + chargement page + init Echo.
+**Statut :** ✅ Résolu
+
+---
+
+## [RÉSOLU] scope Alpine parent polluait nightScreen/dayScreen — confirmQuit not defined
+
+**Contexte :** `resources/views/layouts/game.blade.php`, `night.blade.php`, `day.blade.php`
+**Symptôme :** `Alpine Expression Error: confirmQuit is not defined` sur `/night`. Bouton "Quitter" non fonctionnel. Erreur console ligne ~936 du bundle compilé.
+**Cause :** Le layout `game.blade.php` avait `x-data="gameState(...)"` sur le `<main>` qui englobe tout le contenu des vues. Alpine fusionne les scopes imbriqués : expressions dans `nightScreen()` (scope enfant) remontaient vers `gameState` (scope parent) quand une propriété n'était pas trouvée. `gameState` ne définit pas `confirmQuit` → erreur. Effet secondaire : double abonnement Echo possible car `gameState` et les stores locaux souscrivaient tous les deux au même canal.
+**Fix :** Déplacer `x-data="gameState(...)"` sur un `div` fantôme invisible (`visibility:hidden; position:absolute; width:0; height:0`) hors du `<main>`. Alpine initialise le composant normalement mais son scope n'englobe plus les vues enfants. `display:none` aurait empêché Alpine d'initialiser le composant.
+**Leçon :** Ne jamais monter un store Alpine global sur un élément parent d'autres `x-data`. Utiliser un élément dédié hors du flux principal, ou passer par `Alpine.store()` (accès via `$store.name`).
+**Statut :** ✅ Résolu
+
+---
+
+## [RÉSOLU] Double abonnement Echo — modale succession fantôme
+
+**Contexte :** `game-state.js`, `night.blade.php`, `day.blade.php`
+**Symptôme :** La modale "Succession du Maire" s'affichait parfois quand le maire était encore en vie. `i-was-eliminated` ne déclenchait pas `showDeathBanner`. Events WebSocket traités deux fois.
+**Cause :** `game-state.js` s'abonnait à `echo.channel(game.X)` ET les vues locales (`night.blade.php`, `day.blade.php`) s'abonnaient au même canal via `window.Echo.channel(...)`. Même chose pour les canaux privés (voyante, loups). Chaque event se déclenchait deux fois → modale s'ouvrait, se fermait sur `done`, puis se ré-ouvrait sur le deuxième trigger. Deuxième bug : `game-state.js` utilisait `this.$dispatch('i-was-eliminated')` qui dispatch sur `this.$el` et bulle dans le DOM Alpine — les `window.addEventListener('i-was-eliminated')` dans les vues ne le recevaient jamais.
+**Fix :** (1) Tous les events cross-composants passent par `window.dispatchEvent(new CustomEvent(...))` dans `game-state.js`. (2) Les vues suppriment leurs abonnements Echo directs pour tous les events gérés par `game-state.js` et écoutent uniquement via `window.addEventListener`. (3) `day.blade.php` garde un seul `Echo.channel` pour `.day.vote.cast` et `.chat.message.sent` (non propagés par `game-state.js`).
+**Leçon :** `$dispatch()` d'Alpine dispatch sur `this.$el` (bulle dans le DOM Alpine uniquement). `window.dispatchEvent()` dispatch sur `window` (accessible partout, y compris dans les stores non-Alpine). Pour des events cross-composants sans relation parent-enfant Alpine directe, toujours utiliser `window.dispatchEvent`. Un seul abonnement Echo par canal et par event — jamais deux composants sur le même canal pour le même event.
+**Statut :** ✅ Résolu
+
+---
+
+## [RÉSOLU] GameController::night() 404 sur wolves_turn et processing_night
+
+**Contexte :** `GameController::night()`, `redirectToCurrentPhase()`
+**Symptôme :** Joueurs redirigés vers `/role-reveal` en plein tour des loups ou lors d'un refresh de `/night`. Parfois 404 directe.
+**Cause :** `night()` vérifiait `$game->status !== 'night'` → renvoyait vers `redirectToCurrentPhase()`. Cette méthode utilisait `match($game->status)` sans cas pour `wolves_turn` et `processing_night` → `default` → `game.role-reveal`. Idem dans `state()` : `$isNight = $game->status === 'night'` → `seerTurnActive` et `werewolvesTurnActive` retournaient `false` pendant `wolves_turn`.
+**Fix :** `night()` accepte `['night', 'wolves_turn', 'processing_night']`. `redirectToCurrentPhase()` migré vers `match(true)` avec conditions explicites pour couvrir les statuts intermédiaires. `state()` corrigé : `$isNight = in_array($game->status, ['night', 'wolves_turn', 'processing_night'])`, `seerTurnActive` conditionné à `$game->status === 'night'` uniquement.
+**Leçon :** Tout guard de phase doit accepter tous les statuts intermédiaires légitimes (définis dans `CLAUDE.md` §Statuts intermédiaires). Toujours lister explicitement les cas dans `redirectToCurrentPhase` — le `default` ne doit être qu'un vrai fallback, pas un attrape-tout pour des statuts légitimes non listés.
+**Statut :** ✅ Résolu
+
+---
+
+## [RÉSOLU] DayStarted payload manquait player_id — _markPlayerDead silencieusement ignoré
+
+**Contexte :** `DayStarted::broadcastWith()`, `game-state.js::handleDayStarted()`
+**Symptôme :** Joueur tué la nuit restait marqué "vivant" côté client au début de la phase jour.
+**Cause :** `DayStarted::broadcastWith()` envoyait `killed: { pseudo, role }` sans `player_id`. `handleDayStarted` appelait `_markPlayerDead(e.killed.player_id)` → `undefined` → aucun joueur marqué mort.
+**Fix :** Ajouter `player_id` dans le payload `killed` de `DayStarted`.
+**Leçon :** Toute référence à un joueur dans un payload WebSocket doit inclure son `id` (pas seulement son `pseudo`). Le `pseudo` peut changer, n'est pas indexable côté client, et ne permet pas de retrouver le joueur dans `players[]`.
+**Statut :** ✅ Résolu
+
+---
+
+## [RÉSOLU] Accumulation CheckReconnectionTimeout — handleDisconnection sans guard
+
+**Contexte :** `GameService::handleDisconnection()`, `CheckReconnectionTimeout`
+**Symptôme :** Des dizaines de jobs `CheckReconnectionTimeout` s'accumulaient en queue à chaque session. Le cache de déconnexion était écrasé à chaque appel, invalidant le token du job précédent qui restait orphelin en queue.
+**Cause :** Reverb déclenche plusieurs événements de déconnexion WebSocket pour un même client (ping timeout, fermeture socket, etc.). Chaque appel à `handleDisconnection` créait un nouveau token UUID et un nouveau job, sans vérifier si un job était déjà en attente.
+**Fix :** Guard `Cache::has($cacheKey)` en début de `handleDisconnection` — retour immédiat si un token actif existe déjà pour ce joueur.
+**Leçon :** Toute action déclenchée par un événement réseau pouvant se produire plusieurs fois (déconnexion WebSocket, heartbeat, retry) doit être idempotente avec un guard d'entrée. Le cache est le mécanisme approprié pour ce type de guard éphémère.
+**Statut :** ✅ Résolu
+
+---
+
+## [RÉSOLU] Barre de timer jour affichée pleine quand temps = 0
+
+**Contexte :** `day.blade.php`, `_startDayTimer()`
+**Symptôme :** La barre de progression du timer restait partiellement ou totalement remplie alors que le compteur affichait 0s.
+**Cause :** La barre HTML avait `width:100%` en dur. Si `PHASE_SECONDS = 0` (joueur arrivant après expiration), `_startDayTimer` retournait sans toucher la barre → elle restait à 100%. En cas normal, la barre partait toujours de 100% sans tenir compte du temps déjà écoulé depuis le chargement de la page.
+**Fix :** La barre démarre à `width:0%` dans le HTML. `_startDayTimer` calcule `initialPct = (PHASE_SECONDS / totalSeconds) * 100` et set la largeur initiale correcte. Si `PHASE_SECONDS <= 0`, barre forcée à 0% immédiatement.
+**Leçon :** Les barres de progression liées à un état serveur ne doivent jamais avoir une valeur initiale hardcodée en HTML. La valeur initiale doit être calculée depuis l'état réel (`phaseRemainingSeconds / totalSeconds`). Cela couvre aussi les joueurs qui arrivent en retard (refresh, reconnexion).
+**Statut :** ✅ Résolu

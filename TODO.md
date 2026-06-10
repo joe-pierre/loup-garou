@@ -115,6 +115,18 @@
 - [x] Fonctionnel : points documentés dans rapport (recette manuelle)
 - [x] Production : config queue, RoleDistributor extensibilité
 
+## Phase 13 — Bugfixes post-audit (2026-06-10)
+- [x] Bouton "Tuer" inactif — castNightVote accepte wolves_turn
+- [x] Tour voyante/loups jamais affiché — night_start_delay 4s dans PhaseManager
+- [x] confirmQuit not defined — gameState déplacé sur div fantôme hors <main>
+- [x] Modale succession fantôme + events doublés — suppression double abonnement Echo, window.dispatchEvent partout
+- [x] 404 sur /night — GameController accepte wolves_turn/processing_night
+- [x] state() isNight corrigé pour wolves_turn/processing_night
+- [x] DayStarted payload manquait player_id
+- [x] Accumulation CheckReconnectionTimeout — guard Cache::has()
+- [x] Barre timer jour pleine à 0s — initialPct calculé depuis PHASE_SECONDS
+- [x] Résolution anticipée nuit/jour quand tous ont voté (VoteService)
+
 ## Phase v1.2 — Améliorations différées
 - [ ] Délai voyante : réduire de ~8s à ~5s (broadcaster SeerTurnStarted avec delay(5s) côté serveur — $watch déjà en place, setTimeout client déjà supprimé en v1.1)
 - [ ] Timers configurables par partie

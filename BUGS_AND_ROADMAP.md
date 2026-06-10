@@ -44,6 +44,62 @@
 
 ---
 
+### [x] 2026-06-10 — Bouton "Tuer" inactif côté loups
+
+- **Symptôme :** sélection d'une cible possible mais bouton "Tuer" restait disabled, POST /vote/night retournait 409
+- **Cause :** `VoteService::castNightVote` vérifiait `status !== 'night'` mais `ProcessWerewolvesTurn` passe le status à `wolves_turn` avant de broadcaster
+- **Fix :** accepter `['night', 'wolves_turn']` dans le guard de `castNightVote`
+
+---
+
+### [x] 2026-06-10 — Tour voyante/loups jamais affiché après vote jour
+
+- **Symptôme :** après un vote jour, joueurs redirigés vers /night mais aucun tour voyante ni loups ne démarrait
+- **Cause :** `PhaseManager::startNight()` dispatchait `ProcessSeerTurn` sans délai — le job broadcastait `SeerTurnStarted` avant que les clients soient abonnés au canal privé
+- **Fix :** `->delay(now()->addSeconds(config('game.timers.night_start_delay', 4)))` + ajout de `night_start_delay = 4` dans `config/game.php`
+
+---
+
+### [x] 2026-06-10 — confirmQuit not defined / erreur Alpine sur /night
+
+- **Symptôme :** `Alpine Expression Error: confirmQuit is not defined` sur la page nuit, bouton Quitter non fonctionnel
+- **Cause :** `x-data="gameState(...)"` sur le `<main>` du layout englobait les vues enfants — Alpine remontait dans le scope parent qui ne définit pas `confirmQuit`
+- **Fix :** déplacer `gameState` sur un div fantôme invisible hors du `<main>`
+
+---
+
+### [x] 2026-06-10 — Modale succession affichée sans mort du maire / events doublés
+
+- **Symptôme :** modale "Succession du Maire" s'ouvrait parfois quand le maire était vivant, events WebSocket traités deux fois
+- **Cause :** double abonnement Echo sur le même canal dans `game-state.js` et dans les vues locales ; `$dispatch()` Alpine ne reach pas `window.addEventListener`
+- **Fix :** supprimer tous les abonnements Echo locaux dans les vues, tout passer par `window.dispatchEvent` dans `game-state.js`
+
+---
+
+### [x] 2026-06-10 — 404 sur /night lors du tour des loups ou d'un refresh
+
+- **Symptôme :** joueurs redirigés vers /role-reveal ou 404 en rafraîchissant /night pendant `wolves_turn` ou `processing_night`
+- **Cause :** `GameController::night()` n'acceptait que `status = 'night'`, `redirectToCurrentPhase` tombait dans `default` pour les statuts intermédiaires
+- **Fix :** `night()` accepte `['night', 'wolves_turn', 'processing_night']`, `redirectToCurrentPhase` migré vers `match(true)` avec cas explicites
+
+---
+
+### [x] 2026-06-10 — Accumulation de CheckReconnectionTimeout jobs
+
+- **Symptôme :** dizaines de jobs `CheckReconnectionTimeout` en queue, un par événement de déconnexion WebSocket
+- **Cause :** `handleDisconnection` sans guard — Reverb peut émettre plusieurs événements de déconnexion pour un même client
+- **Fix :** guard `Cache::has($cacheKey)` en entrée de `handleDisconnection`
+
+---
+
+### [x] 2026-06-10 — Barre timer jour pleine quand temps = 0
+
+- **Symptôme :** barre de progression restait remplie alors que le compteur affichait 0s
+- **Cause :** `width:100%` hardcodé en HTML, `_startDayTimer` retournait sans toucher la barre si `PHASE_SECONDS = 0`
+- **Fix :** barre initialisée à `width:0%`, largeur calculée depuis `PHASE_SECONDS / totalSeconds` au démarrage
+
+---
+
 ### [x] 2026-06-09 — GSAP entry non protégé prefers-reduced-motion (night + day)
 
 - **Symptôme :** utilisateurs `prefers-reduced-motion` voyaient quand même les animations d'entrée GSAP
