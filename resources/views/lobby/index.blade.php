@@ -248,10 +248,30 @@
                 // ── OTP helpers ──
 
                 onOtpInput(event, index) {
-                    const val = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                    this.joinForm.codeChars[index - 1] = val.slice(-1);
+                    const raw = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+                    // Mobile : le navigateur peut coller plusieurs caractères dans un seul input
+                    // (quand le clavier système intercepte le paste avant l'event paste du DOM)
+                    if (raw.length > 1) {
+                        const chars = [...raw.padEnd(6, '').slice(0, 6)];
+                        // Remplir depuis la case courante
+                        for (let i = 0; i < chars.length; i++) {
+                            this.joinForm.codeChars[index - 1 + i] = chars[i] || '';
+                        }
+                        this.$nextTick(() => {
+                            for (let i = 1; i <= 6; i++) {
+                                const el = document.getElementById('otp-' + i);
+                                if (el) el.value = this.joinForm.codeChars[i - 1] || '';
+                            }
+                            const focusIdx = Math.min(index - 1 + raw.length, 6);
+                            document.getElementById('otp-' + focusIdx)?.focus();
+                        });
+                        return;
+                    }
+
+                    this.joinForm.codeChars[index - 1] = raw.slice(-1);
                     event.target.value = this.joinForm.codeChars[index - 1];
-                    if (val && index < 6) {
+                    if (raw && index < 6) {
                         document.getElementById('otp-' + (index + 1))?.focus();
                     }
                 },
@@ -274,10 +294,21 @@
                         .toUpperCase()
                         .replace(/[^A-Z0-9]/g, '')
                         .slice(0, 6);
-                    this.joinForm.codeChars = [...text.padEnd(6, '')];
-                    // Focus dernière case remplie
-                    const nextIdx = Math.min(text.length + 1, 6);
-                    this.$nextTick(() => document.getElementById('otp-' + nextIdx)?.focus());
+
+                    const chars = [...text.padEnd(6, '')];
+                    this.joinForm.codeChars = chars;
+
+                    // Sur mobile, x-model ne synchronise pas les inputs DOM après un paste
+                    // système — on force la valeur de chaque input directement.
+                    this.$nextTick(() => {
+                        for (let i = 1; i <= 6; i++) {
+                            const el = document.getElementById('otp-' + i);
+                            if (el) el.value = chars[i - 1] || '';
+                        }
+                        // Focus sur la dernière case remplie (ou la 6ème)
+                        const focusIdx = Math.min(text.length, 6);
+                        document.getElementById('otp-' + (focusIdx || 1))?.focus();
+                    });
                 },
 
                 // ── Soumissions ──
