@@ -392,7 +392,7 @@
   <footer class="py-8 text-center" style="background-color: #060b17; border-top: 1px solid rgba(201,168,76,0.2)">
     <div class="text-3xl mb-3">🐺</div>
     <p class="text-sm" style="color: rgba(232,224,208,0.5)">
-      Loup-Garou Undu © 2025
+      Loup-Garou Undu © <script>document.write(new Date().getFullYear())</script> <br> Made with ❤️ by JoPi aka Plynthiou. <br> All rights reserved.
     </p>
   </footer>
 
