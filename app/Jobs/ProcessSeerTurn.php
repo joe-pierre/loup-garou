@@ -24,27 +24,28 @@ class ProcessSeerTurn implements ShouldQueue
             return;
         }
 
-        $seer = $game->players()->where('role', 'seer')->first();
+        $seer = $game->players()->where('role', 'seer')->where('is_alive', true)->first();
 
-        // Voyante morte ou absente → skip immédiat vers les loups
-        if (! $seer || ! $seer->is_alive) {
+        // Voyante morte/absente/inactive → loups immédiatement
+        if (! $seer || $seer->is_inactive) {
             ProcessWerewolvesTurn::dispatch($this->gameId);
             return;
         }
 
-        // Voyante inactive → skip immédiat sans consommer le timer de 30s
-        if ($seer->is_inactive) {
-            ProcessWerewolvesTurn::dispatch($this->gameId);
-            return;
-        }
+        $seerTimer = $game->timer('seer');
+        $halfTimer = (int) ceil($seerTimer / 2);
 
-        $timer = $game->timer('seer');
-        $game->update(['phase_deadline' => now()->addSeconds($timer)]);
+        $game->update(['phase_deadline' => now()->addSeconds($seerTimer)]);
 
         broadcast(new SeerTurnStarted($game, $seer));
 
-        $werewolvesTimer = $game->timer('werewolves');
-        ProcessWerewolvesTurn::dispatch($game->id)
-            ->delay(now()->addSeconds($werewolvesTimer));
+        // À mi-timer : auto-inspect si la voyante n'a pas agi
+        ProcessSeerAutoAction::dispatch($this->gameId, $seer->id, $game->round)
+            ->delay(now()->addSeconds($halfTimer));
+
+        // Après timer complet + 5s (pour laisser la voyante voir le résultat)
+        // → loups démarrent
+        ProcessWerewolvesTurn::dispatch($this->gameId)
+            ->delay(now()->addSeconds($seerTimer + 2));
     }
 }

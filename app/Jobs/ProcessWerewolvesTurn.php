@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 
 class ProcessWerewolvesTurn implements ShouldQueue
 {
@@ -19,14 +20,34 @@ class ProcessWerewolvesTurn implements ShouldQueue
 
     public function handle(): void
     {
-        $game = Game::find($this->gameId);
+        $game = null;
+        $wolvesTimer = 0;
+        $round = 0;
 
-        if (! $game || $game->status !== 'night') {
+        DB::transaction(function () use (&$game, &$wolvesTimer, &$round) {
+            $locked = Game::where('id', $this->gameId)
+                ->where('status', 'night')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked) {
+                return;
+            }
+
+            $wolvesTimer = $locked->timer('werewolves');
+            $round       = $locked->round;
+
+            $locked->update([
+                'status'         => 'wolves_turn',
+                'phase_deadline' => now()->addSeconds($wolvesTimer),
+            ]);
+
+            $game = $locked;
+        });
+
+        if (! $game) {
             return;
         }
-
-        $timer = config('game.timers.werewolves', 30);
-        $game->update(['phase_deadline' => now()->addSeconds($timer)]);
 
         $eligibleTargets = $game->alivePlayers()
             ->whereNotIn('role', ['werewolf', 'white_wolf'])
@@ -37,7 +58,7 @@ class ProcessWerewolvesTurn implements ShouldQueue
 
         broadcast(new WerewolvesTurnStarted($game, $eligibleTargets));
 
-        ProcessNightActions::dispatch($this->gameId, $game->round)
-            ->delay(now()->addSeconds($timer));
+        ProcessNightActions::dispatch($this->gameId, $round)
+            ->delay(now()->addSeconds($wolvesTimer));
     }
 }

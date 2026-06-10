@@ -14,12 +14,13 @@ class PhaseManager
 {
     public function startDay(Game $game, ?GamePlayer $victim): void
     {
+        $game->refresh();
         $locked = null;
-        $timer = $game->timer('day_vote');
+        $timer  = $game->timer('day_vote');
 
         DB::transaction(function () use ($game, &$locked, $timer) {
             $locked = Game::where('id', $game->id)
-                ->where('status', 'night')
+                ->whereIn('status', ['night', 'processing_night'])
                 ->lockForUpdate()
                 ->first();
 
@@ -44,8 +45,9 @@ class PhaseManager
 
     public function startNight(Game $game): void
     {
+        $game->refresh();
         $locked = null;
-        $timer = $game->timer('seer');
+        $timer  = $game->timer('seer');
 
         DB::transaction(function () use ($game, &$locked, $timer) {
             $locked = Game::where('id', $game->id)
@@ -69,6 +71,7 @@ class PhaseManager
         }
 
         broadcast(new NightStarted($locked));
-        ProcessSeerTurn::dispatch($locked->id);
+        ProcessSeerTurn::dispatch($locked->id)
+            ->delay(now()->addSeconds(config('game.timers.night_start_delay', 4)));
     }
 }

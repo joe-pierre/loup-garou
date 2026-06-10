@@ -7,6 +7,7 @@ use App\Events\Game\SeerResult;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\MayorSuccessionRequest;
 use App\Http\Requests\SeerCheckRequest;
+use App\Jobs\ProcessWerewolvesTurn;
 use App\Models\Game;
 use App\Models\GamePlayer;
 use App\Services\GameService;
@@ -38,6 +39,10 @@ class ActionController extends Controller
         $target = $this->gameService->seerCheck($seer, $request->validated('target_player_id'));
 
         broadcast(new SeerResult($seer->game, $seer, $target));
+
+        // La voyante a agi manuellement → passer immédiatement aux loups
+        // ProcessWerewolvesTurn a son propre guard status='night' → pas de double-fire
+        ProcessWerewolvesTurn::dispatch($seer->game_id);
 
         return response()->json([
             'success' => true,

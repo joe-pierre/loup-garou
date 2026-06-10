@@ -34,8 +34,9 @@ class DayStarted implements ShouldBroadcastNow
         return [
             'round'  => $this->game->round,
             'killed' => $this->victim ? [
-                'pseudo' => $this->victim->pseudo,
-                'role'   => $this->victim->role,
+                'player_id' => $this->victim->id,
+                'pseudo'    => $this->victim->pseudo,
+                'role'      => $this->victim->role,
             ] : null,
         ];
     }

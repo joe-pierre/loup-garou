@@ -14,6 +14,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
+
 class ProcessNightActions implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -25,9 +27,24 @@ class ProcessNightActions implements ShouldQueue
 
     public function handle(VoteService $voteService, PhaseManager $phaseManager, WinConditionChecker $winChecker): void
     {
-        $game = Game::find($this->gameId);
+        $game = null;
 
-        if (! $game || $game->status !== 'night' || $game->round !== $this->round) {
+        DB::transaction(function () use (&$game) {
+            $locked = Game::where('id', $this->gameId)
+                ->whereIn('status', ['night', 'wolves_turn'])
+                ->where('round', $this->round)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked) {
+                return;
+            }
+
+            $locked->update(['status' => 'processing_night']);
+            $game = $locked;
+        });
+
+        if (! $game) {
             return;
         }
 
@@ -53,8 +70,10 @@ class ProcessNightActions implements ShouldQueue
                 : config('game.timers.mayor_succession', 15);
 
             broadcast(new MayorSuccessionStarted($game, $victim->pseudo));
-            ProcessMayorSuccession::dispatch($game->id, $game->round)
+            ProcessMayorSuccession::dispatch($game->id, $game->round, $victim->id)
                 ->delay(now()->addSeconds($successionDelay));
+
+            return;
         }
 
         $phaseManager->startDay($game, $victim);

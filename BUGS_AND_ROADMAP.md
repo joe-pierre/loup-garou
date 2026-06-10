@@ -52,6 +52,14 @@
 
 ---
 
+### [x] 2026-06-09 — ProcessMayorSuccession bloque si Maire tué la nuit
+
+- **Symptôme :** partie bloquée en phase nuit quand le Maire est la victime des loups
+- **Cause :** guard `status = 'day'` empêchait le Job de s'exécuter en phase nuit
+- **Fix :** accepter `night` et `day`, déduire la transition depuis `$game->status` avant transaction
+
+---
+
 # ROADMAP (idées / améliorations futures)
 
 - [ ] Délai voyante : réduire de ~8s à ~5s — broadcaster `SeerTurnStarted` avec `delay(5s)` côté serveur, supprimer le `setTimeout` client (v1.2)

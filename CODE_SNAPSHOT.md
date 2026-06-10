@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 16h13
+Generated at: 01h35
 
 ## PHP Analysis (Core Logic)
 
@@ -95,7 +95,7 @@ ProcessMayorSuccession.php
       - Queueable
       - SerializesModels
     functions:
-      - __construct(int $gameId, int $round) {}
+      - __construct(int $gameId, int $round, ?int $victimId) {}
       - handle(PhaseManager $phaseManager) → void
 
 // app/Jobs/ProcessWerewolvesTurn.php
@@ -173,6 +173,17 @@ WaitForReadyPlayers.php
       - SerializesModels
     functions:
       - __construct(int $gameId) {}
+      - handle() → void
+
+// app/Jobs/ProcessSeerAutoAction.php
+ProcessSeerAutoAction.php
+    attributes:
+      - Dispatchable
+      - InteractsWithQueue
+      - Queueable
+      - SerializesModels
+    functions:
+      - __construct(int $gameId, int $seerId, int $round) {}
       - handle() → void
 
 // app/Events/Game/PlayerInactive.php
@@ -607,6 +618,9 @@ VoteController.php
       - mayor(MayorVoteRequest $request, int $id) → return response()->json(['success' => true, 'data' => ['votes' => $votes]])
       - day(DayVoteRequest $request, int $id) → return response()->json(['success' => true, 'data' => ['votes' => $summary]])
       - night(NightVoteRequest $request, int $id) → return response()->json(['success' => true, 'data' => ['wolves' => $voteState]])
+      - _checkAllMayorVotesCast(Game $game) → void
+      - _checkAllDayVotesCast(Game $game) → void
+      - _checkAllNightVotesCast(Game $game) → void
 
 // app/Http/Controllers/Game/ActionController.php
 ActionController.php
@@ -908,8 +922,26 @@ TestCase.php
       - up() → void
       - down() → void
 
+// database/migrations/2026_06_10_004809_add_processing_night_to_games_status_enum.php
+2026_06_10_004809_add_processing_night_to_games_status_enum.php
+    functions:
+      - up() → void
+      - down() → void
+
 // database/migrations/0001_01_01_000000_create_users_table.php
 0001_01_01_000000_create_users_table.php
+    functions:
+      - up() → void
+      - down() → void
+
+// database/migrations/2026_06_10_000002_add_processing_wolves_to_games_status.php
+2026_06_10_000002_add_processing_wolves_to_games_status.php
+    functions:
+      - up() → void
+      - down() → void
+
+// database/migrations/2026_06_10_000001_add_processing_night_to_games_status.php
+2026_06_10_000001_add_processing_night_to_games_status.php
     functions:
       - up() → void
       - down() → void

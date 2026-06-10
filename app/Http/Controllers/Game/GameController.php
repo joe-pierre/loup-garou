@@ -110,7 +110,7 @@ class GameController extends Controller
     {
         $game = Game::where('code', strtoupper($code))->firstOrFail();
 
-        if ($game->status !== 'night') {
+        if (! in_array($game->status, ['night', 'wolves_turn', 'processing_night'])) {
             return $this->redirectToCurrentPhase($game, $code);
         }
 
@@ -125,14 +125,13 @@ class GameController extends Controller
 
     private function redirectToCurrentPhase(Game $game, string $code): RedirectResponse
     {
-        return match ($game->status) {
-            'day'            => redirect()->route('game.day', ['code' => $code]),
-            'night'          => redirect()->route('game.night', ['code' => $code]),
-            'electing_mayor' => redirect()->route('game.mayor-election', ['code' => $code]),
-            'finished'       => $game->winner_team !== null
-                                    ? redirect()->route('game.finished', ['code' => $code])
-                                    : redirect()->route('game.cancelled', ['code' => $code]),
-            default          => redirect()->route('game.role-reveal', ['code' => $code]),
+        return match (true) {
+            $game->status === 'day'                                                    => redirect()->route('game.day', ['code' => $code]),
+            in_array($game->status, ['night', 'wolves_turn', 'processing_night'])      => redirect()->route('game.night', ['code' => $code]),
+            $game->status === 'electing_mayor'                                         => redirect()->route('game.mayor-election', ['code' => $code]),
+            $game->status === 'finished' && $game->winner_team !== null                => redirect()->route('game.finished', ['code' => $code]),
+            $game->status === 'finished'                                               => redirect()->route('game.cancelled', ['code' => $code]),
+            default                                                                    => redirect()->route('game.role-reveal', ['code' => $code]),
         };
     }
 
@@ -315,7 +314,7 @@ class GameController extends Controller
             return response()->json(['success' => false, 'message' => 'Tu ne participes pas à cette partie.'], 403);
         }
 
-        $isNight        = $game->status === 'night';
+        $isNight        = in_array($game->status, ['night', 'wolves_turn', 'processing_night']);
         $deadlineActive = $game->phase_deadline !== null && $game->phase_deadline->isAfter(now());
 
         $aliveSeerExists = $isNight && $game->players()
@@ -329,7 +328,9 @@ class GameController extends Controller
             ->where('round', $game->round)
             ->exists();
 
-        $seerTurnActive       = $isNight && $aliveSeerExists && $deadlineActive && ! $seerCheckDone;
+        // seer_turn_active : uniquement quand status = 'night' (pas encore passé aux loups)
+        $seerTurnActive       = $game->status === 'night' && $aliveSeerExists && $deadlineActive && ! $seerCheckDone;
+        // werewolves_turn_active : status = 'wolves_turn' ou ('night' sans tour voyante actif)
         $werewolvesTurnActive = $isNight && ! $seerTurnActive && $deadlineActive;
 
         $allies = [];

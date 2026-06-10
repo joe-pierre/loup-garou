@@ -123,6 +123,18 @@
     </header>
 
     {{-- ═══════════════ CONTENU PRINCIPAL ═══════════════ --}}
+    {{-- gameState est monté sur un div fantôme hors du flux des vues --}}
+    {{-- pour éviter que son scope Alpine pollue les x-data locaux (nightScreen, dayScreen) --}}
+    @isset($game)
+    <div
+        id="game-state-root"
+        x-data="gameState({{ $game->id }}, {{ auth()->id() }})"
+        data-game-code="{{ $game->code }}"
+        data-player-id="{{ $player->id ?? 0 }}"
+        style="visibility:hidden;position:absolute;width:0;height:0;overflow:hidden;"
+        aria-hidden="true"
+    ></div>
+    @endisset
     <main class="pt-14 min-h-screen pb-16 md:pb-0" role="main" id="main-content">
         @yield('content')
     </main>
@@ -141,8 +153,15 @@
     <x-toast />
 
     <script>
-        @isset($game) window.gameId = {{ $game->id }}; @endisset
-        @isset($player) window.playerId = {{ $player->id }}; @endisset
+        @isset($game)
+        window.gameId   = {{ $game->id }};
+        window.GAME_ID  = {{ $game->id }};
+        window.GAME_CODE = '{{ $game->code }}';
+        @endisset
+        @isset($player)
+        window.playerId     = {{ $player->id }};
+        window.MY_PLAYER_ID = {{ $player->id }};
+        @endisset
     </script>
     @stack('scripts')
 </body>

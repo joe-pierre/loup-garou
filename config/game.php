@@ -10,6 +10,10 @@ return [
         'reconnection'     => 30,
         'ready_timeout'    => 60,
         'mayor_reveal'     => 5,
+        // Délai entre NightStarted broadcasté et ProcessSeerTurn dispatché,
+        // pour laisser le temps aux clients de se rediriger vers /night
+        // et de s'abonner au canal privé avant que SeerTurnStarted parte.
+        'night_start_delay' => 4,
     ],
 
     // 'auto' = floor(n * 0.2) min 1 | 'fill' = reste des joueurs | int = fixe

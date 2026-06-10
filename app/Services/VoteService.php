@@ -6,7 +6,9 @@ use App\Events\Game\MayorSuccessionStarted;
 use App\Events\Game\NoElimination;
 use App\Events\Game\PlayerEliminated;
 use App\Events\Game\RandomElimination;
+use App\Jobs\ProcessDayVote;
 use App\Jobs\ProcessMayorSuccession;
+use App\Jobs\ProcessNightActions;
 use App\Models\Game;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
@@ -141,7 +143,7 @@ class VoteService
     {
         $game = $wolf->game;
 
-        if ($game->status !== 'night') {
+        if (! in_array($game->status, ['night', 'wolves_turn'])) {
             abort(409, 'La partie n\'est pas en phase nuit.');
         }
 
@@ -153,12 +155,15 @@ class VoteService
             abort(403, 'Un joueur éliminé ne peut pas voter.');
         }
 
-        return DB::transaction(function () use ($wolf, $targetId, $game) {
+        $allVoted = false;
+        $round    = $game->round;
+
+        $state = DB::transaction(function () use ($wolf, $targetId, $game, &$allVoted, $round) {
             // Supprimer le vote existant : le loup peut changer de cible jusqu'à expiration
             GameAction::where('game_id', $game->id)
                 ->where('player_id', $wolf->id)
                 ->where('type', 'night_vote')
-                ->where('round', $game->round)
+                ->where('round', $round)
                 ->lockForUpdate()
                 ->delete();
 
@@ -168,17 +173,41 @@ class VoteService
                 'type'             => 'night_vote',
                 'weight'           => 1,
                 'target_player_id' => $targetId,
-                'round'            => $game->round,
+                'round'            => $round,
                 'phase'            => 'night',
             ]);
 
+            // Vérifier si tous les loups vivants ont voté
+            $aliveWolfIds = $game->alivePlayers()
+                ->whereIn('role', ['werewolf', 'white_wolf'])
+                ->pluck('id');
+
+            $votedCount = GameAction::where('game_id', $game->id)
+                ->where('type', 'night_vote')
+                ->where('round', $round)
+                ->whereIn('player_id', $aliveWolfIds)
+                ->count();
+
+            $allVoted = $votedCount >= $aliveWolfIds->count();
+
             return $this->getNightVoteState($game);
         });
+
+        // Résolution anticipée : tous les loups ont voté → déclencher ProcessNightActions immédiatement
+        if ($allVoted) {
+            \App\Jobs\ProcessNightActions::dispatch($game->id, $round);
+        }
+
+        return $state;
     }
 
     public function resolveDayVote(Game $game): void
     {
-        DB::transaction(function () use ($game) {
+        $eliminated   = null;
+        $noElimReason = null;
+        $randomVictim = null;
+
+        DB::transaction(function () use ($game, &$eliminated, &$noElimReason, &$randomVictim) {
             $locked = Game::where('id', $game->id)
                 ->where('status', 'day')
                 ->lockForUpdate()
@@ -188,7 +217,6 @@ class VoteService
                 return;
             }
 
-            // Agréger les votes pondérés (poids maire = 2 sur day_vote)
             $votes = GameAction::where('game_id', $locked->id)
                 ->where('type', 'day_vote')
                 ->where('round', $locked->round)
@@ -201,12 +229,8 @@ class VoteService
                 $victim = $locked->alivePlayers()->inRandomOrder()->first();
                 if ($victim) {
                     $victim->update(['is_alive' => false]);
-                    broadcast(new RandomElimination($locked, $victim));
-                    if ($this->winConditionChecker->check($locked)) {
-                        return;
-                    }
+                    $randomVictim = $victim;
                 }
-                $this->phaseManager->startNight($locked);
                 return;
             }
 
@@ -214,38 +238,57 @@ class VoteService
             $topCandidates = $votes->where('vote_weight', $maxWeight);
 
             if ($topCandidates->count() > 1) {
-                broadcast(new NoElimination($locked, 'equality'));
-                $this->phaseManager->startNight($locked);
+                $noElimReason = 'equality';
                 return;
             }
 
-            $eliminated = GamePlayer::with('user')->find($topCandidates->first()->target_player_id);
-            $eliminated->update(['is_alive' => false]);
-
-            broadcast(new PlayerEliminated($locked, $eliminated, 'day_vote'));
-
-            try {
-                $eliminated->user->notify(new PlayerEliminatedDayNotification($eliminated->role));
-            } catch (\Throwable) {}
-
-
-            if ($this->winConditionChecker->check($locked)) {
-                return;
-            }
-
-            if ($eliminated->is_mayor) {
-                // Maire inactif → succession aléatoire immédiate, sinon timer 15s
-                $successionDelay = $eliminated->is_inactive
-                    ? 0
-                    : config('game.timers.mayor_succession', 15);
-
-                broadcast(new MayorSuccessionStarted($locked, $eliminated->pseudo));
-                ProcessMayorSuccession::dispatch($locked->id, $locked->round)
-                    ->delay(now()->addSeconds($successionDelay));
-            } else {
-                $this->phaseManager->startNight($locked);
-            }
+            $elim = GamePlayer::with('user')->find($topCandidates->first()->target_player_id);
+            $elim->update(['is_alive' => false]);
+            $eliminated = $elim;
         });
+
+        // Tout ce qui suit est HORS transaction
+
+        if ($noElimReason) {
+            broadcast(new NoElimination($game, $noElimReason));
+            $this->phaseManager->startNight($game);
+            return;
+        }
+
+        if ($randomVictim) {
+            broadcast(new RandomElimination($game, $randomVictim));
+            if ($this->winConditionChecker->check($game)) {
+                return;
+            }
+            $this->phaseManager->startNight($game);
+            return;
+        }
+
+        if (! $eliminated) {
+            return;
+        }
+
+        broadcast(new PlayerEliminated($game, $eliminated, 'day_vote'));
+
+        try {
+            $eliminated->user->notify(new PlayerEliminatedDayNotification($eliminated->role));
+        } catch (\Throwable) {}
+
+        if ($this->winConditionChecker->check($game)) {
+            return;
+        }
+
+        if ($eliminated->is_mayor) {
+            $successionDelay = $eliminated->is_inactive
+                ? 0
+                : config('game.timers.mayor_succession', 15);
+
+            broadcast(new MayorSuccessionStarted($game, $eliminated->pseudo));
+            ProcessMayorSuccession::dispatch($game->id, $game->round)
+                ->delay(now()->addSeconds($successionDelay));
+        } else {
+            $this->phaseManager->startNight($game);
+        }
     }
 
     public function castDayVote(GamePlayer $voter, int $targetId): array
@@ -258,11 +301,15 @@ class VoteService
             abort(403, 'Vous êtes mort.');
         }
 
-        DB::transaction(function () use ($voter, $targetId) {
+        $allVoted = false;
+        $round    = $voter->game->round;
+        $gameId   = $voter->game_id;
+
+        DB::transaction(function () use ($voter, $targetId, &$allVoted, $round) {
             $alreadyVoted = GameAction::where('game_id', $voter->game_id)
                 ->where('player_id', $voter->id)
                 ->where('type', 'day_vote')
-                ->where('round', $voter->game->round)
+                ->where('round', $round)
                 ->lockForUpdate()
                 ->exists();
 
@@ -288,10 +335,28 @@ class VoteService
                 'type'             => 'day_vote',
                 'weight'           => $weight,
                 'target_player_id' => $target->id,
-                'round'            => $voter->game->round,
+                'round'            => $round,
                 'phase'            => 'day',
             ]);
+
+            // Vérifier si tous les joueurs vivants ont voté
+            $alivePlayerIds = GamePlayer::where('game_id', $voter->game_id)
+                ->where('is_alive', true)
+                ->pluck('id');
+
+            $votedCount = GameAction::where('game_id', $voter->game_id)
+                ->where('type', 'day_vote')
+                ->where('round', $round)
+                ->whereIn('player_id', $alivePlayerIds)
+                ->count();
+
+            $allVoted = $votedCount >= $alivePlayerIds->count();
         });
+
+        // Résolution anticipée : tous les vivants ont voté → déclencher ProcessDayVote immédiatement
+        if ($allVoted) {
+            \App\Jobs\ProcessDayVote::dispatch($gameId, $round);
+        }
 
         return $this->getDayVoteSummary($voter->game);
     }

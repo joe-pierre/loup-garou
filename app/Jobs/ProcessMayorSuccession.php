@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Events\Game\MayorSuccessionDone;
 use App\Models\Game;
 use App\Models\GameAction;
+use App\Models\GamePlayer;
 use App\Services\PhaseManager;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -20,19 +21,23 @@ class ProcessMayorSuccession implements ShouldQueue
     public function __construct(
         public readonly int $gameId,
         public readonly int $round,
+        public readonly ?int $victimId = null,
     ) {}
 
     public function handle(PhaseManager $phaseManager): void
     {
         $game = Game::find($this->gameId);
 
-        if (! $game || $game->status !== 'day' || $game->round !== $this->round) {
+        // Accepter night, processing_night ET day
+        if (! $game || ! in_array($game->status, ['night', 'processing_night', 'day']) || $game->round !== $this->round) {
             return;
         }
 
-        $shouldStartNight = DB::transaction(function () use ($game) {
+        $phaseToStart = in_array($game->status, ['night', 'processing_night']) ? 'night' : 'day';
+
+        $shouldTransition = DB::transaction(function () use ($game) {
             $locked = Game::where('id', $game->id)
-                ->where('status', 'day')
+                ->whereIn('status', ['night', 'processing_night', 'day'])
                 ->where('round', $this->round)
                 ->lockForUpdate()
                 ->first();
@@ -41,7 +46,6 @@ class ProcessMayorSuccession implements ShouldQueue
                 return false;
             }
 
-            // Guard : une désignation manuelle a déjà eu lieu ce round
             $alreadyDone = GameAction::where('game_id', $locked->id)
                 ->where('type', 'mayor_succession')
                 ->where('round', $locked->round)
@@ -69,7 +73,7 @@ class ProcessMayorSuccession implements ShouldQueue
                 'type'             => 'mayor_succession',
                 'target_player_id' => $successor->id,
                 'round'            => $locked->round,
-                'phase'            => 'day',
+                'phase'            => $locked->status,
             ]);
 
             broadcast(new MayorSuccessionDone($locked, $successor, true));
@@ -77,7 +81,16 @@ class ProcessMayorSuccession implements ShouldQueue
             return true;
         });
 
-        if ($shouldStartNight) {
+        if (! $shouldTransition) {
+            return;
+        }
+
+        $game->refresh();
+
+        if ($phaseToStart === 'night') {
+            $victim = $this->victimId ? GamePlayer::find($this->victimId) : null;
+            $phaseManager->startDay($game, $victim);
+        } else {
             $phaseManager->startNight($game);
         }
     }

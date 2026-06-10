@@ -57,9 +57,14 @@ export function gameState(gameId, userId) {
             this._csrf   = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
             this._motion = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-            // Lire les identifiants depuis les attributs data ou les constantes globales
+            // Lire les identifiants en lazy — window.GAME_CODE/MY_PLAYER_ID
+            // sont définis par le script de la vue APRÈS game-state.js
+            await this.$nextTick();
             this.gameCode = this.$el?.dataset?.gameCode ?? window.GAME_CODE ?? null;
             this.playerId = parseInt(this.$el?.dataset?.playerId ?? window.MY_PLAYER_ID ?? 0, 10) || null;
+            // Lire MY_ROLE immédiatement depuis window (défini par la vue) pour que
+            // isWerewolf soit correct avant initWebSocket(), même si _loadState échoue
+            this.myRole   = window.MY_ROLE ?? this.myRole;
 
             // Charger l'état initial depuis le serveur
             if (this.gameCode) {
@@ -81,7 +86,7 @@ export function gameState(gameId, userId) {
                 const d               = json.data;
                 this.phase                = d.phase;
                 this.round                = d.round;
-                this.myRole               = d.my_role;
+                this.myRole               = d.my_role ?? window.MY_ROLE ?? null;
                 this.isAlive              = d.is_alive;
                 this.isMayor              = d.is_mayor;
                 if (d.seer_turn_active)            this.nightPhase = 'seer_turn';
@@ -106,13 +111,16 @@ export function gameState(gameId, userId) {
                 .listen('.mayor.election.started',     e => this._handleMayorElectionStarted(e))
                 .listen('.mayor.elected',              e => this.handleMayorElected(e))
                 .listen('.mayor.vote.cast',            e => this._handleMayorVoteCast(e))
-                .listen('.mayor.succession.started',   e => this.$dispatch('mayor-succession-started', e))
+                .listen('.mayor.succession.started',   e => window.dispatchEvent(new CustomEvent('mayor-succession-started', { detail: e })))
                 .listen('.mayor.succession.done',      e => this.handleMayorSuccessionDone(e))
                 .listen('.day.vote.cast',              e => this._handleDayVoteCast(e))
                 .listen('.player.eliminated',          e => this.handlePlayerEliminated(e))
-                .listen('.no.elimination',             e => this._dispatchToast(
-                    e.reason === 'equality' ? 'Égalité — personne éliminé.' : 'Aucun vote exprimé.', 'info'
-                ))
+                .listen('.no.elimination',             e => {
+                    this._dispatchToast(
+                        e.reason === 'equality' ? 'Égalité — personne éliminé.' : 'Aucun vote exprimé.', 'info'
+                    );
+                    window.dispatchEvent(new CustomEvent('no-elimination', { detail: e }));
+                })
                 .listen('.chat.message.sent',          e => this._handleChatMessage(e))
                 .listen('.player.disconnected',        e => this._handlePlayerDisconnected(e))
                 .listen('.player.reconnected',         e => this._handlePlayerReconnected(e))
@@ -133,11 +141,15 @@ export function gameState(gameId, userId) {
                     .listen('.game.started',       e => this._handleRoleAssigned(e))
                     .listen('.seer.turn.started',  e => {
                         this.pendingSeerEvent = e;
+                        // Propager sur window pour que night.blade.php puisse réagir
+                        // sans double-abonnement au canal privé
+                        window.dispatchEvent(new CustomEvent('seer-turn-started', { detail: e }));
                     })
                     .listen('.seer.result',        e => {
                         this.seerResult = e;
                         this.nightPhase = 'seer_result';
-                        this.$dispatch('seer-result', e);
+                        // window.dispatchEvent pour night.blade.php (pas $dispatch qui reste sur le DOM)
+                        window.dispatchEvent(new CustomEvent('seer-result', { detail: e }));
                     });
             }
 
@@ -146,14 +158,15 @@ export function gameState(gameId, userId) {
                 echo.private(`game.${this.gameId}.werewolves`)
                     .listen('.werewolves.turn.started', e => {
                         this.nightPhase = 'werewolves_turn';
-                        this.$dispatch('werewolves-turn-started', e);
+                        window.dispatchEvent(new CustomEvent('werewolves-turn-started', { detail: e }));
                     })
                     .listen('.werewolves.vote.cast', e => {
                         this.wolvesVotes = this._buildVoteMap(e.votes ?? []);
-                        this.$dispatch('wolves-vote-cast', e);
+                        window.dispatchEvent(new CustomEvent('wolves-vote-cast', { detail: e }));
                     })
                     .listen('.werewolf.chat.message', e => {
                         this.wolvesChat.push(e);
+                        window.dispatchEvent(new CustomEvent('werewolf-chat-message', { detail: e }));
                     });
             }
 
@@ -172,26 +185,35 @@ export function gameState(gameId, userId) {
         // ════════════════════════════════════════════════════════════════════
         // HANDLERS — PHASES
         // ════════════════════════════════════════════════════════════════════
-        handleNightStarted(e) {
-            this.phase             = 'night';
-            this.round             = e.round ?? this.round;
-            this.votes             = {};
-            this.wolvesVotes       = {};
-            this.nightPhase        = 'village_sleeping';
-            this.pendingSeerEvent  = null;
-            this.nightVictim       = null;
+            handleNightStarted(e) {
+                this.phase            = 'night';
+                this.round            = e.round ?? this.round;
+                this.votes            = {};
+                this.wolvesVotes      = {};
+                this.nightPhase       = 'village_sleeping';
+                this.pendingSeerEvent = null;
+                this.nightVictim      = null;
 
-            setTimeout(() => this.handleSeerTurnReady(), 5000);
+                const redirect = () => {
+                    if (this.gameCode) window.location.href = `/game/${this.gameCode}/night`;
+                };
 
-            if (this._motion) {
-                gsap.to(document.body, { backgroundColor: '#030712', duration: 1.5, ease: 'power2.inOut' });
-            }
-        },
+                if (this._motion) {
+                    gsap.to(document.body, {
+                        backgroundColor: '#030712',
+                        duration: 1.5,
+                        ease: 'power2.inOut',
+                        onComplete: redirect,
+                    });
+                } else {
+                    redirect();
+                }
+            },
 
         handleSeerTurnReady() {
             if (this.myRole === 'seer' && this.pendingSeerEvent !== null) {
                 this.nightPhase = 'seer_turn';
-                this.$dispatch('seer-turn-ready', this.pendingSeerEvent);
+                window.dispatchEvent(new CustomEvent('seer-turn-ready', { detail: this.pendingSeerEvent }));
             }
         },
 
@@ -201,26 +223,31 @@ export function gameState(gameId, userId) {
             this.pendingSeerEvent = null;
             this.nightVictim      = e.killed ?? null;
 
-            // Marquer mort le joueur tué la nuit
             if (e.killed?.player_id) {
                 this._markPlayerDead(e.killed.player_id);
             }
 
-            if (this._motion) {
-                // Transition nuit → jour (fond)
-                gsap.to(document.body, { backgroundColor: '#0a0f1e', duration: 2, ease: 'power2.out' });
-                // Halo solaire (si l'élément existe)
-                const sun = document.getElementById('sun-glow');
-                if (sun) {
-                    gsap.from(sun, { y: '100%', opacity: 0, duration: 2.5, ease: 'power2.out' });
-                }
-            }
+            const redirect = () => {
+                if (this.gameCode) window.location.href = `/game/${this.gameCode}/day`;
+            };
 
-            setTimeout(() => {
-                if (this.gameCode) {
-                    window.location.href = `/game/${this.gameCode}/day`;
+            if (this._motion) {
+                const sun = document.getElementById('sun-glow');
+                gsap.to(document.body, {
+                    backgroundColor: '#0a0f1e',
+                    duration: 2,
+                    ease: 'power2.out',
+                    onComplete: sun ? null : redirect,
+                });
+                if (sun) {
+                    gsap.from(sun, {
+                        y: '100%', opacity: 0, duration: 2.5,
+                        ease: 'power2.out', onComplete: redirect,
+                    });
                 }
-            }, 1500);
+            } else {
+                redirect();
+            }
         },
 
         handleMayorElected(e) {
@@ -239,10 +266,17 @@ export function gameState(gameId, userId) {
 
         handleMayorSuccessionDone(e) {
             this.handleMayorElected({ player_id: e.new_mayor_id });
+            window.dispatchEvent(new CustomEvent('mayor-succession-done', { detail: e }));
         },
 
         handlePlayerEliminated(e) {
             this._markPlayerDead(e.player_id);
+
+            // Propager à toutes les vues pour mise à jour de leurs listes locales
+            window.dispatchEvent(new CustomEvent('player-eliminated', { detail: e }));
+
+            // Lire playerId en lazy (window.MY_PLAYER_ID défini par la vue après game-state.js)
+            const myId = this.playerId || window.MY_PLAYER_ID || null;
 
             // Animation grayscale sur la carte joueur
             const card = document.querySelector(`[data-player-id="${e.player_id}"]`);
@@ -251,15 +285,17 @@ export function gameState(gameId, userId) {
             }
 
             // Si c'est le joueur courant
-            if (e.player_id === this.playerId) {
+            if (myId && e.player_id === myId) {
                 this.isAlive = false;
+                this.playerId = myId;
 
                 const screen = document.querySelector('.game-screen');
                 if (screen && this._motion) {
                     gsap.to(screen, { filter: 'grayscale(30%)', duration: 1 });
                 }
 
-                this.$dispatch('i-was-eliminated', e);
+                // window.dispatchEvent et non $dispatch : les vues écoutent sur window
+                window.dispatchEvent(new CustomEvent('i-was-eliminated', { detail: e }));
             }
         },
 
@@ -267,27 +303,31 @@ export function gameState(gameId, userId) {
             this.winnerTeam = e.winner_team;
             this.phase      = 'finished';
 
-            // Toast puis redirect après 2s
-            const msg = e.winner_team === 'villagers' ? '🏆 Le village a gagné !'
-                      : e.winner_team === 'werewolves' ? '🐺 Les loups ont gagné !'
-                      : '🏁 Partie annulée.';
+            const msg = e.winner_team === 'villagers'  ? '🏆 Le village a gagné !'
+                    : e.winner_team === 'werewolves'  ? '🐺 Les loups ont gagné !'
+                    : '🏁 Partie annulée.';
             this._dispatchToast(msg, e.winner_team ? 'success' : 'warning');
 
+            const redirect = () => {
+                if (!this.gameCode) return;
+                window.location.href = e.winner_team !== null
+                    ? `/game/${this.gameCode}/finished`
+                    : `/game/${this.gameCode}/cancelled`;
+            };
+
             if (this._motion) {
-                // Bannière victoire (si l'élément existe dans la vue)
                 const banner = document.getElementById('victory-banner');
                 if (banner) {
-                    gsap.fromTo(banner, { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.7, ease: 'back.out(1.4)' });
+                    gsap.fromTo(banner,
+                        { scale: 0.7, opacity: 0 },
+                        { scale: 1, opacity: 1, duration: 0.7, ease: 'back.out(1.4)', onComplete: redirect }
+                    );
+                    return;
                 }
+                gsap.to('body', { opacity: 0, duration: 0.4, ease: 'power2.in', onComplete: redirect });
+            } else {
+                redirect();
             }
-
-            setTimeout(() => {
-                if (this.gameCode) {
-                    window.location.href = e.winner_team !== null
-                        ? `/game/${this.gameCode}/finished`
-                        : `/game/${this.gameCode}/cancelled`;
-                }
-            }, 2000);
         },
 
         // ════════════════════════════════════════════════════════════════════

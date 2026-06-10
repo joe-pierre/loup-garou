@@ -6,14 +6,6 @@
 <style>
     [x-cloak] { display: none !important; }
     body { background: linear-gradient(160deg, #0d1426 0%, #1a1f35 100%); font-family: 'EB Garamond', serif; }
-
-    .player-card {
-        background-color: #111827;
-        border: 1px solid rgba(201,168,76,0.25);
-        border-radius: 0.75rem;
-        display: flex; align-items: center; gap: 0.75rem;
-        padding: 0.75rem 1rem;
-    }
     .avatar {
         width: 2.5rem; height: 2.5rem; border-radius: 9999px;
         background-color: rgba(201,168,76,0.15); border: 1px solid rgba(201,168,76,0.4);
@@ -25,18 +17,6 @@
         background-color: #111827;
         border: 1px solid rgba(201,168,76,0.5);
         border-radius: 1rem;
-    }
-    .succession-player-btn {
-        background-color: rgba(255,255,255,0.03);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 0.5rem;
-        display: flex; align-items: center; gap: 0.75rem;
-        padding: 0.6rem 0.75rem;
-        cursor: pointer; transition: all 0.15s;
-    }
-    .succession-player-btn.selected {
-        background-color: rgba(201,168,76,0.15);
-        border-color: rgba(201,168,76,0.5);
     }
     .timer-bar { height: 4px; border-radius: 9999px; background-color: rgba(201,168,76,0.15); overflow: hidden; }
     .timer-fill { height: 100%; border-radius: 9999px; transition: background-color 0.3s; }
@@ -50,11 +30,14 @@
         transition: border-color 0.15s, background-color 0.15s;
     }
     .vote-player-card.v-selected {
-        border-color: rgba(201,168,76,0.6);
+        border-color: #c9a84c !important;
+        box-shadow: 0 0 18px rgba(201,168,76,0.5);
         background-color: rgba(201,168,76,0.07);
     }
-    .vote-player-card.v-dead { opacity: 0.38; }
+    .vote-player-card.v-dead { opacity: .3; filter: grayscale(100%); }
+    .vote-player-card.v-dead:hover { transform: none; }
     .vote-player-card.v-clickable { cursor: pointer; }
+    .vote-player-card.v-clickable:hover { transform: translateY(-3px); transition: transform 0.15s ease; }
     .vote-bar-wrap {
         height: 5px; border-radius: 9999px;
         background-color: rgba(255,255,255,0.06); overflow: hidden; margin-top: 5px;
@@ -71,28 +54,11 @@
     .char-counter { font-size: 0.7rem; color: rgba(232,224,208,0.4); }
     .char-counter.cc-warn { color: #f97316; }
     .char-counter.cc-danger { color: #ef4444; }
+    .reveal { opacity: 0; }
     @media (prefers-reduced-motion: reduce) {
         .vote-bar-fill { transition: none !important; }
         * { animation: none !important; transition-duration: 0.01ms !important; }
     }
-    .btn-primary {
-        background-color: #c9a84c;
-        color: #0a0f1e;
-        transition: background-color .3s, transform .2s;
-    }
-    .btn-primary:hover    { background-color: #e0c068; transform: translateY(-2px); }
-    .btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; }
-    .vote-player-card.v-clickable:hover {
-        transform: translateY(-3px);
-        transition: transform 0.15s ease;
-    }
-    .vote-player-card.v-selected {
-        border-color: #c9a84c !important;
-        box-shadow: 0 0 18px rgba(201,168,76,0.5);
-    }
-    .vote-player-card.v-dead       { opacity: .3; filter: grayscale(100%); }
-    .vote-player-card.v-dead:hover { transform: none; }
-    .reveal { opacity: 0; }
 </style>
 @endpush
 
@@ -124,16 +90,13 @@
     </div>
 
     @if($nightVictim)
-    {{-- ══ Nouvelle de la nuit ══ --}}
     <div class="mb-6 px-4 py-3 rounded-xl text-center" style="background-color:#1a1010;border:1px solid rgba(139,0,0,.5)">
         <p style="color:#e8e0d0;">⚰️ Cette nuit, <span class="font-medieval" style="color:#ff8888">{{ $nightVictim->pseudo }}</span> a été dévoré.</p>
         <p class="text-sm mt-1" style="color:#e8e0d0;">C'était un <span style="color:#4ade80">{{ match($nightVictim->role) { 'werewolf' => 'Loup-Garou', 'seer' => 'Voyante', default => 'Villageois' } }}</span>.</p>
     </div>
     @endif
 
-    {{-- Grand titre ──}}
-    <h1 class="reveal font-title text-3xl sm:text-4xl text-center mb-6"
-        style="color:#c9a84c;">
+    <h1 class="reveal font-title text-3xl sm:text-4xl text-center mb-6" style="color:#c9a84c;">
         ☀️ Phase Jour — Round {{ $game->round }}
     </h1>
 
@@ -152,7 +115,7 @@
                       :style="dayTimerSeconds <= 5 ? 'color:#ef4444' : dayTimerSeconds <= 10 ? 'color:#f97316' : ''"></span>
             </div>
             <div class="day-timer-bar">
-                <div id="day-vote-timer" class="timer-fill" style="background-color:#c9a84c;width:100%;"></div>
+                <div id="day-vote-timer" class="timer-fill" style="background-color:#c9a84c;width:0%;"></div>
             </div>
         </div>
 
@@ -163,10 +126,9 @@
              x-text="noEliminationMessage">
         </div>
 
-        {{-- Confirmation vote personnel --}}
+        {{-- Confirmation vote --}}
         <div x-show="myVoteTarget" x-cloak class="mb-4 text-xs italic text-center" style="color:rgba(232,224,208,0.45);">
-            Tu as voté pour
-            <span class="font-semibold" style="color:#c9a84c;" x-text="myVoteTargetPseudo"></span>.
+            Tu as voté pour <span class="font-semibold" style="color:#c9a84c;" x-text="myVoteTargetPseudo"></span>.
         </div>
 
         {{-- Liste joueurs --}}
@@ -196,9 +158,7 @@
                             <span x-show="!p.is_alive" class="text-xs flex-shrink-0">💀</span>
                         </div>
                         <div class="vote-bar-wrap" x-show="totalVoteWeight > 0">
-                            <div class="vote-bar-fill"
-                                 :id="'vbar-' + p.id"
-                                 :style="'width:' + getVotePercent(p.id) + '%'"></div>
+                            <div class="vote-bar-fill" :id="'vbar-' + p.id" :style="'width:' + getVotePercent(p.id) + '%'"></div>
                         </div>
                     </div>
                     <span class="text-xs flex-shrink-0 tabular-nums" style="color:rgba(201,168,76,0.7);"
@@ -208,13 +168,11 @@
             </template>
         </div>
 
-        {{-- Bouton voter --}}
         <button
             @click="castDayVote()"
             x-show="isAlive && !myVoteTarget"
             x-cloak
             :disabled="!dayVoteTarget || dayVoteSubmitting"
-            aria-label="Voter pour éliminer le joueur sélectionné"
             class="w-full py-3 rounded-xl font-medieval font-semibold text-sm disabled:opacity-40 transition-all focus:outline-none focus:ring-2 focus:ring-[#c9a84c]"
             style="background-color:#c9a84c;color:#0a0f1e;"
         >
@@ -236,9 +194,7 @@
                         <span style="color:rgba(232,224,208,0.8);" x-text="msg.message"></span>
                     </div>
                 </template>
-                <p x-show="chatMessages.length === 0"
-                   class="text-xs italic text-center m-auto"
-                   style="color:rgba(232,224,208,0.25);">
+                <p x-show="chatMessages.length === 0" class="text-xs italic text-center m-auto" style="color:rgba(232,224,208,0.25);">
                     Le débat n'a pas encore commencé...
                 </p>
             </div>
@@ -261,7 +217,6 @@
                     <button
                         @click="sendChat()"
                         :disabled="!chatInput.trim() || !isAlive || chatSending"
-                        aria-label="Envoyer le message"
                         class="px-3 text-xs font-medieval disabled:opacity-30 transition-opacity focus:outline-none focus:ring-2 focus:ring-[#c9a84c]"
                         style="color:#c9a84c;"
                     >✉</button>
@@ -270,9 +225,7 @@
         </div>
     </div>
 
-    {{-- ═══════════════════════════════════════════════════
-         MODALE SUCCESSION DU MAIRE
-    ════════════════════════════════════════════════════ --}}
+    {{-- ═══════ MODALE SUCCESSION — lecture seule (automatique) ═══════ --}}
     <div
         x-show="successionOpen"
         x-transition.opacity
@@ -280,80 +233,15 @@
         style="background-color: rgba(10,15,30,0.85);"
     >
         <div class="succession-modal w-full max-w-sm p-6" x-ref="successionModal">
-
-            <div class="text-center mb-5">
-                <p class="font-medieval text-xl font-bold mb-1" style="color: #c9a84c;">👑 Succession du Maire</p>
-                <p class="text-sm opacity-60" x-text="'Ancien maire : ' + dyingMayorPseudo"></p>
-            </div>
-
-            <div class="mb-5" x-show="!isDyingMayor">
-                <div class="flex justify-between text-xs mb-1 opacity-50">
-                    <span>Temps restant</span>
-                    <span x-text="timerSeconds + 's'" :style="timerSeconds <= 5 ? 'color:#ef4444' : 'color:#c9a84c'"></span>
-                </div>
-                <div class="timer-bar">
-                    <div class="timer-fill" id="succession-timer-fill"
-                         :style="timerSeconds <= 5 ? 'background-color:#ef4444' : (timerSeconds <= 10 ? 'background-color:#f97316' : 'background-color:#c9a84c')">
-                    </div>
-                </div>
-            </div>
-
-            <div x-show="isDyingMayor">
-                <p class="text-sm mb-3 opacity-70">Désigne ton successeur avant expiration du timer :</p>
-
-                <div class="flex flex-col gap-2 mb-5" style="max-height:240px;overflow-y:auto;">
-                    @foreach($players as $p)
-                    <button
-                        type="button"
-                        class="succession-player-btn text-left"
-                        :class="successionTarget === {{ $p->id }} ? 'selected' : ''"
-                        @click="successionTarget = {{ $p->id }}"
-                    >
-                        @php
-                        $successionColors = ['#c9a84c','#a78bfa','#4ade80','#ff4444','#38bdf8','#fb923c','#f472b6','#34d399'];
-                        $successionColor  = $successionColors[$loop->index % count($successionColors)];
-                        @endphp
-                        <div class="avatar"
-                             style="width:2rem;height:2rem;font-size:0.75rem;background-color:{{ $successionColor }};color:#0a0f1e;border:none;font-weight:700;">
-                            {{ strtoupper(substr($p->pseudo, 0, 1)) }}
-                        </div>
-                        <span class="text-sm" style="color:#e8e0d0;">{{ $p->pseudo }}</span>
-                        <span x-show="successionTarget === {{ $p->id }}" class="ml-auto text-xs" style="color:#c9a84c;">✓</span>
-                    </button>
-                    @endforeach
-                </div>
-
-                <button
-                    @click="designateSuccessor()"
-                    :disabled="!successionTarget || submitting"
-                    aria-label="Désigner le successeur maire"
-                    class="w-full py-3 rounded-xl font-medieval font-semibold text-sm disabled:opacity-40 transition-all focus:outline-none focus:ring-2 focus:ring-[#c9a84c]"
-                    style="background-color:#c9a84c;color:#0a0f1e;"
-                >
-                    <span x-show="!submitting">👑 Désigner</span>
-                    <span x-show="submitting">Désignation…</span>
-                </button>
-            </div>
-
-            <div x-show="!isDyingMayor" class="text-center py-4">
-                <div class="flex items-center justify-center gap-3 mb-4">
+            <div class="text-center">
+                <p class="font-medieval text-xl font-bold mb-2" style="color: #c9a84c;">👑 Succession du Maire</p>
+                <p class="text-sm mb-5 opacity-60" x-text="'Le maire ' + dyingMayorPseudo + ' est mort.'"></p>
+                <div class="flex items-center justify-center gap-3">
                     <svg class="animate-spin h-5 w-5" style="color:#c9a84c;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                     </svg>
-                    <p class="text-sm" style="color:#e8e0d0;">
-                        <span class="font-semibold" style="color:#c9a84c;" x-text="dyingMayorPseudo"></span>
-                        choisit son successeur…
-                    </p>
-                </div>
-                <div class="flex justify-between text-xs mb-1" style="color:#e8e0d0;opacity:0.5;">
-                    <span>Temps restant</span>
-                    <span x-text="timerSeconds + 's'" :style="timerSeconds <= 5 ? 'color:#ef4444' : ''"></span>
-                </div>
-                <div class="timer-bar">
-                    <div class="timer-fill" id="succession-timer-fill-ro"
-                         :style="timerSeconds <= 5 ? 'background-color:#ef4444' : (timerSeconds <= 10 ? 'background-color:#f97316' : 'background-color:#c9a84c')">
-                    </div>
+                    <p class="text-sm" style="color:#e8e0d0;">Désignation du successeur en cours…</p>
                 </div>
             </div>
         </div>
@@ -372,15 +260,18 @@
 
 @push('scripts')
 <script>
-    const GAME_ID          = {{ $game->id }};
-    const GAME_CODE        = '{{ $game->code }}';
-    const MY_PLAYER_ID     = {{ $player->id }};
-    const MY_PSEUDO        = '{{ $player->pseudo }}';
-    const MY_IS_MAYOR      = {{ $player->is_mayor ? 'true' : 'false' }};
-    const MY_IS_ALIVE      = {{ $player->is_alive ? 'true' : 'false' }};
-    const SUCCESSION_TIMER = {{ config('game.timers.mayor_succession', 15) }};
-    const PHASE_SECONDS    = {{ max(0, $game->phaseRemainingSeconds()) }};
-    const PLAYERS_DATA     = @json($playersJson);
+    const GAME_ID       = {{ $game->id }};
+    const GAME_CODE     = '{{ $game->code }}';
+    const MY_PLAYER_ID  = {{ $player->id }};
+    const MY_PSEUDO     = '{{ $player->pseudo }}';
+    const MY_IS_ALIVE   = {{ $player->is_alive ? 'true' : 'false' }};
+    const PHASE_SECONDS = {{ max(0, $game->phaseRemainingSeconds()) }};
+    const PLAYERS_DATA  = @json($playersJson);
+
+    // Exposer sur window pour game-state.js
+    window.GAME_ID      = GAME_ID;
+    window.GAME_CODE    = GAME_CODE;
+    window.MY_PLAYER_ID = MY_PLAYER_ID;
 
     function playerAvatarColor(id) {
         const colors = ['#c9a84c','#a78bfa','#4ade80','#ff4444','#38bdf8','#fb923c','#f472b6','#34d399'];
@@ -392,24 +283,18 @@
             confirmQuit:      false,
             successionOpen:   false,
             dyingMayorPseudo: '',
-            isDyingMayor:     false,
-            timerSeconds:     SUCCESSION_TIMER,
-            successionTarget: null,
-            submitting:       false,
-            _timerInterval:   null,
-            _timerTween:      null,
 
             isAlive:         MY_IS_ALIVE,
-            showDeathBanner: false,
+            showDeathBanner: sessionStorage.getItem('dead_' + MY_PLAYER_ID) === '1',
 
-            players:            PLAYERS_DATA,
-            voteWeights:        {},
-            totalVoteWeight:    0,
-            dayTimerSeconds:    PHASE_SECONDS,
-            dayVoteTarget:      null,
-            myVoteTarget:       null,
-            myVoteTargetPseudo: '',
-            dayVoteSubmitting:  false,
+            players:              PLAYERS_DATA,
+            voteWeights:          {},
+            totalVoteWeight:      0,
+            dayTimerSeconds:      PHASE_SECONDS,
+            dayVoteTarget:        null,
+            myVoteTarget:         null,
+            myVoteTargetPseudo:   '',
+            dayVoteSubmitting:    false,
             noEliminationMessage: '',
 
             chatMessages: [],
@@ -423,40 +308,13 @@
                         { opacity: 1, y: 0, duration: .7, ease: 'power3.out', stagger: .12, delay: 0.2 }
                     );
                 }
+
+                // Les events gérés par game-state.js (player.eliminated, night.started, game.finished)
+                // sont propagés via window.dispatchEvent — on écoute ici via window.
+                // On s'abonne à Echo uniquement pour les events locaux à cette vue
+                // (day.vote.cast, chat) pour éviter les doubles handlers.
                 window.Echo.channel(`game.${GAME_ID}`)
-                    .listen('.mayor.succession.started', (data) => { this.openSuccessionModal(data); })
-                    .listen('.mayor.succession.done', () => { this.closeSuccessionModal(); })
-                    .listen('.game.finished', (data) => {
-                        setTimeout(() => {
-                            window.location.href = data.winner_team !== null
-                                ? `/game/${GAME_CODE}/finished`
-                                : `/game/${GAME_CODE}/cancelled`;
-                        }, 2000);
-                    })
-                    .listen('.player.eliminated', (data) => {
-                        if (data.player_id === MY_PLAYER_ID) {
-                            this.isAlive         = false;
-                            this.showDeathBanner = true;
-                            gsap.to('.game-screen', { filter: 'grayscale(30%)', duration: 1 });
-                        }
-                        const p = this.players.find(p => p.id === data.player_id);
-                        if (p) p.is_alive = false;
-                    })
-                    .listen('.day.vote.cast', (data) => { this._updateVoteBars(data.votes ?? []); })
-                    .listen('.no.elimination', (data) => {
-                        this.noEliminationMessage = data.reason === 'equality'
-                            ? 'Égalité — personne n\'est éliminé ce jour.'
-                            : 'Aucun vote exprimé — personne n\'est éliminé.';
-                    })
-                    .listen('.random.elimination', (data) => {
-                        const p = this.players.find(p => p.id === data.player_id);
-                        if (p) p.is_alive = false;
-                        if (data.player_id === MY_PLAYER_ID) {
-                            this.isAlive         = false;
-                            this.showDeathBanner = true;
-                        }
-                        this.noEliminationMessage = `☠️ Le destin a frappé ! ${data.pseudo} a été foudroyé par les dieux du village !`;
-                    })
+                    .listen('.day.vote.cast',   (data) => { this._updateVoteBars(data.votes ?? []); })
                     .listen('.chat.message.sent', (data) => {
                         if (data.channel === 'general') {
                             this.chatMessages.push(data);
@@ -467,18 +325,60 @@
                         }
                     });
 
+                // Écoute des events window dispatchés par game-state.js
+                window.addEventListener('i-was-eliminated', () => {
+                    this.showDeathBanner = true;
+                    sessionStorage.setItem('dead_' + MY_PLAYER_ID, '1');
+                });
+                window.addEventListener('mayor-succession-started', (e) => {
+                    this.openSuccessionModal(e.detail);
+                });
+                window.addEventListener('mayor-succession-done', () => {
+                    this.closeSuccessionModal();
+                });
+                // .no.elimination → game-state.js affiche le toast, on écoute aussi localement
+                // pour afficher le message inline
+                window.addEventListener('no-elimination', (e) => {
+                    this.noEliminationMessage = e.detail?.reason === 'equality'
+                        ? 'Égalité — personne n\'est éliminé ce jour.'
+                        : 'Aucun vote exprimé — personne n\'est éliminé.';
+                });
+                // .player.eliminated → mettre à jour la liste locale
+                window.addEventListener('player-eliminated', (e) => {
+                    const p = this.players.find(p => p.id === e.detail?.player_id);
+                    if (p) p.is_alive = false;
+                });
+
                 this._startDayTimer();
             },
 
             _startDayTimer() {
-                if (PHASE_SECONDS <= 0) return;
+                const el = document.getElementById('day-vote-timer');
+
+                // Si le temps est déjà écoulé : barre à 0% et on arrête
+                if (PHASE_SECONDS <= 0) {
+                    if (el) el.style.width = '0%';
+                    this.dayTimerSeconds = 0;
+                    return;
+                }
+
+                // Largeur initiale = ratio temps restant / timer total (90s par défaut)
+                const totalSeconds = {{ $game->timer('day_vote') }};
+                const initialPct   = Math.min(100, Math.round((PHASE_SECONDS / totalSeconds) * 100));
+                if (el) el.style.width = initialPct + '%';
+
                 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-                    const el = document.getElementById('day-vote-timer');
                     if (el) gsap.to(el, { width: '0%', duration: PHASE_SECONDS, ease: 'none' });
                 }
+
                 const iv = setInterval(() => {
                     this.dayTimerSeconds = Math.max(0, this.dayTimerSeconds - 1);
-                    if (this.dayTimerSeconds <= 0) clearInterval(iv);
+                    if (this.dayTimerSeconds <= 0) {
+                        clearInterval(iv);
+                        if (el && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                            el.style.width = '0%';
+                        }
+                    }
                 }, 1000);
             },
 
@@ -515,7 +415,11 @@
                 try {
                     const res = await fetch(`/game/${GAME_ID}/vote/day`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
                         body: JSON.stringify({ target_player_id: this.dayVoteTarget }),
                     });
                     const json = await res.json();
@@ -536,7 +440,11 @@
                 try {
                     await fetch(`/game/${GAME_ID}/chat`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
                         body: JSON.stringify({ message: msg, channel: 'general' }),
                     });
                 } catch { }
@@ -545,48 +453,16 @@
 
             openSuccessionModal(data) {
                 this.dyingMayorPseudo = data.dying_mayor_pseudo;
-                this.timerSeconds     = data.timer;
-                this.isDyingMayor     = MY_IS_MAYOR && !MY_IS_ALIVE;
-                this.successionTarget = null;
-                this.submitting       = false;
                 this.successionOpen   = true;
                 this.$nextTick(() => {
-                    gsap.from(this.$refs.successionModal, { opacity: 0, y: 30, duration: 0.4, ease: 'power2.out' });
+                    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                        gsap.from(this.$refs.successionModal, { opacity: 0, y: 30, duration: 0.4, ease: 'power2.out' });
+                    }
                 });
-                if (data.timer > 0) { this._startCountdown(data.timer); }
             },
 
             closeSuccessionModal() {
-                clearInterval(this._timerInterval);
-                if (this._timerTween) this._timerTween.kill();
                 this.successionOpen = false;
-            },
-
-            _startCountdown(seconds) {
-                clearInterval(this._timerInterval);
-                ['succession-timer-fill', 'succession-timer-fill-ro'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) { gsap.killTweensOf(el); gsap.to(el, { width: '0%', duration: seconds, ease: 'none' }); }
-                });
-                this._timerInterval = setInterval(() => {
-                    this.timerSeconds = Math.max(0, this.timerSeconds - 1);
-                    if (this.timerSeconds <= 0) { clearInterval(this._timerInterval); }
-                }, 1000);
-            },
-
-            async designateSuccessor() {
-                if (!this.successionTarget || this.submitting) return;
-                this.submitting = true;
-                try {
-                    const res = await fetch(`/game/${GAME_ID}/mayor/succession`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
-                        body: JSON.stringify({ target_player_id: this.successionTarget }),
-                    });
-                    const json = await res.json();
-                    if (json.success) { this.closeSuccessionModal(); }
-                } catch { }
-                finally { this.submitting = false; }
             },
 
             submitQuit() {

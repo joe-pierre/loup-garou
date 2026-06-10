@@ -322,11 +322,18 @@ class GameService
 
     public function handleDisconnection(GamePlayer $player): void
     {
-        $timer = config('game.timers.reconnection', 30);
+        $cacheKey = "player_disconnected.{$player->id}";
+        $timer    = config('game.timers.reconnection', 30);
+
+        // Si un token existe déjà, un job est déjà en attente → ne pas re-dispatcher
+        if (Cache::has($cacheKey)) {
+            return;
+        }
+
         $token = Str::uuid()->toString();
 
         // Stocker le token 2× le timer pour couvrir les retards de queue
-        Cache::put("player_disconnected.{$player->id}", $token, now()->addSeconds($timer * 2));
+        Cache::put($cacheKey, $token, now()->addSeconds($timer * 2));
 
         broadcast(PlayerDisconnected::fromPlayer($player, $timer));
 
