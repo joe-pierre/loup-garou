@@ -35,14 +35,33 @@ use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
-    public function up()
+    public function up(): void
     {
-        DB::statement("ALTER TABLE games MODIFY status ENUM('waiting','electing_mayor','night','day','finished','processing_night','processing_day') NOT NULL");
+        DB::statement("ALTER TABLE games MODIFY status ENUM(
+            'waiting',
+            'electing_mayor',
+            'night',
+            'day',
+            'finished',
+            'processing_night',
+            'processing_wolves',
+            'wolves_turn',
+            'processing_day'
+        ) NOT NULL DEFAULT 'waiting'");
     }
 
-    public function down()
+    public function down(): void
     {
-        DB::statement("ALTER TABLE games MODIFY status ENUM('waiting','electing_mayor','night','day','finished','processing_night') NOT NULL");
+        DB::statement("ALTER TABLE games MODIFY status ENUM(
+            'waiting',
+            'electing_mayor',
+            'night',
+            'day',
+            'finished',
+            'processing_night',
+            'processing_wolves',
+            'wolves_turn'
+        ) NOT NULL DEFAULT 'waiting'");
     }
 };
 ```
@@ -54,63 +73,6 @@ return new class extends Migration
 Quand c’est fait :
 - Commit : `git add -A && git commit -m "fix(db): remove orphan migration, add processing_day to games.status enum"`
 - Ne pas merger.
-```
-```
-
-## TÂCHE F — Correction du double‑fire `ProcessDayVote` avec atomicité dans `VoteService`
-
-```
-AVANT DE COMMENCER :
-git checkout -b fix/dayvote-atomic
-
-Contexte : Tâche E terminée. `processing_day` disponible.
-```
-Modifications :
-
-1. Dans `app/Services/VoteService.php`, modifier `resolveDayVote(Game $game)` :
-
-```php
-public function resolveDayVote(Game $game)
-{
-    return DB::transaction(function () use ($game) {
-        $locked = Game::where('id', $game->id)
-            ->where('status', 'day')
-            ->lockForUpdate()
-            ->first();
-
-        if (!$locked) {
-            return; // déjà traité
-        }
-
-        $locked->update(['status' => 'processing_day']);
-
-        // --- toute la logique existante de résolution du vote jour ---
-        // (agrégation des votes, élimination, succession, etc.)
-        // --- en conservant les appels à WinConditionChecker et PhaseManager ---
-    });
-}
-```
-
-2. Dans `app/Jobs/ProcessDayVote.php`, simplifier `handle()` :
-
-```php
-public function handle(VoteService $voteService)
-{
-    $game = Game::find($this->gameId);
-    if (!$game || $game->status !== 'day' || $game->round !== $this->round) {
-        return;
-    }
-
-    $voteService->resolveDayVote($game);
-}
-```
-
-3. Vérifier que `PhaseManager::startDay()` ne peut pas être appelé depuis un état `processing_day` (normalement c’est impossible car `resolveDayVote` ne se termine pas sans changer le statut).
-
-Test :
-- Simuler deux déclenchements simultanés de `ProcessDayVote` → seul le premier passe, le second est ignoré.
-
-Commit : `git add -A && git commit -m "fix(dayvote): atomic resolution with processing_day guard in VoteService"`
 ```
 ```
 

@@ -1,3 +1,47 @@
+## [RÉSOLU] ProcessMayorSuccession::handle() — phase invalide insérée dans game_actions pour les statuts processing_*
+
+**Contexte :** Tâche I — `app/Jobs/ProcessMayorSuccession.php`, `tests/Feature/Game/NightPhaseTest.php::test_mayor_succession_triggered_at_night`.
+**Symptôme / Problème :** En écrivant le test de non-régression de la Tâche G (succession du maire déclenchée la nuit), `ProcessMayorSuccession::handle()` lève `QueryException: SQLSTATE[01000]: Warning: 1265 Data truncated for column 'phase'` lors de l'insertion du `GameAction` de type `mayor_succession`.
+**Cause / Alternatives :** La ligne `'phase' => $locked->status` insère la valeur brute du statut de la partie (`night`, `processing_night`, `day` ou `processing_day` depuis les Tâches F/G) dans `game_actions.phase`, dont l'ENUM est limité à `election|night|day` (migration `2026_06_03_000003_create_game_actions_table.php`). Pour `status='night'` ou `status='day'`, la valeur passait par coïncidence ; pour `processing_night`/`processing_day` (statuts intermédiaires introduits/élargis aux Tâches F/G), l'insertion échoue. (1) Étendre l'ENUM `game_actions.phase` pour accepter les statuts `processing_*` — invasif, casse la sémantique « phase » (election/night/day) de la table et impacte `scopeAnonymized`/historique. (2) Réutiliser `$phaseToStart` (déjà calculé juste avant la transaction, valant `'night'` ou `'day'` selon `in_array($game->status, ['night','processing_night'])`) pour la colonne `phase`.
+**Fix / Décision :** Option 2 retenue. `'phase' => $locked->status` remplacé par `'phase' => $phaseToStart`, et `$phaseToStart` ajouté au `use()` de la closure `DB::transaction()`. Comportement inchangé pour `status='night'`/`'day'` (valeur identique), corrige les cas `processing_night`/`processing_day`.
+**Leçon :** Quand une tâche élargit la liste des statuts `games.status` acceptés par un guard (Tâches F/G : ajout de `processing_night`/`processing_day`), vérifier toute valeur dérivée de `$game->status` réutilisée ailleurs dans la même méthode (ici une colonne ENUM distincte avec un domaine de valeurs plus restreint) — pas seulement les guards de transition de phase. Ce genre de bug ne se révèle qu'à l'exécution (écriture en base), jamais à l'analyse statique.
+**Statut :** ✅ Résolu
+
+---
+
+## [CHOIX] ProcessMayorSuccession en contexte nuit — ne démarre plus aucune phase, guard processing_day conservé
+
+**Contexte :** Tâche G — `app/Jobs/ProcessMayorSuccession.php`, `app/Jobs/ProcessNightActions.php`.
+**Symptôme / Problème :** Avant cette tâche, quand le maire mourait la nuit, `ProcessMayorSuccession` élisait bien un successeur mais appelait ensuite `$phaseManager->startDay($game, $victim)` (cas `$phaseToStart === 'night'`) — ce qui terminait la nuit après seulement 15s (délai succession) et faisait sauter le vote jour du round (`ProcessDayVote` jamais dispatché, cf. décision « Mort du maire la nuit — vote jour du round sacrifié »). L'énoncé de la tâche G demandait de supprimer cet appel et de garder `in_array($game->status, ['night', 'processing_night', 'day'])` comme guard — mais ce dernier point omet `processing_day`, ajouté en Tâche F.
+**Cause / Alternatives :** (1) Suivre l'énoncé littéralement et retirer `processing_day` du guard d'entrée et de la transaction — mais `VoteService::resolveDayVote()` dispatche `ProcessMayorSuccession::dispatch($game->id, $game->round)` alors que `$game->status` vaut `processing_day` (Tâche F) ; sans `processing_day` dans le guard, ce dispatch serait silencieusement ignoré et la succession de jour casserait à nouveau. (2) Conserver `processing_day` dans le guard (comme en Tâche F) et ne modifier que la branche `$phaseToStart === 'night'`.
+**Fix / Décision :** Option 2 retenue. Guard et `whereIn` de la transaction inchangés (`['night', 'processing_night', 'day', 'processing_day']`). `$phaseToStart` reste calculé via `in_array($game->status, ['night', 'processing_night'])`. Pour `$phaseToStart === 'night'` : après le broadcast `MayorSuccessionDone`, le job `return` immédiatement — aucun appel à `startDay()`/`startNight()`. Pour `$phaseToStart === 'day'` (y compris `processing_day`) : comportement inchangé, appel à `startNight()`. Suppression du paramètre `$victimId` du constructeur (devenu inutile) et de l'import `GamePlayer` ; `ProcessNightActions::dispatch` mis à jour pour ne plus passer `$victim->id`.
+**Leçon :** ⚠️ Régression intermédiaire assumée : après cette tâche seule, une mort du maire la nuit élit un successeur mais laisse la partie bloquée en `processing_night` (plus aucun job ne déclenche la suite). C'est voulu — `ProcessNightEnd` (Tâche H) doit être livré avec/juste après cette tâche pour fermer la boucle via un délai buffer couvrant la succession. Ne pas merger Tâche G seule sur `dev` sans Tâche H. Plus généralement : quand un énoncé de tâche liste un guard de statut sans mentionner un statut intermédiaire introduit par une tâche précédente, vérifier l'historique (DECISIONS.md) avant de réduire le guard.
+**Statut :** 🔵 Choix assumé
+
+---
+
+## [CHOIX] processing_day — guards de PhaseManager::startNight() et ProcessMayorSuccession étendus
+
+**Contexte :** Tâche F — `app/Services/VoteService.php` (`resolveDayVote`), `app/Services/PhaseManager.php` (`startNight`), `app/Jobs/ProcessMayorSuccession.php`.
+**Symptôme / Problème :** L'énoncé de la tâche F demandait de faire passer `resolveDayVote()` au statut `processing_day` (lockForUpdate sur `status='day'`) dès l'entrée en transaction, pour bloquer un second appel concurrent. Mais une fois le statut changé en `processing_day`, le code "hors transaction" de `resolveDayVote()` appelle `PhaseManager::startNight($game)` (cas normal/égalité/random) ou dispatche `ProcessMayorSuccession` (cas maire éliminé) — `$game->refresh()` y verrait alors `status='processing_day'`. Or `startNight()` gardait `where('status', 'day')->lockForUpdate()` et `ProcessMayorSuccession::handle()` gardait `in_array($game->status, ['night','processing_night','day'])` — aucun des deux n'aurait trouvé le jeu, et la transition nuit / la succession du maire auraient été silencieusement bloquées (partie figée en `processing_day`).
+**Cause / Alternatives :** (1) Ne changer le statut qu'à `night` directement dans `resolveDayVote()` au lieu de `processing_day`, en supprimant l'appel à `startNight()` — mais cela duplique la logique de `startNight()` (broadcast `NightStarted`, dispatch `ProcessSeerTurn` avec délai, incrément `round`) et casse le pattern "chaque méthode de transition garde son propre guard" (cf. décision Tâche 16). (2) Étendre les guards de `startNight()` et `ProcessMayorSuccession` pour accepter `processing_day` en plus de `day`.
+**Fix / Décision :** Option 2 retenue. `startNight()` : `whereIn('status', ['day', 'processing_day'])->lockForUpdate()`. `ProcessMayorSuccession::handle()` : `in_array($game->status, ['night','processing_night','day','processing_day'])` (guard d'entrée) et `whereIn('status', [...])` (transaction). Le calcul de `$phaseToStart` n'a pas besoin d'être modifié : `processing_day` n'étant pas dans `['night','processing_night']`, il vaut `'day'`, ce qui déclenche bien `startNight()` (comportement identique au cas `status='day'`).
+**Leçon :** Tout changement de statut "guard atomique" introduit dans une méthode doit être tracé jusqu'aux méthodes/jobs appelés APRÈS ce changement (hors transaction) — leurs propres guards de statut doivent être étendus en conséquence, sinon la transition suivante est silencieusement bloquée. Ne pas se limiter au périmètre littéral de l'énoncé de tâche quand un nouveau statut intermédiaire est introduit.
+**Statut :** 🔵 Choix assumé
+
+---
+
+## [CHOIX] Migration enum games.status (processing_day) — préservation de role_reveal
+
+**Contexte :** Tâche E — `database/migrations/2026_06_11_191937_add_processing_day_to_games_status_enum.php`, suppression de `database/migrations/2026_06_10_004809_add_processing_night_to_games_status_enum.php` (migration fantôme, up()/down() vides).
+**Symptôme / Problème :** L'énoncé de la tâche E décrivait l'ENUM actuel de `games.status` comme `waiting, electing_mayor, night, day, finished, processing_night, processing_wolves, wolves_turn` — sans `role_reveal`. Or les migrations `2026_06_10_000001/000002/000003` (commit `4d258e0`, "Résolution bug 1") ont déjà ajouté `role_reveal` à l'ENUM réel. En appliquant le SQL fourni tel quel (up() ET down() omettant `role_reveal`), la nouvelle migration aurait silencieusement supprimé `role_reveal` de l'ENUM.
+**Cause / Alternatives :** `role_reveal` n'est référencé dans aucun code applicatif actuel, mais CLAUDE.md mentionne un timer `TIMER_READY_TIMEOUT` (60s, fixe) pour « l'écran révélation rôle », ce qui suggère que ce statut est planifié/attendu. (1) Suivre l'énoncé tel quel et supprimer `role_reveal`. (2) Conserver `role_reveal` dans l'ENUM et n'ajouter que `processing_day`.
+**Fix / Décision :** Option 2 retenue (validée avec l'utilisateur). La nouvelle migration reproduit l'ENUM réel actuel (`waiting, role_reveal, electing_mayor, night, processing_night, processing_wolves, wolves_turn, day, finished`) et y ajoute `processing_day` (inséré entre `day` et `finished`). Le `down()` restaure exactement l'état issu de la migration `000003`.
+**Leçon :** Avant d'appliquer un SQL d'ALTER TABLE ENUM fourni dans un énoncé de tâche, comparer la liste de valeurs avec l'ENUM réel (`SHOW COLUMNS FROM games` ou dernière migration `MODIFY COLUMN status ENUM(...)`) — un énoncé de tâche peut décrire un état de schéma obsolète/incomplet, et un `up()`/`down()` qui omet une valeur existante la supprime silencieusement.
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] cancelled/spectator réécrites en @extends('layouts.game') + gameState — fichier renommé dead-spectator → spectator
 
 **Contexte :** Tâche A (UI) — `resources/views/game/cancelled.blade.php`, `resources/views/game/dead-spectator.blade.php`, `GameController::spectator()`, `routes/web.php`
@@ -334,6 +378,17 @@ SPEC.md §4 mis à jour pour refléter ce choix.
 **Fix :** La barre démarre à `width:0%` dans le HTML. `_startDayTimer` calcule `initialPct = (PHASE_SECONDS / totalSeconds) * 100` et set la largeur initiale correcte. Si `PHASE_SECONDS <= 0`, barre forcée à 0% immédiatement.
 **Leçon :** Les barres de progression liées à un état serveur ne doivent jamais avoir une valeur initiale hardcodée en HTML. La valeur initiale doit être calculée depuis l'état réel (`phaseRemainingSeconds / totalSeconds`). Cela couvre aussi les joueurs qui arrivent en retard (refresh, reconnexion).
 **Statut :** ✅ Résolu
+
+---
+
+## [CHOIX] ProcessNightEnd — délai via $game->timer() et récupération de la victime pour DayStarted
+
+**Contexte :** Tâche H — `app/Jobs/ProcessNightActions.php`, `app/Services/PhaseManager.php::endNight()`.
+**Symptôme / Problème :** L'énoncé de la tâche fournissait deux extraits à reproduire tels quels : (1) `ProcessNightEnd::dispatch(...)->delay(now()->addSeconds(config('game.timers.mayor_succession', 15) + 5))` ; (2) `endNight()` appelant `$this->startDay($game, null)`.
+**Cause / Alternatives :** (1) `config('game.timers.mayor_succession', 15)` retourne en réalité `5` (valeur réellement définie dans `config/game.php` — le `15` de l'énoncé n'est qu'un défaut de fallback jamais atteint), soit un délai total de `5+5=10s`. Or `ProcessMayorSuccession` peut être dispatché avec un délai allant jusqu'à `$game->timer('mayor_succession')` = `15` (valeur posée par `TimerCalculator::FIXED` dans `$game->timers` au démarrage) : `10s` ne suffirait pas à couvrir la succession. CLAUDE.md interdit explicitement `config('game.timers.x')` au profit de `$game->timer('x')`. (2) `startDay($game, null)` ferait perdre l'info `killed` (player_id/pseudo/role de la victime de la nuit) du payload `DayStarted` pour tous les rounds — régression sur la décision « DayStarted payload manquait player_id ».
+**Fix / Décision :** (1) Délai = `$game->timer('mayor_succession') + 5` → `15+5=20s` pour une partie réelle, conforme à l'exemple « 20s » de l'énoncé et à CLAUDE.md. (2) `endNight()` recalcule la victime via `app(VoteService::class)->resolveNightVote($game)` (lecture pure des `night_vote` du round, sans effet de bord — le `is_alive=false` a déjà été appliqué par `ProcessNightActions`) et la passe à `startDay($game, $victim)`. Point 4 de l'énoncé (retirer startDay/startNight de `ProcessSeerTurn`) vérifié sans objet : ce job ne contenait déjà aucun appel à ces méthodes.
+**Leçon :** Ne jamais recopier littéralement un extrait de code d'énoncé sans vérifier (a) que les valeurs de config citées correspondent à la config réelle du projet, (b) qu'un paramètre `null`/omis ne casse pas un payload déjà documenté ailleurs dans DECISIONS.md. `resolveNightVote()` est sûr à rappeler car purement déclaratif.
+**Statut :** 🔵 Choix assumé
 
 ---
 

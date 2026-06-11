@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Events\Game\MayorSuccessionDone;
 use App\Models\Game;
 use App\Models\GameAction;
-use App\Models\GamePlayer;
 use App\Services\PhaseManager;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,15 +20,14 @@ class ProcessMayorSuccession implements ShouldQueue
     public function __construct(
         public readonly int $gameId,
         public readonly int $round,
-        public readonly ?int $victimId = null,
     ) {}
 
     public function handle(PhaseManager $phaseManager): void
     {
         $game = Game::find($this->gameId);
 
-        // Accepter night, processing_night ET day
-        if (! $game || ! in_array($game->status, ['night', 'processing_night', 'day']) || $game->round !== $this->round) {
+        // Accepter night, processing_night, day ET processing_day
+        if (! $game || ! in_array($game->status, ['night', 'processing_night', 'day', 'processing_day']) || $game->round !== $this->round) {
             return;
         }
 
@@ -37,9 +35,9 @@ class ProcessMayorSuccession implements ShouldQueue
 
         // La transaction retourne les données nécessaires au broadcast
         // mais ne broadcaste pas — le broadcast doit être HORS transaction
-        $result = DB::transaction(function () use ($game) {
+        $result = DB::transaction(function () use ($game, $phaseToStart) {
             $locked = Game::where('id', $game->id)
-                ->whereIn('status', ['night', 'processing_night', 'day'])
+                ->whereIn('status', ['night', 'processing_night', 'day', 'processing_day'])
                 ->where('round', $this->round)
                 ->lockForUpdate()
                 ->first();
@@ -75,7 +73,7 @@ class ProcessMayorSuccession implements ShouldQueue
                 'type'             => 'mayor_succession',
                 'target_player_id' => $successor->id,
                 'round'            => $locked->round,
-                'phase'            => $locked->status,
+                'phase'            => $phaseToStart,
             ]);
 
             // NE PAS broadcaster ici — la transaction n'est pas encore committée
@@ -89,13 +87,13 @@ class ProcessMayorSuccession implements ShouldQueue
         // Broadcast APRÈS commit de la transaction
         broadcast(new MayorSuccessionDone($result['game'], $result['successor'], true));
 
-        $game->refresh();
-
         if ($phaseToStart === 'night') {
-            $victim = $this->victimId ? GamePlayer::find($this->victimId) : null;
-            $phaseManager->startDay($game, $victim);
-        } else {
-            $phaseManager->startNight($game);
+            // Succession déclenchée la nuit : ne pas démarrer de nouvelle phase ici.
+            // La fin de nuit est gérée par ProcessNightEnd (Tâche H) avec un délai buffer.
+            return;
         }
+
+        $game->refresh();
+        $phaseManager->startNight($game);
     }
 }

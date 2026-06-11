@@ -1,14 +1,14 @@
 # BUGS CORRIGÉS
 
-### [ ] 2026-06-11 — Double-fire ProcessDayVote bloque la phase jour
+### [x] 2026-06-11 — Double-fire ProcessDayVote bloque la phase jour
 
 - **Symptôme :** la partie se bloque en phase jour — la résolution du vote est déclenchée deux fois
-- **Cause :** ProcessDayVote dispatché plusieurs fois sans guard atomique ; VoteService::resolveDayVote() ne posait pas de verrou avant de traiter
-- **Fix :** passage à processing_day dans une transaction lockForUpdate dès le début de resolveDayVote() ; ProcessDayVote allégé en simple relais vers VoteService
+- **Cause :** ProcessDayVote dispatché plusieurs fois sans guard atomique ; VoteService::resolveDayVote() lockForUpdate() sur status='day' mais ne changeait jamais ce statut, donc un second appel concurrent retrouvait status='day' et retraitait les votes
+- **Fix :** `resolveDayVote()` passe le statut à `processing_day` (lockForUpdate) dès l'entrée en transaction — un second appel ne trouve plus `status='day'` et est ignoré. `PhaseManager::startNight()` et `ProcessMayorSuccession` mis à jour pour accepter `processing_day` en plus de `day` (sinon la transition nuit / la succession du maire ne se déclenchait plus après ce changement)
 
 ---
 
-### [ ] 2026-06-11 — Succession du maire non déclenchée si mort la nuit
+### [x] 2026-06-11 — Succession du maire non déclenchée si mort la nuit
 
 - **Symptôme :** quand le maire meurt la nuit, aucun nouveau maire n'est élu
 - **Cause :** ProcessMayorSuccession appelait startDay() au lieu de ne rien faire en contexte nuit (sens inversé documenté dans DECISIONS.md)
@@ -16,7 +16,7 @@
 
 ---
 
-### [ ] 2026-06-11 — Nuit sans loups si la voyante est morte
+### [x] 2026-06-11 — Nuit sans loups si la voyante est morte
 
 - **Symptôme :** quand la voyante est morte, la nuit ne se termine pas et le jour ne démarre jamais
 - **Cause :** ProcessNightActions appelait startDay() directement, ce chemin était court-circuité dans certains contextes (succession maire, voyante absente)
@@ -24,7 +24,7 @@
 
 ---
 
-### [ ] 2026-06-11 — SQL Data truncated sur games.status (ENUM incomplet)
+### [x] 2026-06-11 — SQL Data truncated sur games.status (ENUM incomplet)
 
 - **Symptôme :** erreur SQL "Data truncated for column status" en production
 - **Cause :** processing_day absent de l'ENUM games.status ; migration fantôme 004809 avec up() vide introduisant une fausse sécurité
@@ -148,6 +148,7 @@
 
 # ROADMAP (idées / améliorations futures)
 
+- [ ] Harmoniser `config('game.timers.mayor_succession', 15)` (utilisé dans `ProcessNightActions` et `VoteService::resolveDayVote`) avec `$game->timer('mayor_succession')` : `config/game.php` définit `mayor_succession => 5`, donc le fallback `15` de ces appels n'est jamais utilisé en pratique — écart avec les 15s documentés dans CLAUDE.md/TimerCalculator
 - [ ] Délai voyante : réduire de ~8s à ~5s — broadcaster `SeerTurnStarted` avec `delay(5s)` côté serveur, supprimer le `setTimeout` client (v1.2)
 - [ ] Timers configurables par partie depuis la waiting-room (v1.2)
 - [ ] Rôles v1.2 : Sorcière, Chasseur

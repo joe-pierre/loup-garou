@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 19h05
+Generated at: 21h08
 
 ## PHP Analysis (Core Logic)
 
@@ -95,7 +95,7 @@ ProcessMayorSuccession.php
       - Queueable
       - SerializesModels
     functions:
-      - __construct(int $gameId, int $round, ?int $victimId) {}
+      - __construct(int $gameId, int $round) {}
       - handle(PhaseManager $phaseManager) → void
 
 // app/Jobs/ProcessWerewolvesTurn.php
@@ -832,6 +832,7 @@ RaceConditionTest.php
       - test_start_game_race_double_appel_idempotent() → void
       - test_mayor_vote_race_double_vote_même_joueur_retourne_409() → void
       - test_day_vote_mayor_weight_2_même_si_maire_assigné_en_cours() → void
+      - test_resolve_day_vote_double_fire_processing_day_guard_ignore_second_appel() → void
 
 // tests/Feature/Game/DayPhaseTest.php
 DayPhaseTest.php
@@ -928,12 +929,6 @@ TestCase.php
       - up() → void
       - down() → void
 
-// database/migrations/2026_06_10_004809_add_processing_night_to_games_status_enum.php
-2026_06_10_004809_add_processing_night_to_games_status_enum.php
-    functions:
-      - up() → void
-      - down() → void
-
 // database/migrations/0001_01_01_000000_create_users_table.php
 0001_01_01_000000_create_users_table.php
     functions:
@@ -954,6 +949,12 @@ TestCase.php
 
 // database/migrations/2026_06_05_235433_add_timers_to_games_table.php
 2026_06_05_235433_add_timers_to_games_table.php
+    functions:
+      - up() → void
+      - down() → void
+
+// database/migrations/2026_06_11_191937_add_processing_day_to_games_status_enum.php
+2026_06_11_191937_add_processing_day_to_games_status_enum.php
     functions:
       - up() → void
       - down() → void
