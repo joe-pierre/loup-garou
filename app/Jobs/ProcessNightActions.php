@@ -6,7 +6,6 @@ use App\Events\Game\MayorSuccessionStarted;
 use App\Events\Game\PlayerEliminated;
 use App\Models\Game;
 use App\Notifications\PlayerKilledNightNotification;
-use App\Services\PhaseManager;
 use App\Services\VoteService;
 use App\Services\WinConditionChecker;
 use Illuminate\Bus\Queueable;
@@ -25,7 +24,7 @@ class ProcessNightActions implements ShouldQueue
         public readonly int $round,
     ) {}
 
-    public function handle(VoteService $voteService, PhaseManager $phaseManager, WinConditionChecker $winChecker): void
+    public function handle(VoteService $voteService, WinConditionChecker $winChecker): void
     {
         $game = null;
 
@@ -72,10 +71,9 @@ class ProcessNightActions implements ShouldQueue
             broadcast(new MayorSuccessionStarted($game, $victim->pseudo));
             ProcessMayorSuccession::dispatch($game->id, $game->round)
                 ->delay(now()->addSeconds($successionDelay));
-
-            return;
         }
 
-        $phaseManager->startDay($game, $victim);
+        ProcessNightEnd::dispatch($game->id, $game->round)
+            ->delay(now()->addSeconds($game->timer('mayor_succession') + 5));
     }
 }

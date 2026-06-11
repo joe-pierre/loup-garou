@@ -74,4 +74,21 @@ class PhaseManager
         ProcessSeerTurn::dispatch($locked->id)
             ->delay(now()->addSeconds(config('game.timers.night_start_delay', 4)));
     }
+
+    public function endNight(Game $game): void
+    {
+        $game->refresh();
+
+        if (! in_array($game->status, ['night', 'processing_night'])) {
+            return;
+        }
+
+        if (app(WinConditionChecker::class)->check($game)) {
+            return;
+        }
+
+        $victim = app(VoteService::class)->resolveNightVote($game);
+
+        $this->startDay($game, $victim);
+    }
 }

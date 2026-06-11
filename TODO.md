@@ -131,7 +131,7 @@
 - [x] Tâche E — Migration : supprimer migration fantôme 004809, ajouter processing_day à l'ENUM
 - [x] Tâche F — ProcessDayVote : double-fire corrigé via atomicité dans VoteService
 - [x] Tâche G — ProcessMayorSuccession : succession nocturne sans transition de phase prématurée
-- [ ] Tâche H — ProcessNightEnd : fin de nuit systématique même sans voyante
+- [x] Tâche H — ProcessNightEnd : fin de nuit systématique même sans voyante
 - [ ] Tâche I — Tests : non-régression E→H (double-fire, succession nuit, migration enum)
 
 ## Phase v1.2 — Améliorations différées

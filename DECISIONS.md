@@ -370,6 +370,17 @@ SPEC.md §4 mis à jour pour refléter ce choix.
 
 ---
 
+## [CHOIX] ProcessNightEnd — délai via $game->timer() et récupération de la victime pour DayStarted
+
+**Contexte :** Tâche H — `app/Jobs/ProcessNightActions.php`, `app/Services/PhaseManager.php::endNight()`.
+**Symptôme / Problème :** L'énoncé de la tâche fournissait deux extraits à reproduire tels quels : (1) `ProcessNightEnd::dispatch(...)->delay(now()->addSeconds(config('game.timers.mayor_succession', 15) + 5))` ; (2) `endNight()` appelant `$this->startDay($game, null)`.
+**Cause / Alternatives :** (1) `config('game.timers.mayor_succession', 15)` retourne en réalité `5` (valeur réellement définie dans `config/game.php` — le `15` de l'énoncé n'est qu'un défaut de fallback jamais atteint), soit un délai total de `5+5=10s`. Or `ProcessMayorSuccession` peut être dispatché avec un délai allant jusqu'à `$game->timer('mayor_succession')` = `15` (valeur posée par `TimerCalculator::FIXED` dans `$game->timers` au démarrage) : `10s` ne suffirait pas à couvrir la succession. CLAUDE.md interdit explicitement `config('game.timers.x')` au profit de `$game->timer('x')`. (2) `startDay($game, null)` ferait perdre l'info `killed` (player_id/pseudo/role de la victime de la nuit) du payload `DayStarted` pour tous les rounds — régression sur la décision « DayStarted payload manquait player_id ».
+**Fix / Décision :** (1) Délai = `$game->timer('mayor_succession') + 5` → `15+5=20s` pour une partie réelle, conforme à l'exemple « 20s » de l'énoncé et à CLAUDE.md. (2) `endNight()` recalcule la victime via `app(VoteService::class)->resolveNightVote($game)` (lecture pure des `night_vote` du round, sans effet de bord — le `is_alive=false` a déjà été appliqué par `ProcessNightActions`) et la passe à `startDay($game, $victim)`. Point 4 de l'énoncé (retirer startDay/startNight de `ProcessSeerTurn`) vérifié sans objet : ce job ne contenait déjà aucun appel à ces méthodes.
+**Leçon :** Ne jamais recopier littéralement un extrait de code d'énoncé sans vérifier (a) que les valeurs de config citées correspondent à la config réelle du projet, (b) qu'un paramètre `null`/omis ne casse pas un payload déjà documenté ailleurs dans DECISIONS.md. `resolveNightVote()` est sûr à rappeler car purement déclaratif.
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] ProcessNightEnd job dédié plutôt qu'appel direct à startDay() depuis ProcessNightActions
 
 **Contexte :** Tâche H — `ProcessNightActions`, `ProcessNightEnd`, `PhaseManager::endNight()`
