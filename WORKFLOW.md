@@ -6,46 +6,33 @@
 
 ## 1. Vue d'ensemble
 
-```
-AVANT SESSION
-─────────────────────────────────────────────
-  Régénérer CODE_SNAPSHOT.md (script externe: ./z_tools/project_structure.sh)
-                    │
-                    ▼
-            Lancer Claude Code
-                    │
-                    ▼
-SESSION CLAUDE CODE
-─────────────────────────────────────────────
-  CLAUDE.md lu automatiquement
-                    │
-                    ▼
-  Coller le prompt (TASK_PROMPTS_REMAINING.md)
-                    │
-                    ▼
-  Claude Code travaille sur sa branche Git
-                    │
-                    ▼
-  Commit + attente merge par le développeur
-─────────────────────────────────────────────
-APRÈS LES 4 TÂCHES (A→D mergées sur dev)
-─────────────────────────────────────────────
-  Tests automatisés
-         │
-         ▼
-  Gérer divergences test auto / test manuel
-         │
-         ▼
-  Test manuel complet
-         │
-         ▼
-  Résolution bugs via Claude.ai
-         │
-         ▼
-  Audits (sécurité, performance, WebSocket)
-         │
-         ▼
-  Mise à jour fichiers Claude.ai
+```mermaid
+stateDiagram-v1.1.1
+    [*] --> Waiting
+    Waiting --> MayorElection
+    MayorElection --> Night
+    Night --> NightResolution
+    NightResolution --> CheckVictimNight
+    CheckVictimNight --> MayorSuccession : victime = maire
+    CheckVictimNight --> RemoveSeer : victime = voyante
+    CheckVictimNight --> VictoryCheck
+    MayorSuccession --> RemoveSeer
+    MayorSuccession --> VictoryCheck
+    RemoveSeer --> VictoryCheck
+    VictoryCheck --> Finished : victoire
+    VictoryCheck --> Day : aucune victoire
+    Day --> DayVote
+    DayVote --> DayResolution
+    DayResolution --> CheckVictimDay
+    CheckVictimDay --> MayorSuccessionDay : éliminé = maire
+    CheckVictimDay --> RemoveSeerDay : éliminé = voyante
+    CheckVictimDay --> VictoryCheckDay
+    MayorSuccessionDay --> RemoveSeerDay
+    MayorSuccessionDay --> VictoryCheckDay
+    RemoveSeerDay --> VictoryCheckDay
+    VictoryCheckDay --> Finished : victoire
+    VictoryCheckDay --> Night : continuer
+    Finished --> [*]
 ```
 
 ---
