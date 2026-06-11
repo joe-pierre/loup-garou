@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Events\Game\MayorSuccessionDone;
 use App\Models\Game;
 use App\Models\GameAction;
-use App\Models\GamePlayer;
 use App\Services\PhaseManager;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,7 +20,6 @@ class ProcessMayorSuccession implements ShouldQueue
     public function __construct(
         public readonly int $gameId,
         public readonly int $round,
-        public readonly ?int $victimId = null,
     ) {}
 
     public function handle(PhaseManager $phaseManager): void
@@ -89,13 +87,13 @@ class ProcessMayorSuccession implements ShouldQueue
         // Broadcast APRÈS commit de la transaction
         broadcast(new MayorSuccessionDone($result['game'], $result['successor'], true));
 
-        $game->refresh();
-
         if ($phaseToStart === 'night') {
-            $victim = $this->victimId ? GamePlayer::find($this->victimId) : null;
-            $phaseManager->startDay($game, $victim);
-        } else {
-            $phaseManager->startNight($game);
+            // Succession déclenchée la nuit : ne pas démarrer de nouvelle phase ici.
+            // La fin de nuit est gérée par ProcessNightEnd (Tâche H) avec un délai buffer.
+            return;
         }
+
+        $game->refresh();
+        $phaseManager->startNight($game);
     }
 }

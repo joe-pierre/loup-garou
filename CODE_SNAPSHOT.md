@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 19h51
+Generated at: 21h08
 
 ## PHP Analysis (Core Logic)
 
@@ -95,7 +95,7 @@ ProcessMayorSuccession.php
       - Queueable
       - SerializesModels
     functions:
-      - __construct(int $gameId, int $round, ?int $victimId) {}
+      - __construct(int $gameId, int $round) {}
       - handle(PhaseManager $phaseManager) → void
 
 // app/Jobs/ProcessWerewolvesTurn.php

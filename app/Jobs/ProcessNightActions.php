@@ -70,7 +70,7 @@ class ProcessNightActions implements ShouldQueue
                 : config('game.timers.mayor_succession', 15);
 
             broadcast(new MayorSuccessionStarted($game, $victim->pseudo));
-            ProcessMayorSuccession::dispatch($game->id, $game->round, $victim->id)
+            ProcessMayorSuccession::dispatch($game->id, $game->round)
                 ->delay(now()->addSeconds($successionDelay));
 
             return;
