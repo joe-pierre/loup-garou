@@ -127,6 +127,13 @@
 - [x] Barre timer jour pleine à 0s — initialPct calculé depuis PHASE_SECONDS
 - [x] Résolution anticipée nuit/jour quand tous ont voté (VoteService)
 
+## Phase 14 — Bugfixes critiques production (2026-06-11)
+- [ ] Tâche E — Migration : supprimer migration fantôme 004809, ajouter processing_day à l'ENUM
+- [ ] Tâche F — ProcessDayVote : double-fire corrigé via atomicité dans VoteService
+- [ ] Tâche G — ProcessMayorSuccession : succession nocturne sans transition de phase prématurée
+- [ ] Tâche H — ProcessNightEnd : fin de nuit systématique même sans voyante
+- [ ] Tâche I — Tests : non-régression E→H (double-fire, succession nuit, migration enum)
+
 ## Phase v1.2 — Améliorations différées
 - [ ] Délai voyante : réduire de ~8s à ~5s (broadcaster SeerTurnStarted avec delay(5s) côté serveur — $watch déjà en place, setTimeout client déjà supprimé en v1.1)
 - [ ] Timers configurables par partie

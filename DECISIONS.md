@@ -334,3 +334,14 @@ SPEC.md §4 mis à jour pour refléter ce choix.
 **Fix :** La barre démarre à `width:0%` dans le HTML. `_startDayTimer` calcule `initialPct = (PHASE_SECONDS / totalSeconds) * 100` et set la largeur initiale correcte. Si `PHASE_SECONDS <= 0`, barre forcée à 0% immédiatement.
 **Leçon :** Les barres de progression liées à un état serveur ne doivent jamais avoir une valeur initiale hardcodée en HTML. La valeur initiale doit être calculée depuis l'état réel (`phaseRemainingSeconds / totalSeconds`). Cela couvre aussi les joueurs qui arrivent en retard (refresh, reconnexion).
 **Statut :** ✅ Résolu
+
+---
+
+## [CHOIX] ProcessNightEnd job dédié plutôt qu'appel direct à startDay() depuis ProcessNightActions
+
+**Contexte :** Tâche H — `ProcessNightActions`, `ProcessNightEnd`, `PhaseManager::endNight()`
+**Symptôme / Problème :** `ProcessNightActions` appelait `startDay()` directement, créant plusieurs chemins de sortie (succession maire, voyante morte, cas normal) dont certains ne couvraient pas tous les scénarios — notamment voyante morte sans victime loups.
+**Cause / Alternatives :** (1) Ajouter des branches conditionnelles supplémentaires dans `ProcessNightActions` pour couvrir chaque cas — complexité croissante, fragile. (2) Centraliser la fin de nuit dans un job unique `ProcessNightEnd` dispatché systématiquement avec un délai buffer couvrant la succession éventuelle.
+**Fix / Décision :** Option 2 retenue. `ProcessNightActions` ne contient plus aucun appel à `startDay()`. Il dispatche toujours `ProcessNightEnd` avec `delay(mayor_succession + 5s)`. `PhaseManager::endNight()` contient la logique métier (guard status, WinConditionChecker, startDay). Le job n'est qu'un orchestrateur timer — conforme à CLAUDE.md.
+**Leçon :** Tout job qui se termine par "et après, on passe à la phase suivante" doit déléguer cette transition à un job ou une méthode de service dédiée, jamais l'inliner. Cela permet de couvrir tous les chemins de sortie sans multiplier les branches.
+**Statut :** 🔵 Choix assumé

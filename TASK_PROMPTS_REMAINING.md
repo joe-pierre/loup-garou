@@ -2,6 +2,336 @@
 
 > Tâches 1→37 terminées. Ce fichier contient uniquement ce qu'il reste à faire.
 > Coller un prompt à la fois dans Claude Code.
+> ⚠️ Bugfixes critiques (E→I) à traiter en priorité avant les tâches A→C.
+
+---
+
+## TÂCHE E — Correction de l’ENUM `games.status` (ajout de `processing_day`)
+
+```
+AVANT DE COMMENCER :
+git checkout -b fix/enum-processing-day
+
+Contexte :
+- Une migration fantôme `2026_06_10_004809_add_processing_night_to_games_status_enum.php` existe avec `up()` vide → à supprimer.
+- `processing_night` est déjà présent via `2026_06_10_000001_add_processing_night_to_games_status.php`.
+- Seul `processing_day` manque.
+- L'ENUM complet actuel en prod est : waiting, electing_mayor, night, day, finished, processing_night, processing_wolves, wolves_turn.
+```
+Étapes :
+
+1. Supprimer la migration orpheline :
+   rm database/migrations/2026_06_10_004809_add_processing_night_to_games_status_enum.php
+
+2. Créer une nouvelle migration (timestamp) :
+   php artisan make:migration add_processing_day_to_games_status_enum
+
+3. Contenu de la migration :
+```php
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
+
+return new class extends Migration
+{
+    public function up()
+    {
+        DB::statement("ALTER TABLE games MODIFY status ENUM('waiting','electing_mayor','night','day','finished','processing_night','processing_day') NOT NULL");
+    }
+
+    public function down()
+    {
+        DB::statement("ALTER TABLE games MODIFY status ENUM('waiting','electing_mayor','night','day','finished','processing_night') NOT NULL");
+    }
+};
+```
+
+4. Vérifier le rollback :
+   php artisan migrate:rollback --step=1
+   php artisan migrate
+
+Quand c’est fait :
+- Commit : `git add -A && git commit -m "fix(db): remove orphan migration, add processing_day to games.status enum"`
+- Ne pas merger.
+```
+```
+
+## TÂCHE F — Correction du double‑fire `ProcessDayVote` avec atomicité dans `VoteService`
+
+```
+AVANT DE COMMENCER :
+git checkout -b fix/dayvote-atomic
+
+Contexte : Tâche E terminée. `processing_day` disponible.
+```
+Modifications :
+
+1. Dans `app/Services/VoteService.php`, modifier `resolveDayVote(Game $game)` :
+
+```php
+public function resolveDayVote(Game $game)
+{
+    return DB::transaction(function () use ($game) {
+        $locked = Game::where('id', $game->id)
+            ->where('status', 'day')
+            ->lockForUpdate()
+            ->first();
+
+        if (!$locked) {
+            return; // déjà traité
+        }
+
+        $locked->update(['status' => 'processing_day']);
+
+        // --- toute la logique existante de résolution du vote jour ---
+        // (agrégation des votes, élimination, succession, etc.)
+        // --- en conservant les appels à WinConditionChecker et PhaseManager ---
+    });
+}
+```
+
+2. Dans `app/Jobs/ProcessDayVote.php`, simplifier `handle()` :
+
+```php
+public function handle(VoteService $voteService)
+{
+    $game = Game::find($this->gameId);
+    if (!$game || $game->status !== 'day' || $game->round !== $this->round) {
+        return;
+    }
+
+    $voteService->resolveDayVote($game);
+}
+```
+
+3. Vérifier que `PhaseManager::startDay()` ne peut pas être appelé depuis un état `processing_day` (normalement c’est impossible car `resolveDayVote` ne se termine pas sans changer le statut).
+
+Test :
+- Simuler deux déclenchements simultanés de `ProcessDayVote` → seul le premier passe, le second est ignoré.
+
+Commit : `git add -A && git commit -m "fix(dayvote): atomic resolution with processing_day guard in VoteService"`
+```
+```
+
+## TÂCHE F — Correction du double‑fire `ProcessDayVote` avec atomicité dans `VoteService`
+
+```
+AVANT DE COMMENCER :
+git checkout -b fix/dayvote-atomic
+
+Contexte : Tâche E terminée. `processing_day` disponible.
+```
+Modifications :
+
+1. Dans `app/Services/VoteService.php`, modifier `resolveDayVote(Game $game)` :
+
+```php
+public function resolveDayVote(Game $game)
+{
+    return DB::transaction(function () use ($game) {
+        $locked = Game::where('id', $game->id)
+            ->where('status', 'day')
+            ->lockForUpdate()
+            ->first();
+
+        if (!$locked) {
+            return; // déjà traité
+        }
+
+        $locked->update(['status' => 'processing_day']);
+
+        // --- toute la logique existante de résolution du vote jour ---
+        // (agrégation des votes, élimination, succession, etc.)
+        // --- en conservant les appels à WinConditionChecker et PhaseManager ---
+    });
+}
+```
+
+2. Dans `app/Jobs/ProcessDayVote.php`, simplifier `handle()` :
+
+```php
+public function handle(VoteService $voteService)
+{
+    $game = Game::find($this->gameId);
+    if (!$game || $game->status !== 'day' || $game->round !== $this->round) {
+        return;
+    }
+
+    $voteService->resolveDayVote($game);
+}
+```
+
+3. Vérifier que `PhaseManager::startDay()` ne peut pas être appelé depuis un état `processing_day` (normalement c’est impossible car `resolveDayVote` ne se termine pas sans changer le statut).
+
+Test :
+- Simuler deux déclenchements simultanés de `ProcessDayVote` → seul le premier passe, le second est ignoré.
+
+Commit : `git add -A && git commit -m "fix(dayvote): atomic resolution with processing_day guard in VoteService"`
+```
+```
+
+## TÂCHE G — Succession du maire déclenchée la nuit, sans appel à `startDay`/`startNight` depuis le job de succession
+
+```
+AVANT DE COMMENCER :
+git checkout -b fix/mayor-succession-night
+
+Contexte :
+- `ProcessNightActions` doit dispatcher `ProcessMayorSuccession` si la victime est le maire.
+- `ProcessMayorSuccession` ne doit **pas** déclencher de nouvelle phase (ni `startDay`, ni `startNight`) en contexte nuit.
+- La fin de nuit sera gérée par `ProcessNightEnd` (Tâche H) avec un délai suffisant.
+```
+
+Modifications :
+
+1. Dans `app/Jobs/ProcessNightActions.php` (après avoir déterminé `$victim`) :
+
+```php
+if ($victim && $victim->is_mayor) {
+    ProcessMayorSuccession::dispatch($game->id, $game->round, $victim->id)
+        ->delay(now()->addSeconds(config('game.timers.mayor_succession', 15)));
+}
+```
+
+2. Dans `app/Jobs/ProcessMayorSuccession.php` :
+
+- Garder le guard `in_array($game->status, ['night', 'processing_night', 'day'])`.
+- Calculer `$phaseToStart` (par exemple `$phaseToStart = $game->status === 'night' ? 'night' : 'day'`).
+- **Ne pas appeler `startNight()` ou `startDay()` dans le cas `$phaseToStart === 'night'`.** Retourner simplement après avoir élu le nouveau maire.
+- Laisser `$phaseToStart === 'day'` se comporter comme avant (appel à `startNight` après succession, ou `startDay` selon le contexte – à vérifier selon la logique existante).
+
+3. S’assurer que `WinConditionChecker::check()` est appelé **avant** le dispatch de `ProcessMayorSuccession` dans `ProcessNightActions` (pour éviter une succession sur une partie déjà terminée).
+
+Test :
+- Partie avec un maire, le tuer la nuit → `ProcessMayorSuccession` est dispatché, un nouveau maire est élu, la nuit se termine normalement via `ProcessNightEnd`.
+
+Commit : `git add -A && git commit -m "fix(night): trigger mayor succession at night without ending phase prematurely"`
+```
+```
+
+## TÂCHE H — Garantir la fin de nuit même sans voyante, via `ProcessNightEnd` avec délai buffer
+
+```
+AVANT DE COMMENCER :
+git checkout -b fix/night-end-universal
+
+Contexte :
+- `ProcessNightActions` ne doit plus appeler directement `startDay()`.
+- Un job `ProcessNightEnd` est dispatché systématiquement à la fin de `ProcessNightActions` avec un délai = `TIMER_MAYOR_SUCCESSION + buffer` (ex: 20s).
+- Ce délai couvre la succession du maire si elle a lieu.
+- La méthode `PhaseManager::endNight()` contient la logique métier (vérification victoire + `startDay()`).
+```
+
+Modifications :
+
+1. Dans `app/Services/PhaseManager.php`, ajouter :
+
+```php
+public function endNight(Game $game): void
+{
+    // Vérifier que la partie est toujours en nuit (ou processing_night)
+    if (!in_array($game->status, ['night', 'processing_night'])) {
+        return;
+    }
+
+    $winChecker = app(WinConditionChecker::class);
+    if ($winChecker->check($game)) {
+        return; // partie terminée
+    }
+
+    $this->startDay($game, null);
+}
+```
+
+2. Créer `app/Jobs/ProcessNightEnd.php` :
+
+```php
+<?php
+
+namespace App\Jobs;
+
+use App\Models\Game;
+use App\Services\PhaseManager;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+
+class ProcessNightEnd implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, SerializesModels;
+
+    public function __construct(protected int $gameId, protected int $round) {}
+
+    public function handle(PhaseManager $phaseManager)
+    {
+        $game = Game::find($this->gameId);
+        if (!$game || $game->round !== $this->round || !in_array($game->status, ['night', 'processing_night'])) {
+            return;
+        }
+
+        $phaseManager->endNight($game);
+    }
+}
+```
+
+3. Dans `app/Jobs/ProcessNightActions.php` :
+
+- Retirer tout appel direct à `startDay()`.
+- À la fin du `handle()`, **toujours** dispatcher `ProcessNightEnd` :
+
+```php
+ProcessNightEnd::dispatch($game->id, $game->round)
+    ->delay(now()->addSeconds(config('game.timers.mayor_succession', 15) + 5)); // buffer 5s
+```
+
+4. Supprimer dans `ProcessSeerTurn.php` tout appel à `startDay()` ou `startNight()` ; il ne doit que dispatcher `ProcessWerewolvesTurn` ou `ProcessNightEnd`.
+
+Test :
+- Nuit normale (voyante vivante, pas de mort du maire) → `ProcessNightEnd` se déclenche après le délai et passe au jour.
+- Nuit avec succession du maire → `ProcessNightEnd` attend que la succession soit terminée (délai 20s) puis passe au jour.
+- Voyante morte dès le début → `ProcessNightEnd` est quand même dispatché → loups jouent → jour.
+
+Commit : `git add -A && git commit -m "fix(night): add ProcessNightEnd to always conclude night phase"`
+```
+```
+
+## TÂCHE I — Tests de non‑régression pour E, F, G, H
+
+```
+AVANT DE COMMENCER :
+git checkout -b fix/tests-night-day
+
+Contexte : Toutes les corrections précédentes sont en place.
+```
+
+Créer ou compléter les tests suivants :
+
+1. `tests/Feature/Game/ProcessDayVoteTest.php` :
+   - `test_double_fire_does_not_execute_twice()`
+   - `test_day_vote_does_not_accept_processing_day_as_initial_state()`
+
+2. `tests/Feature/Game/NightPhaseTest.php` :
+   - `test_mayor_succession_triggered_at_night()`
+   - `test_mayor_succession_not_triggered_if_victory_occurs_simultaneously()`
+   - `test_night_ends_with_werewolves_turn_even_when_seer_dead()`
+   - `test_night_end_dispatched_after_mayor_succession_with_buffer()`
+
+3. `tests/Feature/Game/MigrationTest.php` (nouveau) :
+   - `test_processing_day_added_to_enum()`
+   - `test_rollback_of_processing_day_removes_it()`
+
+Exécution :
+```bash
+php artisan test --filter=ProcessDayVoteTest
+php artisan test --filter=NightPhaseTest
+php artisan test --filter=MigrationTest
+```
+
+Commit : `git add -A && git commit -m "test: cover night fixes, dayvote atomicity, and enum migration"`
+```
+```
 
 ---
 
@@ -12,6 +342,7 @@ AVANT DE COMMENCER :
 git checkout -b feature/tache-A-ui-vues
 
 Contexte : lis SPEC.md §10 (Design), CONVENTIONS.md §Partials Alpine, TODO.md Phase 10.
+```
 
 Fais dans l'ordre :
 
@@ -46,6 +377,7 @@ Quand c'est fait :
 1. Liste les fichiers créés ou modifiés
 2. Fais un commit : `git add -A && git commit -m "feat(ui): police EB Garamond unifiée, cancelled et spectator blade"`
 3. Ne merge pas sur dev.
+```
 ```
 
 ---

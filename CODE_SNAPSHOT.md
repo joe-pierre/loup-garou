@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 01h35
+Generated at: 19h05
 
 ## PHP Analysis (Core Logic)
 
@@ -345,7 +345,7 @@ DayStarted.php
       - __construct(Game $game, ?GamePlayer $victim) {}
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'day.started'
-      - broadcastWith() → return ['round' => $this->game->round, 'killed' => $this->victim ? ['pseudo' => $this->victim->pseudo, 'role' => $this->victim->role] : null]
+      - broadcastWith() → return ['round' => $this->game->round, 'killed' => $this->victim ? ['player_id' => $this->victim->id, 'pseudo' => $this->victim->pseudo, 'role' => $this->victim->role] : null]
 
 // app/Events/Game/WerewolvesVoteCast.php
 WerewolvesVoteCast.php
@@ -602,7 +602,7 @@ GameController.php
       - spectator(Request $request, string $code) → return view('game.spectator', compact('game', 'player', 'allPlayers'))
       - day(Request $request, string $code) → return view('game.day', compact('game', 'player', 'players', 'nightVictim'))
       - night(Request $request, string $code) → return view('game.night', compact('game', 'player', 'players'))
-      - redirectToCurrentPhase(Game $game, string $code) → return match ($game->status) { 'day' => redirect()->route('game.day', ['code' => $code]), 'night' => redirect()->route('game.night', ['code' => $code]), 'electing_mayor' => redirect()->route('game.mayor-election', ['code' => $code]), 'finished' => $game->winner_team !== null ? redirect()->route('game.finished', ['code' => $code]) : redirect()->route('game.cancelled', ['code' => $code]), default => redirect()->route('game.role-reveal', ['code' => $code]), }
+      - redirectToCurrentPhase(Game $game, string $code) → return match (true) { $game->status === 'day' => redirect()->route('game.day', ['code' => $code]), in_array($game->status, ['night', 'wolves_turn', 'processing_night']) => redirect()->route('game.night', ['code' => $code]), $game->status === 'electing_mayor' => redirect()->route('game.mayor-election', ['code' => $code]), $game->status === 'finished' && $game->winner_team !== null => redirect()->route('game.finished', ['code' => $code]), $game->status === 'finished' => redirect()->route('game.cancelled', ['code' => $code]), default => redirect()->route('game.role-reveal', ['code' => $code]), }
       - history(Request $request, string $code) → return view('game.history', compact('game', 'players', 'timeline', 'duration', 'myPlayer'))
       - buildTimeline(Game $game, Collection $players, Collection $actions) → return $timeline
       - playerSnapshot(Collection $players, int $id) → return ['id' => $id, 'pseudo' => $p?->pseudo ?? '?', 'role' => $p?->role ?? null]
@@ -705,7 +705,7 @@ VoteService.php
       - castMayorVote(GamePlayer $voter, int $targetId) → return DB::transaction(function () use ($voter, $targetId, $game) { // lockForUpdate sur les votes existants du joueur : anti-double-vote concurrent $alreadyVoted = GameAction::where('game_id', $game->id)->where('player_id', $voter->id)->where('type', 'mayor_vote')->where('round', $game->round)->lockForUpdate()->exists(); if ($alreadyVoted) { abort(409, 'Vous avez déjà voté pour l\'élection du maire.'); } GameAction::create(['game_id' => $game->id, 'player_id' => $voter->id, 'type' => 'mayor_vote', 'weight' => 1, 'target_player_id' => $targetId, 'round' => $game->round, 'phase' => 'election']); return $this->getMayorVoteTotals($game); })
       - resolveMayorElection(Game $game) → return DB::transaction(function () use ($game) { $locked = Game::where('id', $game->id)->where('status', 'electing_mayor')->lockForUpdate()->first(); if (!$locked) { return null; } $votes = GameAction::where('game_id', $locked->id)->where('type', 'mayor_vote')->where('round', $locked->round)->selectRaw('target_player_id, COUNT(*) as vote_count')->groupBy('target_player_id')->orderByDesc('vote_count')->get(); $wasRandom = false; if ($votes->isEmpty()) { $winner = $locked->alivePlayers()->inRandomOrder()->first(); $wasRandom = true; } else { $maxVotes = $votes->first()->vote_count; $topCandidates = $votes->where('vote_count', $maxVotes); if ($topCandidates->count() > 1) { $wasRandom = true; $winnerId = $topCandidates->random()->target_player_id; } else { $winnerId = $topCandidates->first()->target_player_id; } $winner = GamePlayer::find($winnerId); } $winner->update(['is_mayor' => true]); $locked->update(['status' => 'night', 'round' => 1, 'phase_deadline' => now()->addSeconds(config('game.timers.seer', 30))]); return ['player' => $winner, 'game' => $locked, 'was_random' => $wasRandom]; })
       - resolveNightVote(Game $game) → return GamePlayer::find($winnerId)
-      - castNightVote(GamePlayer $wolf, int $targetId) → return DB::transaction(function () use ($wolf, $targetId, $game) { // Supprimer le vote existant : le loup peut changer de cible jusqu'à expiration GameAction::where('game_id', $game->id)->where('player_id', $wolf->id)->where('type', 'night_vote')->where('round', $game->round)->lockForUpdate()->delete(); GameAction::create(['game_id' => $game->id, 'player_id' => $wolf->id, 'type' => 'night_vote', 'weight' => 1, 'target_player_id' => $targetId, 'round' => $game->round, 'phase' => 'night']); return $this->getNightVoteState($game); })
+      - castNightVote(GamePlayer $wolf, int $targetId) → return $state
       - resolveDayVote(Game $game) → void
       - castDayVote(GamePlayer $voter, int $targetId) → return $this->getDayVoteSummary($voter->game)
       - getDayVoteSummary(Game $game) → return GameAction::where('game_id', $game->id)->where('type', 'day_vote')->where('round', $game->round)->get()->groupBy('target_player_id')->map(fn($group) => $group->sum('weight'))->toArray()
@@ -918,6 +918,12 @@ TestCase.php
 
 // database/migrations/2026_06_04_002156_create_push_subscriptions_table.php
 2026_06_04_002156_create_push_subscriptions_table.php
+    functions:
+      - up() → void
+      - down() → void
+
+// database/migrations/2026_06_10_000003_add_wolves_turn_to_games_status.php
+2026_06_10_000003_add_wolves_turn_to_games_status.php
     functions:
       - up() → void
       - down() → void

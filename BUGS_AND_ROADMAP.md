@@ -1,5 +1,35 @@
 # BUGS CORRIGÉS
 
+### [ ] 2026-06-11 — Double-fire ProcessDayVote bloque la phase jour
+
+- **Symptôme :** la partie se bloque en phase jour — la résolution du vote est déclenchée deux fois
+- **Cause :** ProcessDayVote dispatché plusieurs fois sans guard atomique ; VoteService::resolveDayVote() ne posait pas de verrou avant de traiter
+- **Fix :** passage à processing_day dans une transaction lockForUpdate dès le début de resolveDayVote() ; ProcessDayVote allégé en simple relais vers VoteService
+
+---
+
+### [ ] 2026-06-11 — Succession du maire non déclenchée si mort la nuit
+
+- **Symptôme :** quand le maire meurt la nuit, aucun nouveau maire n'est élu
+- **Cause :** ProcessMayorSuccession appelait startDay() au lieu de ne rien faire en contexte nuit (sens inversé documenté dans DECISIONS.md)
+- **Fix :** correction de l'inversion startDay/startNight dans ProcessMayorSuccession ; en contexte nuit, le job se termine après l'élection sans déclencher de transition de phase
+
+---
+
+### [ ] 2026-06-11 — Nuit sans loups si la voyante est morte
+
+- **Symptôme :** quand la voyante est morte, la nuit ne se termine pas et le jour ne démarre jamais
+- **Cause :** ProcessNightActions appelait startDay() directement, ce chemin était court-circuité dans certains contextes (succession maire, voyante absente)
+- **Fix :** création de ProcessNightEnd dispatché systématiquement en fin de ProcessNightActions ; PhaseManager::endNight() centralise la logique de fin de nuit
+
+---
+
+### [ ] 2026-06-11 — SQL Data truncated sur games.status (ENUM incomplet)
+
+- **Symptôme :** erreur SQL "Data truncated for column status" en production
+- **Cause :** processing_day absent de l'ENUM games.status ; migration fantôme 004809 avec up() vide introduisant une fausse sécurité
+- **Fix :** suppression de la migration orpheline, nouvelle migration ajoutant processing_day à l'ENUM complet
+
 ### [x] 2026-06-06 — AlpineJS non installé
 
 - **Symptôme :** erreur Vite "Failed to resolve import alpinejs"
