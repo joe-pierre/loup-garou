@@ -126,4 +126,50 @@ class RaceConditionTest extends TestCase
         $this->assertNotNull($action);
         $this->assertSame(2, (int) $action->weight);
     }
+
+    /**
+     * Deux déclenchements simultanés de ProcessDayVote (job en double + retry) ne doivent
+     * résoudre le vote jour qu'une seule fois : le second appel à resolveDayVote() trouve
+     * status='processing_day' (posé par le premier) et est ignoré silencieusement.
+     */
+    public function test_resolve_day_vote_double_fire_processing_day_guard_ignore_second_appel(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game  = Game::factory()->create(['status' => 'day', 'max_players' => 6, 'round' => 1]);
+        $voter1 = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+        $voter2 = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+        $target = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+        GamePlayer::factory()->werewolf()->create(['game_id' => $game->id]);
+
+        GameAction::factory()->create([
+            'game_id' => $game->id, 'player_id' => $voter1->id, 'type' => 'day_vote',
+            'weight' => 1, 'target_player_id' => $target->id, 'round' => 1, 'phase' => 'day',
+        ]);
+        GameAction::factory()->create([
+            'game_id' => $game->id, 'player_id' => $voter2->id, 'type' => 'day_vote',
+            'weight' => 1, 'target_player_id' => $target->id, 'round' => 1, 'phase' => 'day',
+        ]);
+
+        // startNight() ne doit être appelé qu'une seule fois, même si resolveDayVote()
+        // est invoquée deux fois (simule deux exécutions concurrentes de ProcessDayVote).
+        $this->mock(\App\Services\PhaseManager::class, function ($mock) {
+            $mock->shouldReceive('startNight')->once();
+        });
+
+        $voteService = app(\App\Services\VoteService::class);
+
+        // Premier déclenchement : élimine $target, statut → processing_day
+        $voteService->resolveDayVote($game->fresh());
+
+        $this->assertFalse($target->fresh()->is_alive);
+        $this->assertSame('processing_day', $game->fresh()->status);
+
+        // Second déclenchement concurrent : status n'est plus 'day' → ignoré silencieusement
+        $voteService->resolveDayVote($game->fresh());
+
+        $this->assertSame('processing_day', $game->fresh()->status);
+        $this->assertSame(1, $game->fresh()->round);
+    }
 }

@@ -28,8 +28,8 @@ class ProcessMayorSuccession implements ShouldQueue
     {
         $game = Game::find($this->gameId);
 
-        // Accepter night, processing_night ET day
-        if (! $game || ! in_array($game->status, ['night', 'processing_night', 'day']) || $game->round !== $this->round) {
+        // Accepter night, processing_night, day ET processing_day
+        if (! $game || ! in_array($game->status, ['night', 'processing_night', 'day', 'processing_day']) || $game->round !== $this->round) {
             return;
         }
 
@@ -39,7 +39,7 @@ class ProcessMayorSuccession implements ShouldQueue
         // mais ne broadcaste pas — le broadcast doit être HORS transaction
         $result = DB::transaction(function () use ($game) {
             $locked = Game::where('id', $game->id)
-                ->whereIn('status', ['night', 'processing_night', 'day'])
+                ->whereIn('status', ['night', 'processing_night', 'day', 'processing_day'])
                 ->where('round', $this->round)
                 ->lockForUpdate()
                 ->first();

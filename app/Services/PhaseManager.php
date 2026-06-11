@@ -51,7 +51,7 @@ class PhaseManager
 
         DB::transaction(function () use ($game, &$locked, $timer) {
             $locked = Game::where('id', $game->id)
-                ->where('status', 'day')
+                ->whereIn('status', ['day', 'processing_day'])
                 ->lockForUpdate()
                 ->first();
 

@@ -217,6 +217,8 @@ class VoteService
                 return;
             }
 
+            $locked->update(['status' => 'processing_day']);
+
             $votes = GameAction::where('game_id', $locked->id)
                 ->where('type', 'day_vote')
                 ->where('round', $locked->round)
