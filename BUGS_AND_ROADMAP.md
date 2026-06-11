@@ -1,10 +1,10 @@
 # BUGS CORRIGÉS
 
-### [ ] 2026-06-11 — Double-fire ProcessDayVote bloque la phase jour
+### [x] 2026-06-11 — Double-fire ProcessDayVote bloque la phase jour
 
 - **Symptôme :** la partie se bloque en phase jour — la résolution du vote est déclenchée deux fois
-- **Cause :** ProcessDayVote dispatché plusieurs fois sans guard atomique ; VoteService::resolveDayVote() ne posait pas de verrou avant de traiter
-- **Fix :** passage à processing_day dans une transaction lockForUpdate dès le début de resolveDayVote() ; ProcessDayVote allégé en simple relais vers VoteService
+- **Cause :** ProcessDayVote dispatché plusieurs fois sans guard atomique ; VoteService::resolveDayVote() lockForUpdate() sur status='day' mais ne changeait jamais ce statut, donc un second appel concurrent retrouvait status='day' et retraitait les votes
+- **Fix :** `resolveDayVote()` passe le statut à `processing_day` (lockForUpdate) dès l'entrée en transaction — un second appel ne trouve plus `status='day'` et est ignoré. `PhaseManager::startNight()` et `ProcessMayorSuccession` mis à jour pour accepter `processing_day` en plus de `day` (sinon la transition nuit / la succession du maire ne se déclenchait plus après ce changement)
 
 ---
 

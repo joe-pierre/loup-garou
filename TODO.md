@@ -129,7 +129,7 @@
 
 ## Phase 14 — Bugfixes critiques production (2026-06-11)
 - [x] Tâche E — Migration : supprimer migration fantôme 004809, ajouter processing_day à l'ENUM
-- [ ] Tâche F — ProcessDayVote : double-fire corrigé via atomicité dans VoteService
+- [x] Tâche F — ProcessDayVote : double-fire corrigé via atomicité dans VoteService
 - [ ] Tâche G — ProcessMayorSuccession : succession nocturne sans transition de phase prématurée
 - [ ] Tâche H — ProcessNightEnd : fin de nuit systématique même sans voyante
 - [ ] Tâche I — Tests : non-régression E→H (double-fire, succession nuit, migration enum)

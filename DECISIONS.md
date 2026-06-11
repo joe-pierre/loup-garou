@@ -1,3 +1,14 @@
+## [CHOIX] processing_day — guards de PhaseManager::startNight() et ProcessMayorSuccession étendus
+
+**Contexte :** Tâche F — `app/Services/VoteService.php` (`resolveDayVote`), `app/Services/PhaseManager.php` (`startNight`), `app/Jobs/ProcessMayorSuccession.php`.
+**Symptôme / Problème :** L'énoncé de la tâche F demandait de faire passer `resolveDayVote()` au statut `processing_day` (lockForUpdate sur `status='day'`) dès l'entrée en transaction, pour bloquer un second appel concurrent. Mais une fois le statut changé en `processing_day`, le code "hors transaction" de `resolveDayVote()` appelle `PhaseManager::startNight($game)` (cas normal/égalité/random) ou dispatche `ProcessMayorSuccession` (cas maire éliminé) — `$game->refresh()` y verrait alors `status='processing_day'`. Or `startNight()` gardait `where('status', 'day')->lockForUpdate()` et `ProcessMayorSuccession::handle()` gardait `in_array($game->status, ['night','processing_night','day'])` — aucun des deux n'aurait trouvé le jeu, et la transition nuit / la succession du maire auraient été silencieusement bloquées (partie figée en `processing_day`).
+**Cause / Alternatives :** (1) Ne changer le statut qu'à `night` directement dans `resolveDayVote()` au lieu de `processing_day`, en supprimant l'appel à `startNight()` — mais cela duplique la logique de `startNight()` (broadcast `NightStarted`, dispatch `ProcessSeerTurn` avec délai, incrément `round`) et casse le pattern "chaque méthode de transition garde son propre guard" (cf. décision Tâche 16). (2) Étendre les guards de `startNight()` et `ProcessMayorSuccession` pour accepter `processing_day` en plus de `day`.
+**Fix / Décision :** Option 2 retenue. `startNight()` : `whereIn('status', ['day', 'processing_day'])->lockForUpdate()`. `ProcessMayorSuccession::handle()` : `in_array($game->status, ['night','processing_night','day','processing_day'])` (guard d'entrée) et `whereIn('status', [...])` (transaction). Le calcul de `$phaseToStart` n'a pas besoin d'être modifié : `processing_day` n'étant pas dans `['night','processing_night']`, il vaut `'day'`, ce qui déclenche bien `startNight()` (comportement identique au cas `status='day'`).
+**Leçon :** Tout changement de statut "guard atomique" introduit dans une méthode doit être tracé jusqu'aux méthodes/jobs appelés APRÈS ce changement (hors transaction) — leurs propres guards de statut doivent être étendus en conséquence, sinon la transition suivante est silencieusement bloquée. Ne pas se limiter au périmètre littéral de l'énoncé de tâche quand un nouveau statut intermédiaire est introduit.
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] Migration enum games.status (processing_day) — préservation de role_reveal
 
 **Contexte :** Tâche E — `database/migrations/2026_06_11_191937_add_processing_day_to_games_status_enum.php`, suppression de `database/migrations/2026_06_10_004809_add_processing_night_to_games_status_enum.php` (migration fantôme, up()/down() vides).

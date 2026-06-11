@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 19h37
+Generated at: 19h51
 
 ## PHP Analysis (Core Logic)
 
@@ -832,6 +832,7 @@ RaceConditionTest.php
       - test_start_game_race_double_appel_idempotent() → void
       - test_mayor_vote_race_double_vote_même_joueur_retourne_409() → void
       - test_day_vote_mayor_weight_2_même_si_maire_assigné_en_cours() → void
+      - test_resolve_day_vote_double_fire_processing_day_guard_ignore_second_appel() → void
 
 // tests/Feature/Game/DayPhaseTest.php
 DayPhaseTest.php
