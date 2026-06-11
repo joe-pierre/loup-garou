@@ -1,3 +1,14 @@
+## [RÉSOLU] ProcessMayorSuccession::handle() — phase invalide insérée dans game_actions pour les statuts processing_*
+
+**Contexte :** Tâche I — `app/Jobs/ProcessMayorSuccession.php`, `tests/Feature/Game/NightPhaseTest.php::test_mayor_succession_triggered_at_night`.
+**Symptôme / Problème :** En écrivant le test de non-régression de la Tâche G (succession du maire déclenchée la nuit), `ProcessMayorSuccession::handle()` lève `QueryException: SQLSTATE[01000]: Warning: 1265 Data truncated for column 'phase'` lors de l'insertion du `GameAction` de type `mayor_succession`.
+**Cause / Alternatives :** La ligne `'phase' => $locked->status` insère la valeur brute du statut de la partie (`night`, `processing_night`, `day` ou `processing_day` depuis les Tâches F/G) dans `game_actions.phase`, dont l'ENUM est limité à `election|night|day` (migration `2026_06_03_000003_create_game_actions_table.php`). Pour `status='night'` ou `status='day'`, la valeur passait par coïncidence ; pour `processing_night`/`processing_day` (statuts intermédiaires introduits/élargis aux Tâches F/G), l'insertion échoue. (1) Étendre l'ENUM `game_actions.phase` pour accepter les statuts `processing_*` — invasif, casse la sémantique « phase » (election/night/day) de la table et impacte `scopeAnonymized`/historique. (2) Réutiliser `$phaseToStart` (déjà calculé juste avant la transaction, valant `'night'` ou `'day'` selon `in_array($game->status, ['night','processing_night'])`) pour la colonne `phase`.
+**Fix / Décision :** Option 2 retenue. `'phase' => $locked->status` remplacé par `'phase' => $phaseToStart`, et `$phaseToStart` ajouté au `use()` de la closure `DB::transaction()`. Comportement inchangé pour `status='night'`/`'day'` (valeur identique), corrige les cas `processing_night`/`processing_day`.
+**Leçon :** Quand une tâche élargit la liste des statuts `games.status` acceptés par un guard (Tâches F/G : ajout de `processing_night`/`processing_day`), vérifier toute valeur dérivée de `$game->status` réutilisée ailleurs dans la même méthode (ici une colonne ENUM distincte avec un domaine de valeurs plus restreint) — pas seulement les guards de transition de phase. Ce genre de bug ne se révèle qu'à l'exécution (écriture en base), jamais à l'analyse statique.
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] ProcessMayorSuccession en contexte nuit — ne démarre plus aucune phase, guard processing_day conservé
 
 **Contexte :** Tâche G — `app/Jobs/ProcessMayorSuccession.php`, `app/Jobs/ProcessNightActions.php`.

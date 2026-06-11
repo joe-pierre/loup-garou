@@ -35,7 +35,7 @@ class ProcessMayorSuccession implements ShouldQueue
 
         // La transaction retourne les données nécessaires au broadcast
         // mais ne broadcaste pas — le broadcast doit être HORS transaction
-        $result = DB::transaction(function () use ($game) {
+        $result = DB::transaction(function () use ($game, $phaseToStart) {
             $locked = Game::where('id', $game->id)
                 ->whereIn('status', ['night', 'processing_night', 'day', 'processing_day'])
                 ->where('round', $this->round)
@@ -73,7 +73,7 @@ class ProcessMayorSuccession implements ShouldQueue
                 'type'             => 'mayor_succession',
                 'target_player_id' => $successor->id,
                 'round'            => $locked->round,
-                'phase'            => $locked->status,
+                'phase'            => $phaseToStart,
             ]);
 
             // NE PAS broadcaster ici — la transaction n'est pas encore committée
