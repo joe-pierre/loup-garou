@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 19h05
+Generated at: 19h37
 
 ## PHP Analysis (Core Logic)
 
@@ -928,12 +928,6 @@ TestCase.php
       - up() → void
       - down() → void
 
-// database/migrations/2026_06_10_004809_add_processing_night_to_games_status_enum.php
-2026_06_10_004809_add_processing_night_to_games_status_enum.php
-    functions:
-      - up() → void
-      - down() → void
-
 // database/migrations/0001_01_01_000000_create_users_table.php
 0001_01_01_000000_create_users_table.php
     functions:
@@ -954,6 +948,12 @@ TestCase.php
 
 // database/migrations/2026_06_05_235433_add_timers_to_games_table.php
 2026_06_05_235433_add_timers_to_games_table.php
+    functions:
+      - up() → void
+      - down() → void
+
+// database/migrations/2026_06_11_191937_add_processing_day_to_games_status_enum.php
+2026_06_11_191937_add_processing_day_to_games_status_enum.php
     functions:
       - up() → void
       - down() → void

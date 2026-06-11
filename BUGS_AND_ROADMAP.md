@@ -24,7 +24,7 @@
 
 ---
 
-### [ ] 2026-06-11 — SQL Data truncated sur games.status (ENUM incomplet)
+### [x] 2026-06-11 — SQL Data truncated sur games.status (ENUM incomplet)
 
 - **Symptôme :** erreur SQL "Data truncated for column status" en production
 - **Cause :** processing_day absent de l'ENUM games.status ; migration fantôme 004809 avec up() vide introduisant une fausse sécurité

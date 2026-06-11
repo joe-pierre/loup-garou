@@ -1,3 +1,14 @@
+## [CHOIX] Migration enum games.status (processing_day) — préservation de role_reveal
+
+**Contexte :** Tâche E — `database/migrations/2026_06_11_191937_add_processing_day_to_games_status_enum.php`, suppression de `database/migrations/2026_06_10_004809_add_processing_night_to_games_status_enum.php` (migration fantôme, up()/down() vides).
+**Symptôme / Problème :** L'énoncé de la tâche E décrivait l'ENUM actuel de `games.status` comme `waiting, electing_mayor, night, day, finished, processing_night, processing_wolves, wolves_turn` — sans `role_reveal`. Or les migrations `2026_06_10_000001/000002/000003` (commit `4d258e0`, "Résolution bug 1") ont déjà ajouté `role_reveal` à l'ENUM réel. En appliquant le SQL fourni tel quel (up() ET down() omettant `role_reveal`), la nouvelle migration aurait silencieusement supprimé `role_reveal` de l'ENUM.
+**Cause / Alternatives :** `role_reveal` n'est référencé dans aucun code applicatif actuel, mais CLAUDE.md mentionne un timer `TIMER_READY_TIMEOUT` (60s, fixe) pour « l'écran révélation rôle », ce qui suggère que ce statut est planifié/attendu. (1) Suivre l'énoncé tel quel et supprimer `role_reveal`. (2) Conserver `role_reveal` dans l'ENUM et n'ajouter que `processing_day`.
+**Fix / Décision :** Option 2 retenue (validée avec l'utilisateur). La nouvelle migration reproduit l'ENUM réel actuel (`waiting, role_reveal, electing_mayor, night, processing_night, processing_wolves, wolves_turn, day, finished`) et y ajoute `processing_day` (inséré entre `day` et `finished`). Le `down()` restaure exactement l'état issu de la migration `000003`.
+**Leçon :** Avant d'appliquer un SQL d'ALTER TABLE ENUM fourni dans un énoncé de tâche, comparer la liste de valeurs avec l'ENUM réel (`SHOW COLUMNS FROM games` ou dernière migration `MODIFY COLUMN status ENUM(...)`) — un énoncé de tâche peut décrire un état de schéma obsolète/incomplet, et un `up()`/`down()` qui omet une valeur existante la supprime silencieusement.
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] cancelled/spectator réécrites en @extends('layouts.game') + gameState — fichier renommé dead-spectator → spectator
 
 **Contexte :** Tâche A (UI) — `resources/views/game/cancelled.blade.php`, `resources/views/game/dead-spectator.blade.php`, `GameController::spectator()`, `routes/web.php`
