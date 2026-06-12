@@ -139,11 +139,17 @@
 - [x] Tâche K — Tests : non-régression succession en cascade (successeur tué nuit suivante)
 
 ## Phase v1.2 — Améliorations différées
-- [ ] Délai voyante : réduire de ~8s à ~5s (broadcaster SeerTurnStarted avec delay(5s) côté serveur — $watch déjà en place, setTimeout client déjà supprimé en v1.1)
-- [ ] Timers configurables par partie
-- [ ] Rôles v1.2 : Sorcière, Chasseur
-- [ ] Rôles v1.3+ : Loup Blanc, Cupidon, Petite Fille
-- [ ] State machine (Symfony Workflow) — refactoring architecture (successions en cascade, extensibilité rôles v1.2+)
+- [ ] **Étape 1 — Réorganisation documentaire**  
+  (SPEC_TIMERS.md, SPEC_TRANSITIONS.md) — ✅ fait
+- [ ] **Étape 2 — State machine Symfony Workflow**  
+  Refactoriser les transitions de phases (successions en cascade, extensibilité rôles)
+- [ ] **Étape 3 — Timers configurables par partie**  
+  Stockage dans `games.settings['timers']`, fallback config/game.php, UI dans waiting-room
+- [ ] **Étape 4 — Rôles v1.2**  
+  Sorcière, Chasseur (avec leurs actions volontaires et timers fallback)
+- [ ] **Étape 5 — Tests intégration v1.2**  
+  Couvrir les nouveaux endpoints, jobs auto, file d’annonces, et reconnexion
+- [ ] **Rôles v1.3+** (hors périmètre v1.2) : Loup Blanc, Cupidon, Petite Fille
 
 ## BUGS CONNUS
 → Voir BUGS_AND_ROADMAP.md (source de vérité unique pour les bugs)
