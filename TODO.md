@@ -136,7 +136,7 @@
 
 ## Phase 15 — Bugfix succession maire en cascade (2026-06-12)
 - [x] Tâche J — ProcessMayorSuccession : flag shouldStartNight — correctif bug modale bloquée si successeur tué nuit suivante
-- [ ] Tâche K — Tests : non-régression succession en cascade (successeur tué nuit suivante)
+- [x] Tâche K — Tests : non-régression succession en cascade (successeur tué nuit suivante)
 
 ## Phase v1.2 — Améliorations différées
 - [ ] Délai voyante : réduire de ~8s à ~5s (broadcaster SeerTurnStarted avec delay(5s) côté serveur — $watch déjà en place, setTimeout client déjà supprimé en v1.1)

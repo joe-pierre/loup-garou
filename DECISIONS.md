@@ -1,3 +1,14 @@
+## [CHOIX] MayorSuccessionTest — cascade avec 2 loups pour éviter une victoire prématurée liée au successeur aléatoire
+
+**Contexte :** Tâche K — `tests/Feature/Game/MayorSuccessionTest.php::test_cascade_succession_nuit_puis_nouveau_maire_tue_la_nuit_suivante`.
+**Symptôme / Problème :** Premier jet du test avec 1 seul loup et 6 joueurs : `ProcessMayorSuccession::handle()` désigne le successeur via `alivePlayers()->inRandomOrder()->first()`, sans exclure les loups. Quand le successeur tiré au hasard pour le round 1 était le loup unique, le round 2 (le loup tue "le nouveau maire", c'est-à-dire lui-même) faisait passer `nb_loups_vivants` à 0 → `WinConditionChecker` déclenchait la victoire des villageois (`status='finished'`) au lieu de laisser la partie en `processing_night`. Le test échouait de manière non déterministe (flaky), selon le tirage aléatoire du successeur.
+**Cause / Alternatives :** La succession peut légitimement désigner un loup comme maire (aucune règle métier ne l'interdit). (1) Mocker `inRandomOrder()`/forcer le successeur — invasif, dépend de l'implémentation interne. (2) Ajouter un second loup : quelle que soit l'issue du tirage aléatoire (successeur = loup ou villageois), la mort du successeur au round 2 ne fait jamais passer `nb_loups_vivants` à 0 ni `nb_loups_vivants >= nb_autres_vivants`, donc la partie ne se termine jamais prématurément.
+**Fix / Décision :** Option 2 retenue. Partie à 8 joueurs (1 maire villageois + 2 loups + 5 villageois). Pour le vote du round 2, le votant est choisi dynamiquement (`$voter = $successorA->id === $wolf1->id ? $wolf2 : $wolf1`) pour ne jamais faire voter un loup contre lui-même. Testé sur 10 exécutions consécutives sans échec.
+**Leçon :** Tout test impliquant une désignation de successeur aléatoire (`inRandomOrder()`) parmi les joueurs vivants doit prévoir un nombre de loups suffisant pour qu'aucune issue du tirage ne déclenche `WinConditionChecker` de façon imprévue. Avec 1 seul loup, toute mort du loup termine la partie — incompatible avec un scénario de cascade sur plusieurs rounds.
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [RÉSOLU] ProcessMayorSuccession — flag shouldStartNight au lieu d'un calcul dynamique depuis $game->status
 
 **Contexte :** Tâche J — `app/Jobs/ProcessMayorSuccession.php`, `app/Jobs/ProcessNightActions.php`.
