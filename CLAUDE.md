@@ -10,6 +10,7 @@ Lis ces fichiers dans l'ordre avant de faire quoi que ce soit :
 - `TODO.md`
 - `DECISIONS.md`
 - `CODE_SNAPSHOT.md` (index structurel pour économiser les tokens)
+- `RISK_GUARDS.md` (protections anti-bugs obligatoires — lire avant Étapes 3, 4, 5)
 
 Dis-moi ce que tu as compris du projet en 5 points clés, puis attends mes instructions.
 

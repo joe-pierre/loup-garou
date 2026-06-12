@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 11h25
+Generated at: 19h53
 
 ## PHP Analysis (Core Logic)
 
@@ -26,6 +26,10 @@ Game.php
       - messages() → return $this->hasMany(ChatMessage::class)
       - exclusions() → return $this->hasMany(Exclusion::class)
       - phaseRemainingSeconds() → return max(0, (int) now()->diffInSeconds($this->phase_deadline, false))
+      - getStatus() → return $this->status
+      - setStatus(string $status, array $context) → void
+      - canTransition(string $transitionName) → return $registry->get($this)->can($this, $transitionName)
+      - applyTransition(string $transitionName) → void
 
 // app/Models/GameAction.php
 GameAction.php
@@ -95,7 +99,7 @@ ProcessMayorSuccession.php
       - Queueable
       - SerializesModels
     functions:
-      - __construct(int $gameId, int $round) {}
+      - __construct(int $gameId, int $round, bool $shouldStartNight) {}
       - handle(PhaseManager $phaseManager) → void
 
 // app/Jobs/ProcessWerewolvesTurn.php
@@ -516,6 +520,11 @@ AppServiceProvider.php
       - register() → void
       - boot() → void
 
+// app/Providers/WorkflowServiceProvider.php
+WorkflowServiceProvider.php
+    functions:
+      - register() → void
+
 // app/Policies/GamePolicy.php
 GamePolicy.php
     functions:
@@ -714,7 +723,7 @@ VoteService.php
     functions:
       - __construct(PhaseManager $phaseManager, WinConditionChecker $winConditionChecker) {}
       - castMayorVote(GamePlayer $voter, int $targetId) → return DB::transaction(function () use ($voter, $targetId, $game) { // lockForUpdate sur les votes existants du joueur : anti-double-vote concurrent $alreadyVoted = GameAction::where('game_id', $game->id)->where('player_id', $voter->id)->where('type', 'mayor_vote')->where('round', $game->round)->lockForUpdate()->exists(); if ($alreadyVoted) { abort(409, 'Vous avez déjà voté pour l\'élection du maire.'); } GameAction::create(['game_id' => $game->id, 'player_id' => $voter->id, 'type' => 'mayor_vote', 'weight' => 1, 'target_player_id' => $targetId, 'round' => $game->round, 'phase' => 'election']); return $this->getMayorVoteTotals($game); })
-      - resolveMayorElection(Game $game) → return DB::transaction(function () use ($game) { $locked = Game::where('id', $game->id)->where('status', 'electing_mayor')->lockForUpdate()->first(); if (!$locked) { return null; } $votes = GameAction::where('game_id', $locked->id)->where('type', 'mayor_vote')->where('round', $locked->round)->selectRaw('target_player_id, COUNT(*) as vote_count')->groupBy('target_player_id')->orderByDesc('vote_count')->get(); $wasRandom = false; if ($votes->isEmpty()) { $winner = $locked->alivePlayers()->inRandomOrder()->first(); $wasRandom = true; } else { $maxVotes = $votes->first()->vote_count; $topCandidates = $votes->where('vote_count', $maxVotes); if ($topCandidates->count() > 1) { $wasRandom = true; $winnerId = $topCandidates->random()->target_player_id; } else { $winnerId = $topCandidates->first()->target_player_id; } $winner = GamePlayer::find($winnerId); } $winner->update(['is_mayor' => true]); $locked->update(['status' => 'night', 'round' => 1, 'phase_deadline' => now()->addSeconds(config('game.timers.seer', 30))]); return ['player' => $winner, 'game' => $locked, 'was_random' => $wasRandom]; })
+      - resolveMayorElection(Game $game) → return DB::transaction(function () use ($game) { $locked = Game::where('id', $game->id)->where('status', 'electing_mayor')->lockForUpdate()->first(); if (!$locked) { return null; } if (!$locked->canTransition('start_night')) { Log::warning("Transition 'start_night' refusée depuis status={$locked->status}"); return null; } $votes = GameAction::where('game_id', $locked->id)->where('type', 'mayor_vote')->where('round', $locked->round)->selectRaw('target_player_id, COUNT(*) as vote_count')->groupBy('target_player_id')->orderByDesc('vote_count')->get(); $wasRandom = false; if ($votes->isEmpty()) { $winner = $locked->alivePlayers()->inRandomOrder()->first(); $wasRandom = true; } else { $maxVotes = $votes->first()->vote_count; $topCandidates = $votes->where('vote_count', $maxVotes); if ($topCandidates->count() > 1) { $wasRandom = true; $winnerId = $topCandidates->random()->target_player_id; } else { $winnerId = $topCandidates->first()->target_player_id; } $winner = GamePlayer::find($winnerId); } $winner->update(['is_mayor' => true]); $locked->update(['status' => 'night', 'round' => 1, 'phase_deadline' => now()->addSeconds(config('game.timers.seer', 30))]); return ['player' => $winner, 'game' => $locked, 'was_random' => $wasRandom]; })
       - resolveNightVote(Game $game) → return GamePlayer::find($winnerId)
       - castNightVote(GamePlayer $wolf, int $targetId) → return $state
       - resolveDayVote(Game $game) → void
@@ -849,6 +858,33 @@ RaceConditionTest.php
       - test_mayor_vote_race_double_vote_même_joueur_retourne_409() → void
       - test_day_vote_mayor_weight_2_même_si_maire_assigné_en_cours() → void
       - test_resolve_day_vote_double_fire_processing_day_guard_ignore_second_appel() → void
+
+// tests/Feature/Game/WorkflowTransitionTest.php
+WorkflowTransitionTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_waiting_vers_electing_mayor_autorise() → void
+      - test_electing_mayor_vers_night_autorise() → void
+      - test_night_vers_day_autorise() → void
+      - test_day_vers_night_autorise() → void
+      - test_night_vers_finished_autorise() → void
+      - test_day_vers_finished_autorise() → void
+      - test_waiting_vers_night_interdit() → void
+      - test_finished_vers_quoi_que_ce_soit_interdit() → void
+      - test_day_vers_start_night_interdit() → void
+      - test_electing_mayor_vers_continue_night_interdit() → void
+      - test_apply_transition_persiste_le_nouveau_status() → void
+
+// tests/Feature/Game/MayorSuccessionTest.php
+MayorSuccessionTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_succession_nuit_designe_un_successeur_sans_changer_de_phase() → void
+      - test_succession_jour_designe_un_successeur_puis_demarre_la_nuit() → void
+      - test_succession_nuit_ne_redemarre_pas_la_nuit_si_le_statut_est_deja_passe_a_day() → void
+      - test_cascade_succession_nuit_puis_nouveau_maire_tue_la_nuit_suivante() → void
 
 // tests/Feature/Game/ProcessDayVoteTest.php
 ProcessDayVoteTest.php
