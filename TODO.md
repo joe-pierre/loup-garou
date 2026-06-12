@@ -134,12 +134,16 @@
 - [x] Tâche H — ProcessNightEnd : fin de nuit systématique même sans voyante
 - [x] Tâche I — Tests : non-régression E→H (double-fire, succession nuit, migration enum)
 
+## Phase 15 — Bugfix succession maire en cascade (2026-06-12)
+- [ ] Tâche J — ProcessMayorSuccession : flag shouldStartNight — correctif bug modale bloquée si successeur tué nuit suivante
+- [ ] Tâche K — Tests : non-régression succession en cascade (successeur tué nuit suivante)
+
 ## Phase v1.2 — Améliorations différées
 - [ ] Délai voyante : réduire de ~8s à ~5s (broadcaster SeerTurnStarted avec delay(5s) côté serveur — $watch déjà en place, setTimeout client déjà supprimé en v1.1)
 - [ ] Timers configurables par partie
 - [ ] Rôles v1.2 : Sorcière, Chasseur
 - [ ] Rôles v1.3+ : Loup Blanc, Cupidon, Petite Fille
-- [ ] ProcessMayorSuccession : flag `shouldStartNight` pour distinguer mort nuit vs mort jour
+- [ ] State machine (Symfony Workflow) — refactoring architecture (successions en cascade, extensibilité rôles v1.2+)
 
 ## BUGS CONNUS
 → Voir BUGS_AND_ROADMAP.md (source de vérité unique pour les bugs)

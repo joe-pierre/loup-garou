@@ -146,6 +146,16 @@
 
 ---
 
+# BUGS ACTIFS
+
+### [!] 2026-06-12 — Modale succession bloquée si le successeur est tué la nuit suivante
+
+- **Symptôme :** quand le maire est éliminé la nuit et qu'un successeur est désigné (aléatoirement ou non), si ce successeur est lui-même tué par les loups la nuit suivante, la partie reste bloquée sur la modale "Succession du Maire" — impossible de continuer
+- **Cause :** `ProcessMayorSuccession` ne distingue pas le contexte "mort en nuit" vs "mort en jour". En contexte nuit, `ProcessNightEnd` passe au jour sans vérifier si le nouveau maire vient d'être tué dans ce même cycle de nuit. Le job `ProcessMayorSuccession` est re-dispatché mais la modale côté client ne se ferme jamais car aucun event `MayorSuccessionDone` ne suit la résolution.
+- **Fix prévu :** flag `shouldStartNight` dans `ProcessMayorSuccession` — Tâche J (voir TASK_PROMPTS_REMAINING.md)
+
+---
+
 # ROADMAP (idées / améliorations futures)
 
 - [ ] Harmoniser `config('game.timers.mayor_succession', 15)` (utilisé dans `ProcessNightActions` et `VoteService::resolveDayVote`) avec `$game->timer('mayor_succession')` : `config/game.php` définit `mayor_succession => 5`, donc le fallback `15` de ces appels n'est jamais utilisé en pratique — écart avec les 15s documentés dans CLAUDE.md/TimerCalculator
@@ -153,4 +163,4 @@
 - [ ] Timers configurables par partie depuis la waiting-room (v1.2)
 - [ ] Rôles v1.2 : Sorcière, Chasseur
 - [ ] Rôles v1.3+ : Loup Blanc, Cupidon, Petite Fille
-- [ ] `ProcessMayorSuccession` : flag `shouldStartNight` pour distinguer mort nuit vs mort jour
+- [ ] State machine (Symfony Workflow) — refactoring architecture pour gérer les transitions complexes (successions en cascade, nouveaux rôles v1.2+)

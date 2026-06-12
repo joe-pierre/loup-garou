@@ -296,6 +296,166 @@ Commit : `git add -A && git commit -m "test: cover night fixes, dayvote atomicit
 ```
 
 ---
+ 
+## TÂCHE J — Correctif : modale succession bloquée si successeur tué la nuit suivante
+ 
+````
+AVANT DE COMMENCER :
+git checkout -b fix/mayor-succession-cascade
+ 
+Contexte :
+Lis DECISIONS.md entrée "Mort du maire la nuit — vote jour du round sacrifié" et
+entrée "ProcessMayorSuccession en contexte nuit".
+ 
+Symptôme : quand le maire est tué la nuit et qu'un successeur est désigné,
+si ce successeur est lui-même tué par les loups la nuit suivante,
+la partie reste bloquée sur la modale "Succession du Maire".
+ 
+Cause : ProcessMayorSuccession reçoit le contexte via $game->status au moment
+de son exécution. Si le nouveau maire meurt la nuit suivante, ProcessNightActions
+dispatche à nouveau ProcessMayorSuccession — mais ce job ne sait pas s'il tourne
+en contexte "nuit" ou "jour", et peut se retrouver dans un état incohérent avec
+la modale client qui attend un MayorSuccessionDone qui ne vient pas.
+````
+ 
+### Modifications
+ 
+1. Dans `app/Jobs/ProcessMayorSuccession.php` :
+Ajouter un paramètre `bool $shouldStartNight` au constructeur :
+ 
+````php
+public function __construct(
+    protected int $gameId,
+    protected int $round,
+    protected bool $shouldStartNight = false
+) {}
+````
+ 
+Dans `handle()`, remplacer le calcul de `$phaseToStart` basé sur `$game->status`
+par l'utilisation directe du flag :
+ 
+````php
+// AVANT
+$phaseToStart = in_array($locked->status, ['night', 'processing_night']) ? 'night' : 'day';
+ 
+// APRÈS
+$phaseToStart = $this->shouldStartNight ? 'night' : 'day';
+````
+ 
+Le reste de la logique existante est inchangé :
+- `$phaseToStart === 'night'` → return après MayorSuccessionDone (ProcessNightEnd gère la suite)
+- `$phaseToStart === 'day'` → appel à startNight() après MayorSuccessionDone
+2. Dans `app/Jobs/ProcessNightActions.php`, mettre à jour le dispatch :
+````php
+// AVANT
+ProcessMayorSuccession::dispatch($game->id, $game->round)
+    ->delay(now()->addSeconds($game->timer('mayor_succession')));
+ 
+// APRÈS
+ProcessMayorSuccession::dispatch($game->id, $game->round, shouldStartNight: true)
+    ->delay(now()->addSeconds($game->timer('mayor_succession')));
+````
+ 
+3. Dans `app/Services/VoteService.php` (resolveDayVote), vérifier que le dispatch
+existant passe bien `shouldStartNight: false` (valeur par défaut — aucune
+modification nécessaire si la valeur par défaut est false).
+4. Dans `app/Services/PhaseManager.php` (endNight), si ProcessNightEnd appelle
+endNight() qui vérifie WinConditionChecker avant startDay() :
+- S'assurer que endNight() rafraîchit le game depuis la DB avant de vérifier
+  le statut, pour ne pas travailler sur un modèle périmé après la succession.
+### Vérification manuelle
+- Partie 6 joueurs : maire tué nuit 1 → successeur désigné → successeur tué nuit 2
+  → vérifier que la modale se ferme correctement et que le jour 2 démarre
+- Partie 6 joueurs : maire tué le jour → successeur désigné → successeur tué la
+  nuit suivante → même vérification
+### Tests à créer (Tâche K)
+Ne pas écrire les tests dans cette tâche — ils seront ajoutés en Tâche K.
+ 
+Quand c'est fait :
+1. Vérifier que les tests existants passent : `php artisan test`
+2. Ajouter une entrée dans DECISIONS.md (format habituel) documentant le choix
+   du flag shouldStartNight vs calcul dynamique depuis $game->status
+3. Cocher `[x]` la Tâche J dans TODO.md
+4. Commit : `git add -A && git commit -m "fix(succession): flag shouldStartNight résout la modale bloquée en cascade"`
+5. Ne pas merger sur dev avant la Tâche K.
+````
+````
+
+ 
+---
+ 
+## TÂCHE K — Tests de non-régression : succession maire en cascade
+ 
+````
+AVANT DE COMMENCER :
+git checkout -b fix/tests-succession-cascade
+(ou continuer sur la branche fix/mayor-succession-cascade si Tâche J non mergée)
+ 
+Contexte : Tâche J terminée. Lis DECISIONS.md pour les contraintes du flag shouldStartNight.
+````
+ 
+Compléter `tests/Feature/Game/MayorSuccessionTest.php` avec les cas suivants :
+ 
+```php
+// Cas 1 : successeur tué la nuit suivante → modale ne reste pas bloquée
+public function test_successeur_tué_nuit_suivante_ne_bloque_pas_la_modale()
+{
+    // Setup : partie en cours, maire tué nuit 1, successeur désigné
+    // Action : successeur tué nuit 2
+    // Assert : ProcessMayorSuccession dispatché avec shouldStartNight=true
+    // Assert : MayorSuccessionDone broadcasté (modale fermée)
+    // Assert : game.status passe à 'day' après ProcessNightEnd
+}
+ 
+// Cas 2 : flag shouldStartNight=true → pas d'appel à startNight() en double
+public function test_shouldStartNight_true_ne_déclenche_pas_startNight()
+{
+    // Setup : ProcessMayorSuccession instancié avec shouldStartNight=true
+    // Assert : PhaseManager::startNight() non appelé dans handle()
+    // Assert : MayorSuccessionDone broadcasté
+}
+ 
+// Cas 3 : flag shouldStartNight=false (contexte jour) → startNight() appelé
+public function test_shouldStartNight_false_déclenche_startNight()
+{
+    // Setup : ProcessMayorSuccession instancié avec shouldStartNight=false
+    // Assert : PhaseManager::startNight() appelé dans handle()
+}
+ 
+// Cas 4 : succession en cascade (3 maires successifs tués)
+public function test_succession_triple_ne_bloque_pas_la_partie()
+{
+    // Setup : maire1 → tué nuit 1 → maire2 désigné → tué nuit 2 → maire3 désigné
+    // Assert : à chaque cycle, MayorSuccessionDone est broadcasté
+    // Assert : la partie continue normalement (pas bloquée)
+}
+```
+ 
+Exécution :
+```bash
+php artisan test --filter=MayorSuccessionTest
+php artisan test  # suite complète pour non-régression
+```
+ 
+Quand c'est fait :
+1. Cocher `[x]` la Tâche K dans TODO.md
+2. Commit : `git add -A && git commit -m "test: non-régression succession maire en cascade"`
+3. Merger les deux branches (J + K) sur dev :
+```bash
+   git checkout dev
+   git merge fix/mayor-succession-cascade --no-ff
+   git merge fix/tests-succession-cascade --no-ff
+```
+   Ou, si J et K sont sur la même branche :
+```bash
+   git checkout dev
+   git merge fix/mayor-succession-cascade --no-ff
+```
+
+
+
+----------------------------------------------------------------------------------
+----------------------------------------------------------------------------------
 
 ## TÂCHE A — UI : Police de corps + cancelled.blade.php + spectator.blade.php
 
