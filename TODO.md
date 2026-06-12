@@ -139,16 +139,16 @@
 - [x] Tâche K — Tests : non-régression succession en cascade (successeur tué nuit suivante)
 
 ## Phase v1.2 — Améliorations différées
-- [ ] **Étape 1 — Réorganisation documentaire**  
-  (SPEC_TIMERS.md, SPEC_TRANSITIONS.md) — ✅ fait
-- [ ] **Étape 2 — State machine Symfony Workflow**  
+- [x] **Étape 1 — Réorganisation documentaire**
+  (SPEC_TIMERS.md, SPEC_TRANSITIONS.md)
+- [ ] **Étape 2 — State machine Symfony Workflow**
   Refactoriser les transitions de phases (successions en cascade, extensibilité rôles)
-- [ ] **Étape 3 — Timers configurables par partie**  
+- [ ] **Étape 3 — Timers configurables par partie**
   Stockage dans `games.settings['timers']`, fallback config/game.php, UI dans waiting-room
-- [ ] **Étape 4 — Rôles v1.2**  
+- [ ] **Étape 4 — Rôles v1.2**
   Sorcière, Chasseur (avec leurs actions volontaires et timers fallback)
-- [ ] **Étape 5 — Tests intégration v1.2**  
-  Couvrir les nouveaux endpoints, jobs auto, file d’annonces, et reconnexion
+- [ ] **Étape 5 — Tests intégration v1.2**
+  Couvrir les nouveaux endpoints, jobs auto, file d'annonces, et reconnexion
 - [ ] **Rôles v1.3+** (hors périmètre v1.2) : Loup Blanc, Cupidon, Petite Fille
 
 ## BUGS CONNUS
