@@ -142,6 +142,47 @@
             </button>
         </div>
 
+        @if($player->is_host)
+        {{-- Réglages des timers (host uniquement) --}}
+        <div id="wr-timers" class="mb-6 rounded-lg p-5" x-data="timerSettings()" style="background-color: #111827; border: 1px solid rgba(201,168,76,0.25);">
+            <h3 class="font-medieval text-base mb-4 tracking-wide" style="color: #c9a84c;">Réglages des timers</h3>
+
+            <template x-for="key in Object.keys(timers)" :key="key">
+                <div class="mb-4">
+                    <div class="flex justify-between text-sm mb-1" style="color: #e8e0d0;">
+                        <span x-text="labels[key]"></span>
+                        <span style="color: #c9a84c;" x-text="timers[key] + ' s'"></span>
+                    </div>
+                    <input
+                        type="range"
+                        :min="limits[key].min"
+                        :max="limits[key].max"
+                        step="1"
+                        x-model.number="timers[key]"
+                        class="w-full"
+                    >
+                    <div class="flex justify-between text-xs mt-1" style="color: #e8e0d0; opacity: 0.4;">
+                        <span x-text="limits[key].min + ' s'"></span>
+                        <span x-text="limits[key].max + ' s'"></span>
+                    </div>
+                </div>
+            </template>
+
+            <div class="flex items-center gap-3 mt-2">
+                <button
+                    @click="save()"
+                    :disabled="saving"
+                    class="btn-primary px-4 py-2 text-sm disabled:opacity-50"
+                >
+                    <span x-show="!saving">Enregistrer les timers</span>
+                    <span x-show="saving">Enregistrement…</span>
+                </button>
+                <span x-show="saved" class="text-sm" style="color: #4ade80;">Enregistré ✓</span>
+                <span x-show="error" x-text="error" class="text-sm" style="color: #fca5a5;"></span>
+            </div>
+        </div>
+        @endif
+
         {{-- Liste des joueurs --}}
         <div id="wr-players" class="mb-6 flex flex-col gap-3">
             <template x-for="p in players" :key="p.id">
@@ -280,6 +321,8 @@
 
 @push('scripts')
 <script>
+    const GAME_ID = @json($game->id);
+
     (function(){
         const c = document.getElementById("stars");
         if (!c) return;
@@ -298,6 +341,57 @@
     function playerAvatarColor(id) {
         const colors = ['#c9a84c','#a78bfa','#4ade80','#ff4444','#38bdf8','#fb923c','#f472b6','#34d399'];
         return colors[id % colors.length];
+    }
+
+    function timerSettings() {
+        return {
+            timers: {
+                mayor_election:   @json($game->settings['timers']['mayor_election'] ?? 30),
+                seer:             @json($game->settings['timers']['seer'] ?? 30),
+                werewolves:       @json($game->settings['timers']['werewolves'] ?? 30),
+                mayor_succession: @json($game->settings['timers']['mayor_succession'] ?? 15),
+                day_vote:         @json($game->settings['timers']['day_vote'] ?? 90),
+            },
+            limits: {
+                mayor_election:   { min: 20, max: 60 },
+                seer:             { min: 15, max: 60 },
+                werewolves:       { min: 15, max: 60 },
+                mayor_succession: { min: 10, max: 30 },
+                day_vote:         { min: 60, max: 180 },
+            },
+            labels: {
+                mayor_election:   'Élection du Maire',
+                seer:             'Tour de la Voyante',
+                werewolves:       'Tour des Loups-Garous',
+                mayor_succession: 'Succession du Maire',
+                day_vote:         'Débat et vote du jour',
+            },
+
+            saving: false,
+            saved:  false,
+            error:  '',
+
+            async save() {
+                this.saving = true;
+                this.saved  = false;
+                this.error  = '';
+                try {
+                    const res = await fetch(`/game/${GAME_ID}/settings/timers`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                        body: JSON.stringify({ timers: this.timers }),
+                    });
+                    const json = await res.json();
+                    if (json.success) {
+                        this.saved = true;
+                        setTimeout(() => { this.saved = false; }, 1500);
+                    } else {
+                        this.error = json.message || 'Une erreur est survenue.';
+                    }
+                } catch { this.error = 'Impossible de contacter le serveur.'; }
+                finally { this.saving = false; }
+            },
+        };
     }
 
     function waitingRoom() {

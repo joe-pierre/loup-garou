@@ -154,6 +154,14 @@
 
 ---
 
+### [x] 2026-06-12 — $this->authorize() indisponible dans les Controllers (trait AuthorizesRequests manquant)
+
+- **Symptôme :** `LobbyController::updateTimers()` (nouvel endpoint Étape 3) plante avec une erreur "Call to undefined method" sur `$this->authorize(...)` ; `GameController::history()` était affecté par le même problème mais sans test couvrant ce chemin, le bug restait latent.
+- **Cause :** `app/Http/Controllers/Controller.php` est une classe abstraite vide, sans le trait `Illuminate\Foundation\Auth\Access\AuthorizesRequests` ni extension de `Illuminate\Routing\Controller`.
+- **Fix :** ajout de `use Illuminate\Foundation\Auth\Access\AuthorizesRequests;` dans `app/Http/Controllers/Controller.php`, appliqué à tous les controllers via l'héritage existant.
+
+---
+
 # ROADMAP (idées / améliorations futures)
  
 - [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)
@@ -161,3 +169,4 @@
 - [ ] Rôles v1.3+ : Loup Blanc, Cupidon, Petite Fille
 - [ ] State machine : étendre Symfony Workflow aux statuts intermédiaires (processing_night, wolves_turn) — post-Étape 4 si nécessaire
 - [ ] Audit performance post-v1.2 : N+1 queries, temps réponse < 200ms (Laravel Telescope)
+- [ ] waiting-room.blade.php : bloc "Exclure un joueur" dupliqué (affiché deux fois, avant et après la liste des joueurs) — supprimer un des deux blocs identiques (lignes ~134 et ~185)

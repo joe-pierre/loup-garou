@@ -14,6 +14,22 @@ return [
         // pour laisser le temps aux clients de se rediriger vers /night
         // et de s'abonner au canal privé avant que SeerTurnStarted parte.
         'night_start_delay' => 4,
+
+        // Limites de configuration des timers par le host (Étape 3, v1.2)
+        // host_configurable = false → timer toujours ignoré dans settings['timers']
+        'limits' => [
+            'mayor_election'    => ['min' => 20, 'max' => 60,  'host_configurable' => true],
+            'seer'              => ['min' => 15, 'max' => 60,  'host_configurable' => true],
+            'werewolves'        => ['min' => 15, 'max' => 60,  'host_configurable' => true],
+            'witch'             => ['min' => 15, 'max' => 60,  'host_configurable' => true],
+            'hunter'            => ['min' => 10, 'max' => 30,  'host_configurable' => true],
+            'mayor_succession'  => ['min' => 10, 'max' => 30,  'host_configurable' => true],
+            'day_vote'          => ['min' => 60, 'max' => 180, 'host_configurable' => true],
+            'reconnection'      => ['min' => 30, 'max' => 30,  'host_configurable' => false],
+            'ready_timeout'     => ['min' => 60, 'max' => 60,  'host_configurable' => false],
+            'night_start_delay' => ['min' => 4,  'max' => 4,   'host_configurable' => false],
+            'mayor_reveal'      => ['min' => 5,  'max' => 5,   'host_configurable' => false],
+        ],
     ],
 
     // 'auto' = floor(n * 0.2) min 1 | 'fill' = reste des joueurs | int = fixe

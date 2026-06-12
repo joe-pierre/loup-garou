@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateGameRequest;
 use App\Http\Requests\ExcludePlayerRequest;
 use App\Http\Requests\JoinGameRequest;
+use App\Http\Requests\UpdateTimersRequest;
 use App\Models\Game;
 use App\Models\GamePlayer;
 use App\Services\GameService;
@@ -62,6 +63,24 @@ class LobbyController extends Controller
         $this->gameService->excludePlayer($host, $target, $request->validated('reason'));
 
         return response()->json(['success' => true, 'data' => []]);
+    }
+
+    public function updateTimers(UpdateTimersRequest $request, int $id): JsonResponse
+    {
+        $game = Game::findOrFail($id);
+
+        $player = GamePlayer::where('game_id', $id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        $this->authorize('updateSettings', [$game, $player]);
+
+        $game = $this->gameService->updateTimerSettings($game, $request->validated('timers'));
+
+        return response()->json([
+            'success' => true,
+            'data'    => ['timers' => $game->settings['timers'] ?? []],
+        ]);
     }
 
     public function lobbyState(int $id): JsonResponse

@@ -143,7 +143,7 @@
   (SPEC_TIMERS.md, SPEC_TRANSITIONS.md)
 - [x] **Étape 2 — State machine Symfony Workflow**
   Refactoriser les transitions de phases (successions en cascade, extensibilité rôles)
-- [ ] **Étape 3 — Timers configurables par partie**
+- [x] **Étape 3 — Timers configurables par partie**
   Stockage dans `games.settings['timers']`, fallback config/game.php, UI dans waiting-room
 - [ ] **Étape 4 — Rôles v1.2**
   Sorcière, Chasseur (avec leurs actions volontaires et timers fallback)

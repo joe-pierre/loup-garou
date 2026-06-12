@@ -365,6 +365,37 @@ class GameService
         broadcast(new PlayerEliminated($game, $player, 'quit'));
     }
 
+    public function validateTimerSettings(array $timers): void
+    {
+        $limits = config('game.timers.limits');
+
+        foreach ($timers as $key => $value) {
+            if (! isset($limits[$key]) || $limits[$key]['host_configurable'] === false) {
+                abort(422, "Le timer '{$key}' n'est pas configurable.");
+            }
+
+            if (! is_int($value) || $value < $limits[$key]['min'] || $value > $limits[$key]['max']) {
+                abort(422, "Le timer '{$key}' doit être compris entre {$limits[$key]['min']} et {$limits[$key]['max']} secondes.");
+            }
+        }
+    }
+
+    public function updateTimerSettings(Game $game, array $timers): Game
+    {
+        if ($game->status !== 'waiting') {
+            abort(409, 'Les timers ne peuvent être modifiés que dans la salle d\'attente.');
+        }
+
+        $this->validateTimerSettings($timers);
+
+        $currentSettings = $game->settings ?? [];
+        $currentSettings['timers'] = array_merge($currentSettings['timers'] ?? [], $timers);
+
+        $game->update(['settings' => $currentSettings]);
+
+        return $game;
+    }
+
     public function cancelGame(Game $game): void
     {
         DB::transaction(function () use ($game) {

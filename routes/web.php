@@ -24,6 +24,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/game/{code}/lobby', [LobbyController::class, 'waitingRoom'])->name('game.lobby');
     Route::get('/game/{id}/lobby/state', [LobbyController::class, 'lobbyState'])->name('game.lobby.state');
     Route::post('/game/{id}/exclude/{playerId}', [LobbyController::class, 'exclude'])->name('game.exclude');
+    Route::post('/game/{id}/settings/timers', [LobbyController::class, 'updateTimers'])->name('game.settings.timers');
     Route::get('/game/{code}/role-reveal', [ActionController::class, 'roleReveal'])->name('game.role-reveal');
     Route::get('/game/{code}/mayor-election', [GameController::class, 'mayorElection'])->name('game.mayor-election');
     Route::post('/game/{id}/ready', [ActionController::class, 'ready'])->name('game.ready');

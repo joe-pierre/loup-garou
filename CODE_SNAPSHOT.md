@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 19h53
+Generated at: 20h12
 
 ## PHP Analysis (Core Logic)
 
@@ -18,8 +18,8 @@ Game.php
       - HasFactory
       - fillable
     functions:
-      - casts() → return ['phase_deadline' => 'datetime', 'started_at' => 'datetime', 'finished_at' => 'datetime', 'timers' => 'array']
-      - timer(string $key) → return $this->timers[$key] ?? config("game.timers.{$key}")
+      - casts() → return ['phase_deadline' => 'datetime', 'started_at' => 'datetime', 'finished_at' => 'datetime', 'timers' => 'array', 'settings' => 'array']
+      - timer(string $key) → return TimerCalculator::get($this, $key)
       - players() → return $this->hasMany(GamePlayer::class)
       - alivePlayers() → return $this->hasMany(GamePlayer::class)->where('is_alive', true)
       - actions() → return $this->hasMany(GameAction::class)
@@ -529,6 +529,7 @@ WorkflowServiceProvider.php
 GamePolicy.php
     functions:
       - viewHistory(User $user, Game $game) → return $game->players()->where('user_id', $user->id)->exists()
+      - updateSettings(User $user, Game $game, GamePlayer $player) → return $player->is_host
 
 // app/Http/Requests/DayVoteRequest.php
 DayVoteRequest.php
@@ -556,6 +557,13 @@ MayorVoteRequest.php
       - authorize() → return true
       - rules() → return ['target_player_id' => ['required', 'integer', Rule::exists('game_players', 'id')->where('game_id', $this->route('id'))->where('is_alive', true)]]
       - messages() → return ['target_player_id.required' => 'La cible est obligatoire.', 'target_player_id.exists' => 'Ce joueur n\'existe pas ou est éliminé.']
+
+// app/Http/Requests/UpdateTimersRequest.php
+UpdateTimersRequest.php
+    functions:
+      - authorize() → return true
+      - rules() → return ['timers' => ['required', 'array', 'min:1'], 'timers.*' => ['required', 'integer']]
+      - messages() → return ['timers.required' => 'Les timers sont obligatoires.', 'timers.array' => 'Format de timers invalide.', 'timers.min' => 'Au moins un timer doit être fourni.', 'timers.*.required' => 'La valeur du timer est obligatoire.', 'timers.*.integer' => 'Chaque timer doit être un nombre entier de secondes.']
 
 // app/Http/Requests/JoinGameRequest.php
 JoinGameRequest.php
@@ -601,6 +609,8 @@ GoogleController.php
 
 // app/Http/Controllers/Controller.php
 Controller.php
+    attributes:
+      - AuthorizesRequests
 
 // app/Http/Controllers/Game/LobbyController.php
 LobbyController.php
@@ -609,6 +619,7 @@ LobbyController.php
       - create(CreateGameRequest $request) → return response()->json(['success' => true, 'data' => ['game_id' => $game->id, 'code' => $game->code]], 201)
       - join(JoinGameRequest $request, string $code) → return response()->json(['success' => true, 'data' => ['player_id' => $player->id, 'game_code' => strtoupper($code)]])
       - exclude(ExcludePlayerRequest $request, int $id, int $playerId) → return response()->json(['success' => true, 'data' => []])
+      - updateTimers(UpdateTimersRequest $request, int $id) → return response()->json(['success' => true, 'data' => ['timers' => $game->settings['timers'] ?? []]])
       - lobbyState(int $id) → return response()->json(['success' => true, 'data' => ['status' => $game->status, 'players_count' => count($players), 'max_players' => $game->max_players, 'slots_remaining' => $game->max_players - count($players), 'players' => $players]])
       - waitingRoom(string $code) → return view('game.waiting-room', compact('game', 'player', 'players'))
 
@@ -744,8 +755,10 @@ TimerCalculator.php
     attributes:
       - TIMERS
       - FIXED
+      - NON_CONFIGURABLE
     functions:
       - forPlayerCount(int $n) → return array_merge(self::TIMERS[$n], self::FIXED)
+      - get(Game $game, string $key) → return config("game.timers.{$key}", 30)
 
 // app/Services/GameService.php
 GameService.php
@@ -761,6 +774,8 @@ GameService.php
       - handleDisconnection(GamePlayer $player) → void
       - handleReconnection(GamePlayer $player) → void
       - quitGame(Game $game, GamePlayer $player) → void
+      - validateTimerSettings(array $timers) → void
+      - updateTimerSettings(Game $game, array $timers) → return $game
       - cancelGame(Game $game) → void
       - generateUniqueCode() → return $code
 
@@ -807,6 +822,21 @@ ExcludePlayerTest.php
       - test_motif_vide_retourne_422() → void
       - test_joueur_exclu_ne_peut_plus_rejoindre() → void
       - test_player_excluded_broadcasté_après_exclusion() → void
+
+// tests/Feature/Game/TimerSettingsTest.php
+TimerSettingsTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - makeWaitingGame() → return [$game, $host]
+      - test_host_peut_modifier_les_timers() → void
+      - test_joueur_non_host_ne_peut_pas_modifier_les_timers() → void
+      - test_timer_hors_plage_est_rejeté() → void
+      - test_timer_non_configurable_est_rejeté() → void
+      - test_game_timer_lit_settings_en_priorite() → void
+      - test_game_timer_fallback_sur_config() → void
+      - test_timers_fixes_ignorent_settings() → void
+      - test_modification_impossible_hors_waiting() → void
 
 // tests/Feature/Game/CreateGameTest.php
 CreateGameTest.php
@@ -989,6 +1019,12 @@ TestCase.php
 
 // database/migrations/2026_06_04_002156_create_push_subscriptions_table.php
 2026_06_04_002156_create_push_subscriptions_table.php
+    functions:
+      - up() → void
+      - down() → void
+
+// database/migrations/2026_06_12_120000_add_settings_to_games_table.php
+2026_06_12_120000_add_settings_to_games_table.php
     functions:
       - up() → void
       - down() → void

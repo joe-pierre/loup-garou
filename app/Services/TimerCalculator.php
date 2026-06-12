@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Game;
+
 class TimerCalculator
 {
     private const TIMERS = [
@@ -19,6 +21,9 @@ class TimerCalculator
         'mayor_reveal'     => 5,
     ];
 
+    // Timers fixes — toujours ignorés même si présents dans settings['timers']
+    private const NON_CONFIGURABLE = ['reconnection', 'ready_timeout', 'night_start_delay', 'mayor_reveal'];
+
     public static function forPlayerCount(int $n): array
     {
         if (! isset(self::TIMERS[$n])) {
@@ -26,5 +31,20 @@ class TimerCalculator
         }
 
         return array_merge(self::TIMERS[$n], self::FIXED);
+    }
+
+    public static function get(Game $game, string $key): int
+    {
+        if (in_array($key, self::NON_CONFIGURABLE, true)) {
+            return config("game.timers.{$key}");
+        }
+
+        $settings = $game->settings['timers'] ?? [];
+
+        if (isset($settings[$key]) && is_int($settings[$key])) {
+            return $settings[$key];
+        }
+
+        return config("game.timers.{$key}", 30);
     }
 }

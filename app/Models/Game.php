@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\TimerCalculator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,6 +19,7 @@ class Game extends Model
         'round',
         'phase_deadline',
         'timers',
+        'settings',
         'winner_team',
         'started_at',
         'finished_at',
@@ -30,12 +32,13 @@ class Game extends Model
             'started_at'     => 'datetime',
             'finished_at'    => 'datetime',
             'timers'         => 'array',
+            'settings'       => 'array',
         ];
     }
 
     public function timer(string $key): int
     {
-        return $this->timers[$key] ?? config("game.timers.{$key}");
+        return TimerCalculator::get($this, $key);
     }
 
     public function players(): HasMany
