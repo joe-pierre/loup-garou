@@ -5,6 +5,8 @@ return [
         'mayor_election'   => 30,
         'seer'             => 30,
         'werewolves'       => 30,
+        'witch'            => 30,
+        'hunter'           => 15,
         'mayor_succession' => 5,
         'day_vote'         => 90,
         'reconnection'     => 30,

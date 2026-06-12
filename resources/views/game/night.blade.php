@@ -37,6 +37,46 @@
         box-shadow: 0 0 28px rgba(139,0,0,0.18);
         background: linear-gradient(135deg, #1a0000 0%, #0d0005 100%); border-radius: 1rem;
     }
+    .witch-panel {
+        border: 1px solid rgba(22,163,74,0.4);
+        box-shadow: 0 0 28px rgba(22,163,74,0.12);
+        background: linear-gradient(135deg, #0a1f0a 0%, #051005 100%); border-radius: 1rem;
+    }
+    .hunter-panel {
+        border: 1px solid rgba(201,168,76,0.4);
+        box-shadow: 0 0 28px rgba(201,168,76,0.12);
+        background: linear-gradient(135deg, #1a1505 0%, #0d0a02 100%); border-radius: 1rem;
+    }
+    .btn-heal {
+        background-color: #16a34a;
+        color: #fff;
+        border: 1px solid rgba(74,222,128,0.5);
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+        font-family: 'Cinzel', serif;
+        font-weight: 700;
+        font-size: 0.875rem;
+        width: 100%;
+        transition: background-color 0.2s, transform 0.15s;
+        cursor: pointer;
+    }
+    .btn-heal:hover:not(:disabled) { background-color: #15803d; transform: translateY(-2px); }
+    .btn-heal:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .btn-pass {
+        background-color: rgba(255,255,255,0.05);
+        color: #e8e0d0;
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+        font-family: 'Cinzel', serif;
+        font-weight: 600;
+        font-size: 0.875rem;
+        width: 100%;
+        transition: background-color 0.2s;
+        cursor: pointer;
+    }
+    .btn-pass:hover:not(:disabled) { background-color: rgba(255,255,255,0.1); }
+    .btn-pass:disabled { opacity: 0.4; cursor: not-allowed; }
     .target-btn {
         background-color: rgba(255,255,255,0.03);
         border: 1px solid rgba(255,255,255,0.08);
@@ -325,6 +365,124 @@
         </div>
     </div>
 
+    {{-- ── 4. ÉCRAN SORCIÈRE ── --}}
+    <div x-show="nightPhase === 'witch_turn' && isWitch" x-cloak
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-4"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         class="relative min-h-screen flex items-center justify-center px-4 py-10"
+         style="background: linear-gradient(135deg, #0a1f0a 0%, #051005 100%);">
+        @include('partials.game.quit-button')
+        @include('partials.game.quit-modal')
+        <div class="witch-panel p-6 w-full max-w-lg">
+            <p class="font-medieval text-xl font-bold mb-1 text-center" style="color:#4ade80;">
+                🧙 C'est ton tour, Sorcière...
+            </p>
+            <p class="text-xs italic text-center mb-4" style="color:rgba(232,224,208,0.85);">
+                Les loups ont choisi <span x-text="witchVictim?.pseudo"></span>. Que décides-tu ?
+            </p>
+            <div class="night-timer-bar mb-5">
+                <div id="witch-timer-bar" class="timer-fill" style="width:100%;background-color:#16a34a;"></div>
+            </div>
+
+            <button
+                @click="witchAct('heal', witchVictim?.id)"
+                :disabled="!witchHealAvailable || witchSubmitting || witchActionDone"
+                class="btn-heal mb-3"
+            >
+                <span x-show="!witchSubmitting">💚 Sauver <span x-text="witchVictim?.pseudo"></span></span>
+                <span x-show="witchSubmitting">Action en cours…</span>
+            </button>
+
+            <template x-if="witchKillAvailable">
+                <div class="mb-3">
+                    <p class="text-xs mb-2" style="color:rgba(232,224,208,0.85);">Ou empoisonner un joueur :</p>
+                    <div class="flex flex-col gap-2 mb-3" style="max-height:180px;overflow-y:auto;">
+                        @foreach($players->filter(fn($p) => $p->id !== $player->id && $p->is_alive)->values() as $witchTarget)
+                        <button
+                            type="button"
+                            class="target-btn"
+                            :class="witchSelectedTarget === {{ $witchTarget->id }} ? 'wolf-sel' : ''"
+                            :disabled="witchActionDone"
+                            @click="witchSelectedTarget = {{ $witchTarget->id }}"
+                        >
+                            <div class="avatar" style="background:#0a1f0a;border:1px solid rgba(74,222,128,0.3);color:#e8e0d0;">
+                                {{ strtoupper(substr($witchTarget->pseudo, 0, 1)) }}
+                            </div>
+                            <span class="text-sm" style="color:#e8e0d0;">{{ $witchTarget->pseudo }}</span>
+                            <span x-show="witchSelectedTarget === {{ $witchTarget->id }}" class="ml-auto text-xs" style="color:#4ade80;">✓</span>
+                        </button>
+                        @endforeach
+                    </div>
+                    <button
+                        @click="witchAct('kill', witchSelectedTarget)"
+                        :disabled="!witchSelectedTarget || witchSubmitting || witchActionDone"
+                        class="btn-kill"
+                    >
+                        ☠️ Empoisonner
+                    </button>
+                </div>
+            </template>
+
+            <button
+                @click="witchAct('pass')"
+                :disabled="witchSubmitting || witchActionDone"
+                class="btn-pass"
+            >
+                <span x-show="!witchActionDone">🌙 Ne rien faire</span>
+                <span x-show="witchActionDone">✓ Action enregistrée</span>
+            </button>
+        </div>
+    </div>
+
+    {{-- ── 5. ÉCRAN CHASSEUR (tir après la mort) ── --}}
+    <div x-show="nightPhase === 'hunter_turn' && isHunter" x-cloak
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-4"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         class="relative min-h-screen flex items-center justify-center px-4 py-10"
+         style="background: linear-gradient(135deg, #1a1505 0%, #0d0a02 100%);">
+        @include('partials.game.quit-button')
+        @include('partials.game.quit-modal')
+        <div class="hunter-panel p-6 w-full max-w-lg">
+            <p class="font-medieval text-xl font-bold mb-1 text-center" style="color:#c9a84c;">
+                🏹 Ton dernier geste, Chasseur...
+            </p>
+            <p class="text-xs italic text-center mb-4" style="color:rgba(232,224,208,0.85);">
+                Choisis qui t'accompagnera dans la tombe.
+            </p>
+            <div class="night-timer-bar mb-5">
+                <div id="hunter-timer-bar" class="timer-fill" style="width:100%;background-color:#c9a84c;"></div>
+            </div>
+            <div class="flex flex-col gap-2 mb-4" style="max-height:220px;overflow-y:auto;">
+                @foreach($players->filter(fn($p) => $p->id !== $player->id && $p->is_alive)->values() as $hunterTarget)
+                <button
+                    type="button"
+                    class="target-btn"
+                    :class="hunterSelectedTarget === {{ $hunterTarget->id }} ? 'wolf-sel' : ''"
+                    :disabled="hunterActionDone"
+                    @click="hunterSelectedTarget = {{ $hunterTarget->id }}"
+                >
+                    <div class="avatar" style="background:#1a1505;border:1px solid rgba(201,168,76,0.3);color:#e8e0d0;">
+                        {{ strtoupper(substr($hunterTarget->pseudo, 0, 1)) }}
+                    </div>
+                    <span class="text-sm" style="color:#e8e0d0;">{{ $hunterTarget->pseudo }}</span>
+                    <span x-show="hunterSelectedTarget === {{ $hunterTarget->id }}" class="ml-auto text-xs" style="color:#c9a84c;">✓</span>
+                </button>
+                @endforeach
+            </div>
+            <button
+                @click="hunterShoot()"
+                :disabled="!hunterSelectedTarget || hunterSubmitting || hunterActionDone"
+                class="btn-kill"
+            >
+                <span x-show="!hunterSubmitting && !hunterActionDone">🏹 Tirer</span>
+                <span x-show="hunterSubmitting">Tir en cours…</span>
+                <span x-show="hunterActionDone && !hunterSubmitting">✓ Tir effectué</span>
+            </button>
+        </div>
+    </div>
+
     {{-- ═══════ MODALE SUCCESSION — lecture seule (automatique) ═══════ --}}
     <div
         x-show="successionOpen"
@@ -375,6 +533,8 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const MY_IS_ALIVE   = {{ $player->is_alive ? 'true' : 'false' }};
     const SEER_TIMER    = {{ $game->timer('seer') }};
     const WOLVES_TIMER  = {{ $game->timer('werewolves') }};
+    const WITCH_TIMER   = {{ $game->settings['timers']['witch'] ?? config('game.timers.witch') }};
+    const HUNTER_TIMER  = {{ $game->settings['timers']['hunter'] ?? config('game.timers.hunter') }};
 
     // Exposer sur window pour game-state.js
     window.GAME_ID      = GAME_ID;
@@ -392,6 +552,8 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
 
             isWerewolf:          MY_ROLE === 'werewolf',
             isSeer:              MY_ROLE === 'seer',
+            isWitch:             MY_ROLE === 'witch',
+            isHunter:            MY_ROLE === 'hunter',
             nightPhase:          'village_sleeping',
             pendingSeerEvent:    null,
             seerActionDone:      false,
@@ -410,6 +572,17 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             wolfMessages:    [],
             wolfChatInput:   '',
             wolfChatSending: false,
+
+            witchVictim:         null,
+            witchHealAvailable:  false,
+            witchKillAvailable:  false,
+            witchSelectedTarget: null,
+            witchSubmitting:     false,
+            witchActionDone:     false,
+
+            hunterSelectedTarget: null,
+            hunterSubmitting:     false,
+            hunterActionDone:     false,
 
             init() {
                 // Les events du canal public (night.started, player.eliminated, day.started, etc.)
@@ -459,6 +632,37 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                                 this.nightPhase = 'village_sleeping';
                             }
                         }, 5000);
+                    });
+                }
+
+                if (this.isWitch) {
+                    window.addEventListener('witch-turn-started', (e) => {
+                        const data = e.detail;
+                        this.nightPhase         = 'witch_turn';
+                        this.witchVictim        = data.victim ?? null;
+                        this.witchHealAvailable = !!data.heal_available;
+                        this.witchKillAvailable = !!data.kill_available;
+                        this.witchSelectedTarget = null;
+                        this.witchActionDone    = false;
+                        this.$nextTick(() => {
+                            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+                            gsap.to('#witch-timer-bar', { width: '0%', duration: WITCH_TIMER, ease: 'none' });
+                        });
+                    });
+                    window.addEventListener('witch-acted', () => {
+                        this.witchActionDone = true;
+                    });
+                }
+
+                if (this.isHunter) {
+                    window.addEventListener('hunter-turn-started', () => {
+                        this.nightPhase          = 'hunter_turn';
+                        this.hunterSelectedTarget = null;
+                        this.hunterActionDone    = false;
+                        this.$nextTick(() => {
+                            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+                            gsap.to('#hunter-timer-bar', { width: '0%', duration: HUNTER_TIMER, ease: 'none' });
+                        });
                     });
                 }
 
@@ -537,6 +741,48 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                     this.seerActionDone = true;
                 } catch { }
                 finally { this.seerSubmitting = false; }
+            },
+
+            async witchAct(action, targetId = null) {
+                if (this.witchSubmitting || this.witchActionDone) return;
+                this.witchSubmitting = true;
+                try {
+                    const res = await fetch(`/game/${GAME_ID}/witch/act`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
+                        body: JSON.stringify({ action, target_player_id: targetId }),
+                    });
+                    const json = await res.json();
+                    if (json.success) {
+                        this.witchActionDone = true;
+                    }
+                } catch { }
+                finally { this.witchSubmitting = false; }
+            },
+
+            async hunterShoot() {
+                if (!this.hunterSelectedTarget || this.hunterSubmitting || this.hunterActionDone) return;
+                this.hunterSubmitting = true;
+                try {
+                    const res = await fetch(`/game/${GAME_ID}/hunter/shoot`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
+                        body: JSON.stringify({ target_player_id: this.hunterSelectedTarget }),
+                    });
+                    const json = await res.json();
+                    if (json.success) {
+                        this.hunterActionDone = true;
+                    }
+                } catch { }
+                finally { this.hunterSubmitting = false; }
             },
 
             async wolfVote() {

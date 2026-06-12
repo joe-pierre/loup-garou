@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class ProcessNightEnd implements ShouldQueue
@@ -31,6 +32,12 @@ class ProcessNightEnd implements ShouldQueue
         // Double-check Workflow : 'processing_night' (Tâches E-H) reste hors périmètre et bypasse le guard.
         if ($game->status === 'night' && ! $game->canTransition('start_day')) {
             Log::warning("Transition 'start_day' refusée depuis status={$game->status}");
+            return;
+        }
+
+        $hunterId = Cache::pull("hunter_must_shoot_{$game->id}");
+        if ($hunterId) {
+            ProcessHunterTurn::dispatch($game->id, $game->round, $hunterId)->delay(0);
             return;
         }
 

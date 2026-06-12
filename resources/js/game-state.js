@@ -125,6 +125,10 @@ export function gameState(gameId, userId) {
                 .listen('.player.disconnected',        e => this._handlePlayerDisconnected(e))
                 .listen('.player.reconnected',         e => this._handlePlayerReconnected(e))
                 .listen('.player.inactive',            e => this._handlePlayerInactive(e))
+                .listen('.hunter.shot',                e => {
+                    this._dispatchToast(`🏹 ${e.hunter_pseudo} a tiré sur ${e.target_pseudo}`, 'info');
+                    window.dispatchEvent(new CustomEvent('hunter-shot', { detail: e }));
+                })
                 .listen('.game.finished',              e => this.handleGameFinished(e));
 
             // Présence (détection leaving)
@@ -150,6 +154,17 @@ export function gameState(gameId, userId) {
                         this.nightPhase = 'seer_result';
                         // window.dispatchEvent pour night.blade.php (pas $dispatch qui reste sur le DOM)
                         window.dispatchEvent(new CustomEvent('seer-result', { detail: e }));
+                    })
+                    .listen('.witch.turn.started', e => {
+                        this.nightPhase = 'witch_turn';
+                        window.dispatchEvent(new CustomEvent('witch-turn-started', { detail: e }));
+                    })
+                    .listen('.witch.acted',        e => {
+                        window.dispatchEvent(new CustomEvent('witch-acted', { detail: e }));
+                    })
+                    .listen('.hunter.turn.started', e => {
+                        this.nightPhase = 'hunter_turn';
+                        window.dispatchEvent(new CustomEvent('hunter-turn-started', { detail: e }));
                     });
             }
 

@@ -24,6 +24,7 @@ class GamePlayer extends Model
         'is_inactive',
         'is_ready',
         'joined_at',
+        'settings',
     ];
 
     protected function casts(): array
@@ -35,6 +36,7 @@ class GamePlayer extends Model
             'is_inactive' => 'boolean',
             'is_ready'    => 'boolean',
             'joined_at'   => 'datetime',
+            'settings'    => 'array',
         ];
     }
 
@@ -63,5 +65,15 @@ class GamePlayer extends Model
     public function isVillagerSide(): bool
     {
         return in_array($this->role, ['villager', 'seer', 'witch', 'hunter']);
+    }
+
+    public function isWitch(): bool
+    {
+        return $this->role === 'witch';
+    }
+
+    public function isHunter(): bool
+    {
+        return $this->role === 'hunter';
     }
 }

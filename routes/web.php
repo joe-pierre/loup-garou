@@ -25,6 +25,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/game/{id}/lobby/state', [LobbyController::class, 'lobbyState'])->name('game.lobby.state');
     Route::post('/game/{id}/exclude/{playerId}', [LobbyController::class, 'exclude'])->name('game.exclude');
     Route::post('/game/{id}/settings/timers', [LobbyController::class, 'updateTimers'])->name('game.settings.timers');
+    Route::post('/game/{id}/settings/roles', [LobbyController::class, 'updateRoles'])->name('game.settings.roles');
     Route::get('/game/{code}/role-reveal', [ActionController::class, 'roleReveal'])->name('game.role-reveal');
     Route::get('/game/{code}/mayor-election', [GameController::class, 'mayorElection'])->name('game.mayor-election');
     Route::post('/game/{id}/ready', [ActionController::class, 'ready'])->name('game.ready');
@@ -33,6 +34,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/game/{id}/vote/night', [VoteController::class, 'night'])->name('game.vote.night');
     Route::post('/game/{id}/chat', [ChatController::class, 'send'])->name('game.chat.send');
     Route::post('/game/{id}/seer/check', [ActionController::class, 'seerCheck'])->name('game.seer.check');
+    Route::post('/game/{id}/witch/act', [ActionController::class, 'witchAct'])->name('game.witch.act');
+    Route::post('/game/{id}/hunter/shoot', [ActionController::class, 'hunterShoot'])->name('game.hunter.shoot');
     Route::post('/game/{id}/mayor/succession', [ActionController::class, 'mayorSuccession'])->name('game.mayor.succession');
     Route::get('/game/{code}/state', [GameController::class, 'state'])->name('game.state');
     Route::get('/game/{code}/history', [GameController::class, 'history'])->name('game.history');

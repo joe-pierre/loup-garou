@@ -104,6 +104,10 @@ class PhaseManager
 
         $victim = app(VoteService::class)->resolveNightVote($game);
 
+        if ($victim && $victim->is_alive) {
+            $victim = null; // sauvé par la sorcière
+        }
+
         $this->startDay($game, $victim);
     }
 }
