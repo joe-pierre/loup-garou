@@ -135,7 +135,7 @@
 - [x] Tâche I — Tests : non-régression E→H (double-fire, succession nuit, migration enum)
 
 ## Phase 15 — Bugfix succession maire en cascade (2026-06-12)
-- [ ] Tâche J — ProcessMayorSuccession : flag shouldStartNight — correctif bug modale bloquée si successeur tué nuit suivante
+- [x] Tâche J — ProcessMayorSuccession : flag shouldStartNight — correctif bug modale bloquée si successeur tué nuit suivante
 - [ ] Tâche K — Tests : non-régression succession en cascade (successeur tué nuit suivante)
 
 ## Phase v1.2 — Améliorations différées

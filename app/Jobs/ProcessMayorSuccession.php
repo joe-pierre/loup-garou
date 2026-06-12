@@ -20,6 +20,7 @@ class ProcessMayorSuccession implements ShouldQueue
     public function __construct(
         public readonly int $gameId,
         public readonly int $round,
+        public readonly bool $shouldStartNight = false,
     ) {}
 
     public function handle(PhaseManager $phaseManager): void
@@ -31,7 +32,7 @@ class ProcessMayorSuccession implements ShouldQueue
             return;
         }
 
-        $phaseToStart = in_array($game->status, ['night', 'processing_night']) ? 'night' : 'day';
+        $phaseToStart = $this->shouldStartNight ? 'night' : 'day';
 
         // La transaction retourne les données nécessaires au broadcast
         // mais ne broadcaste pas — le broadcast doit être HORS transaction
