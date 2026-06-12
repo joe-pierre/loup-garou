@@ -7,7 +7,7 @@
 ## 1. Vue d'ensemble
 
 ```mermaid
-stateDiagram-v1.1.1
+stateDiagram-v2
     [*] --> Waiting
     Waiting --> MayorElection
     MayorElection --> Night
@@ -24,8 +24,8 @@ stateDiagram-v1.1.1
     Day --> DayVote
     DayVote --> DayResolution
     DayResolution --> CheckVictimDay
-    CheckVictimDay --> MayorSuccessionDay : éliminé = maire
-    CheckVictimDay --> RemoveSeerDay : éliminé = voyante
+    CheckVictimDay --> MayorSuccessionDay : elimine = maire
+    CheckVictimDay --> RemoveSeerDay : elimine = voyante
     CheckVictimDay --> VictoryCheckDay
     MayorSuccessionDay --> RemoveSeerDay
     MayorSuccessionDay --> VictoryCheckDay
