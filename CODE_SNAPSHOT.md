@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 21h08
+Generated at: 11h25
 
 ## PHP Analysis (Core Logic)
 
@@ -118,7 +118,18 @@ ProcessNightActions.php
       - SerializesModels
     functions:
       - __construct(int $gameId, int $round) {}
-      - handle(VoteService $voteService, PhaseManager $phaseManager, WinConditionChecker $winChecker) → void
+      - handle(VoteService $voteService, WinConditionChecker $winChecker) → void
+
+// app/Jobs/ProcessNightEnd.php
+ProcessNightEnd.php
+    attributes:
+      - Dispatchable
+      - InteractsWithQueue
+      - Queueable
+      - SerializesModels
+    functions:
+      - __construct(int $gameId, int $round) {}
+      - handle(PhaseManager $phaseManager) → void
 
 // app/Jobs/ProcessDayVote.php
 ProcessDayVote.php
@@ -717,6 +728,7 @@ PhaseManager.php
     functions:
       - startDay(Game $game, ?GamePlayer $victim) → void
       - startNight(Game $game) → void
+      - endNight(Game $game) → void
 
 // app/Services/TimerCalculator.php
 TimerCalculator.php
@@ -822,6 +834,10 @@ NightPhaseTest.php
       - test_loup_ne_peut_pas_voter_pour_un_autre_loup_retourne_422() → void
       - test_action_voyante_hors_phase_night_retourne_409() → void
       - test_vote_nuit_hors_phase_night_retourne_409() → void
+      - test_mayor_succession_triggered_at_night() → void
+      - test_mayor_succession_not_triggered_if_victory_occurs_simultaneously() → void
+      - test_night_ends_with_werewolves_turn_even_when_seer_dead() → void
+      - test_night_end_dispatched_after_mayor_succession_with_buffer() → void
 
 // tests/Feature/Game/RaceConditionTest.php
 RaceConditionTest.php
@@ -834,6 +850,14 @@ RaceConditionTest.php
       - test_day_vote_mayor_weight_2_même_si_maire_assigné_en_cours() → void
       - test_resolve_day_vote_double_fire_processing_day_guard_ignore_second_appel() → void
 
+// tests/Feature/Game/ProcessDayVoteTest.php
+ProcessDayVoteTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_double_fire_does_not_execute_twice() → void
+      - test_day_vote_does_not_accept_processing_day_as_initial_state() → void
+
 // tests/Feature/Game/DayPhaseTest.php
 DayPhaseTest.php
     attributes:
@@ -844,6 +868,16 @@ DayPhaseTest.php
       - test_égalité_vote_jour_élimine_personne_et_broadcast_no_elimination() → void
       - test_vote_maire_weight_2_correctement_compté() → void
       - test_vote_hors_phase_day_retourne_409() → void
+
+// tests/Feature/Game/MigrationTest.php
+MigrationTest.php
+    attributes:
+      - RefreshDatabase
+      - MIGRATION_FILE
+    functions:
+      - statusEnumDefinition() → return DB::selectOne("SHOW COLUMNS FROM games WHERE Field = 'status'")->Type
+      - test_processing_day_added_to_enum() → void
+      - test_rollback_of_processing_day_removes_it() → void
 
 // tests/Feature/ExampleTest.php
 ExampleTest.php
