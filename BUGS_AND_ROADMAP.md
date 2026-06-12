@@ -146,21 +146,18 @@
 
 ---
 
-# BUGS ACTIFS
-
-### [!] 2026-06-12 — Modale succession bloquée si le successeur est tué la nuit suivante
-
-- **Symptôme :** quand le maire est éliminé la nuit et qu'un successeur est désigné (aléatoirement ou non), si ce successeur est lui-même tué par les loups la nuit suivante, la partie reste bloquée sur la modale "Succession du Maire" — impossible de continuer
-- **Cause :** `ProcessMayorSuccession` ne distingue pas le contexte "mort en nuit" vs "mort en jour". En contexte nuit, `ProcessNightEnd` passe au jour sans vérifier si le nouveau maire vient d'être tué dans ce même cycle de nuit. Le job `ProcessMayorSuccession` est re-dispatché mais la modale côté client ne se ferme jamais car aucun event `MayorSuccessionDone` ne suit la résolution.
-- **Fix prévu :** flag `shouldStartNight` dans `ProcessMayorSuccession` — Tâche J (voir TASK_PROMPTS_REMAINING.md)
+### [x] 2026-06-12 — Modale succession bloquée si le successeur est tué la nuit suivante
+ 
+- **Symptôme :** quand le maire est éliminé la nuit et qu'un successeur est désigné, si ce successeur est lui-même tué la nuit suivante, la partie restait bloquée sur la modale "Succession du Maire".
+- **Cause :** `ProcessMayorSuccession` déduisait le contexte (nuit/jour) depuis `$game->status` au moment de son exécution — mais si `ProcessNightEnd` s'exécutait en premier, le statut était déjà `day` et le job concluait à tort à un contexte jour.
+- **Fix :** flag `shouldStartNight` passé explicitement par le dispatcher (`ProcessNightActions` passe `true`, `VoteService::resolveDayVote` laisse le défaut `false`). Le contexte est porté par l'appelant, pas re-déduit depuis la DB.
 
 ---
 
 # ROADMAP (idées / améliorations futures)
-
-- [ ] Harmoniser `config('game.timers.mayor_succession', 15)` (utilisé dans `ProcessNightActions` et `VoteService::resolveDayVote`) avec `$game->timer('mayor_succession')` : `config/game.php` définit `mayor_succession => 5`, donc le fallback `15` de ces appels n'est jamais utilisé en pratique — écart avec les 15s documentés dans CLAUDE.md/TimerCalculator
-- [ ] Délai voyante : réduire de ~8s à ~5s — broadcaster `SeerTurnStarted` avec `delay(5s)` côté serveur, supprimer le `setTimeout` client (v1.2)
-- [ ] Timers configurables par partie depuis la waiting-room (v1.2)
-- [ ] Rôles v1.2 : Sorcière, Chasseur
+ 
+- [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)
+- [ ] Harmoniser les appels `config('game.timers.mayor_succession', 15)` restants avec `$game->timer()` (Étape 3)
 - [ ] Rôles v1.3+ : Loup Blanc, Cupidon, Petite Fille
-- [ ] State machine (Symfony Workflow) — refactoring architecture pour gérer les transitions complexes (successions en cascade, nouveaux rôles v1.2+)
+- [ ] State machine : étendre Symfony Workflow aux statuts intermédiaires (processing_night, wolves_turn) — post-Étape 4 si nécessaire
+- [ ] Audit performance post-v1.2 : N+1 queries, temps réponse < 200ms (Laravel Telescope)

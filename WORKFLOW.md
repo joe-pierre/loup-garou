@@ -4,7 +4,19 @@
 
 ---
 
-## 1. Vue d'ensemble
+## 1. Vue d'ensemble — state machine v1.2
+
+```
+waiting
+  ↓ start_election
+electing_mayor
+  ↓ start_night
+night  ←──────────────────┐
+  ↓ start_day             │ continue_night
+day ────────────────────── ┘
+  ↓ finish (depuis night ou day)
+finished
+```
 
 ```mermaid
 stateDiagram-v2
@@ -35,16 +47,19 @@ stateDiagram-v2
     Finished --> [*]
 ```
 
+Statuts intermédiaires (hors Workflow, gérés par les jobs) :
+`role_reveal` · `processing_night` · `processing_wolves` · `wolves_turn` · `processing_day`
+
 ---
 
 ## 2. Avant chaque session Claude Code
 
-1. **Régénérer `CODE_SNAPSHOT.md`** via le script externe: [ `./z_tools/project_structure.sh` ]
+1. **Régénérer `CODE_SNAPSHOT.md`** via le script externe : `./z_tools/project_structure.sh`
    → Index structurel du code. Sans lui, Claude Code lit 70 fichiers au lieu de 2-3.
 
-2. **Ouvrir `TODO.md`** → identifier la prochaine tâche `- [ ]`
+2. **Ouvrir `TODO.md`** → identifier la prochaine étape `- [ ]`
 
-3. **Ouvrir `TASK_PROMPTS_REMAINING.md`** → copier le prompt correspondant
+3. **Ouvrir `TASK_PROMPTS_REMAINING.md`** → copier le prompt de l'étape suivante
 
 4. **Lancer Claude Code** dans le dossier du projet
    → `CLAUDE.md` est lu automatiquement. Ne jamais le coller manuellement.
@@ -70,188 +85,162 @@ Claude Code met à jour automatiquement à la fin de chaque tâche :
 
 ---
 
-## 4. Après chaque tâche (Git)
+## 4. Après chaque étape (Git)
 
 Claude Code crée la branche et fait le commit.
 **Toi tu fais uniquement le merge** après vérification :
 
 ```bash
 git checkout dev
-git merge feature/tache-X-nom
+git merge <branche> --no-ff
 ```
 
-⚠️ **Une seule exception** : si Claude Code casse quelque chose de visible
-(page blanche, erreur 500) → corriger immédiatement sur la même branche
-avant de continuer. Pas besoin d'attendre la fin de la tâche.
+⚠️ Ne pas merger plusieurs étapes à la fois. Chaque étape est validée
+indépendamment avant de passer à la suivante.
 
 ---
 
-## 5. Ordre d'implémentation des tâches A→D
+## 5. Ordre d'implémentation des Étapes v1.2
 
-Les tâches sont **interdépendantes** — respecter impérativement cet ordre :
+Les étapes sont **strictement ordonnées** — chaque étape s'appuie sur la précédente :
 
 ```
-Tâche A (UI : vues manquantes)
-    ↓ merge sur dev
-Tâche B (Tests phases 5→9)
-    ↓ merge sur dev
-Tâche C (Responsive)
-    ↓ merge sur dev
-Tâche D (Audit final)
-    ↓ merge sur dev
-    ↓
-Phase de test et correction
+Étape 2 — Symfony Workflow (fondation architecture)
+    ↓ merge sur dev + validation manuelle partie complète
+Étape 3 — Timers configurables
+    ↓ merge sur dev + test host modifie timers + partie complète
+Étape 4 — Rôles v1.2 (Sorcière, Chasseur)
+    ↓ merge sur dev + validation manuelle partie avec nouveaux rôles
+Étape 5 — Tests d'intégration v1.2
+    ↓ merge sur dev + php artisan test 100% vert
+    ↓ tag v1.2.0
 ```
 
 **Pourquoi cet ordre ?**
-- A avant C : la Tâche C modifie les mêmes vues Blade que la Tâche A
-- B avant D : la Tâche D vérifie que les tests passent
-- D en dernier : audit sur une base de code stable et complète
-
-Ne jamais corriger des bugs métier découverts entre deux tâches.
-Les noter dans `BUGS_AND_ROADMAP.md` et les traiter après la Tâche D.
+- Étape 2 avant tout : le Workflow fournit les guards et transitions que
+  les Étapes 3 et 4 vont exploiter. Sans fondation, chaque nouveau rôle
+  ajoute de la complexité dans PhaseManager comme les bugs E→K l'ont montré.
+- Étape 3 avant 4 : les nouveaux rôles utilisent les timers configurables.
+- Étape 5 en dernier : teste tout le code des Étapes 2→4 en état final.
 
 ---
 
 ## 6. Lancer les tests automatisés
 
-**Quand :** après que la Tâche D soit mergée sur `dev`.
-
 ```bash
 php artisan test
 ```
 
-**Règle :** ne pas passer au test manuel si des tests automatisés échouent.
-Corriger d'abord les tests en échec via Claude.ai (voir section 9).
+**Règle :** ne pas passer au test manuel ni à l'étape suivante si des tests
+automatisés échouent. Corriger d'abord via Claude.ai (voir section 9).
 
 ---
 
-## 7. Gérer les divergences test auto / test manuel
+## 7. Validation manuelle par étape
 
-Cas : test automatisé ✅ mais test manuel ❌ sur le même scénario.
+### Après Étape 2 (Workflow)
+1. Créer une partie 6 joueurs, la jouer jusqu'à la fin
+2. Vérifier que les transitions s'enchaînent normalement (pas de 500, pas de partie bloquée)
+3. Vérifier `php artisan test` — aucune régression
 
-**3 causes possibles :**
-- Le test auto est mal écrit (mock trop large, assertion trop permissive)
-- Le test auto ne couvre pas le cas réel (WebSocket, timing, navigateur)
-- Erreur de manipulation lors du test manuel
+### Après Étape 3 (Timers)
+1. Créer une partie en tant que host
+2. Modifier les timers depuis la waiting-room (voyante = 15s, vote jour = 60s)
+3. Jouer une nuit complète — vérifier que le timer voyante expire en 15s
+4. Vérifier que les timers fixes (reconnexion) ne sont pas affectés
 
-**Comment trancher :**
+### Après Étape 4 (Rôles)
+1. Créer une partie avec Sorcière et Chasseur activés
+2. Jouer un scénario où : loups tuent quelqu'un → sorcière sauve → round suivant
+3. Jouer un scénario où : chasseur éliminé → tire sur un loup → WinConditionChecker
+4. Vérifier que l'ordre nocturne est bien Voyante → Loups → Sorcière
+
+### Après Étape 5 (Tests)
+1. `php artisan test` → 100% vert
+2. Passer en revue la ROADMAP dans `BUGS_AND_ROADMAP.md` pour les améliorations
+   identifiées pendant les tests
+
+---
+
+## 8. Gérer les divergences test auto / test manuel
 
 ```
 Test manuel échoue
         ↓
 Relis le test auto → teste-t-il exactement le même scénario ?
         ↓
-OUI → le test auto est probablement mal écrit
-    → soumettre à Claude.ai avec le template bug (section 9)
-        ↓
-NON → le test auto ne couvre pas ce cas
-    → ajouter le cas manquant via Claude.ai
-        ↓
-DOUTE → reproduire le test manuel 2 fois de suite
-    → échoue encore → c'est un vrai bug → section 9
-    → passe → erreur de manipulation → continuer
+OUI → le test auto est probablement mal écrit → section 9
+NON → le test auto ne couvre pas ce cas → ajouter le cas manquant
+DOUTE → reproduire 2 fois de suite → échoue encore → section 9
 ```
-
----
-
-## 8. Phase de test manuel
-
-**Quand :** après que tous les tests automatisés passent.
-
-**Ordre de test recommandé :**
-1. Flux complet : landing → auth → lobby → partie 6 joueurs → fin
-2. Flux reconnexion : couper la connexion en cours de nuit et de jour
-3. Partage lien d'invite : ouvrir dans un autre navigateur
-4. Paste input 6 cases : code seul + URL complète
-5. Test responsive : mobile, tablette, desktop
-6. Test spectateur : joueur mort voit le bon chat
-7. Test annulation : > 50% joueurs inactifs
-
-**Outils :**
-- Console navigateur ouverte en permanence (surveiller les erreurs JS)
-- Deux navigateurs différents simultanément (simuler plusieurs joueurs)
-- Onglet Network → WS pour surveiller les events WebSocket reçus
 
 ---
 
 ## 9. Résolution de bugs via Claude.ai
 
-**Principe :** un nouveau chat Claude.ai par bug. Jamais tout le contexte —
-uniquement l'extrait de code concerné (100-200 lignes max).
-
-**Template prompt bug :**
+Un nouveau chat par bug. Jamais tout le contexte — uniquement l'extrait concerné (100-200 lignes max).
 
 ```
-Contexte : jeu Loup-Garou en ligne, Laravel 11, Alpine.js, Laravel Reverb.
+Contexte : jeu Loup-Garou en ligne, Laravel 11, Alpine.js, Laravel Reverb, Symfony Workflow.
 
-Fichier(s) concerné(s) : [nom du ou des fichiers]
+Fichier(s) concerné(s) : [nom]
 
-Ce que je constate :
-[Décrire en langage naturel ce qui se passe]
+Ce que je constate : [description]
+Ce que j'attends : [comportement souhaité]
 
-Ce que j'attends :
-[Décrire en langage naturel le comportement souhaité]
-
-Extrait de code :
-[Coller les 100-200 lignes pertinentes]
+Extrait de code : [100-200 lignes pertinentes]
 
 Règles à respecter :
 - Logique métier uniquement dans app/Services/
 - Format API : { "success": true|false, "data": {}, "message": "" }
-- Pas de logique dans les vues Blade
-- [Ajouter toute règle spécifique de CONVENTIONS.md si pertinente]
+- Timers via $game->timer('X'), jamais config() directement
+- canTransition() dans lockForUpdate(), applyTransition() hors transaction
 ```
 
-**Après avoir obtenu la correction :**
-1. Créer une branche : `git checkout -b fix/nom-du-bug`
-2. Appliquer la correction dans Claude Code
-3. Relancer `php artisan test`
-4. Merger sur `dev` si les tests passent
+Après correction :
+1. `git checkout -b fix/nom-du-bug`
+2. Appliquer la correction
+3. `php artisan test`
+4. Merger sur dev si les tests passent
 
 ---
 
-## 10. Audits
+## 10. Audits post-v1.2
 
-À réaliser **après** la résolution des bugs — inutile d'auditer du code instable.
-
-### Audit sécurité + accessibilité
-Déjà couvert par la Tâche D. Si des corrections ont été faites en section 9,
-relancer le checklist de la Tâche D manuellement sur les points concernés.
-
-### Audit performance — après la v1.1 en prod
-**Quoi :** requêtes N+1, temps de réponse endpoints votes (< 200ms), mémoire queue worker
-**Comment :** installer Laravel Telescope en local, jouer une partie complète, analyser les requêtes lentes
-
+### Audit performance
 ```bash
 composer require laravel/telescope --dev
-php artisan telescope:install
-php artisan migrate
+php artisan telescope:install && php artisan migrate
 ```
+Jouer une partie complète, analyser les requêtes N+1 et les temps > 200ms.
 
-### Audit WebSocket — après la v1.1 en prod
-**Quoi :** fuites de données entre channels, reconnexion après coupure, timer serveur vs client
-**Comment :** ouvrir la console navigateur sur deux comptes simultanément,
-onglet Network → WS, observer les events reçus par chaque rôle
+### Audit WebSocket
+Deux navigateurs simultanément, onglet Network → WS.
+Vérifier qu'aucun event seer_turn ou witch_turn ne fuite sur le canal public.
+
+### Audit Workflow
+Vérifier que les transitions interdites (`finished → *`) lèvent bien une exception
+et ne corrompent pas le statut en base.
 
 ---
 
-## 11. Mise à jour finale des fichiers Claude.ai
+## 11. Mise à jour des fichiers après v1.2.0
 
-**Quand :** toutes les tâches A→D terminées, bugs corrigés, tests qui passent,
-tout mergé sur `dev`.
+Quand toutes les étapes sont mergées, les tests passent, et le tag v1.2.0 est posé :
 
-**Fichiers à re-uploader :**
+**Fichiers à re-uploader dans Claude.ai :**
 
 | Fichier | Raison |
 |---|---|
-| `TODO.md` | Toutes les tâches cochées `[x]` |
-| `DECISIONS.md` | Nouveaux bugs/choix ajoutés par Claude Code |
-| `BUGS_AND_ROADMAP.md` | Bugs corrigés pendant A→D et phase de test |
-| `SPEC.md` | §10 mis à jour (police EB Garamond — Tâche A) |
+| `TODO.md` | Étapes 2→5 cochées `[x]` |
+| `DECISIONS.md` | Décisions Workflow, timers, rôles v1.2 |
+| `BUGS_AND_ROADMAP.md` | Bugs corrigés + idées identifiées pendant v1.2 |
+| `CLAUDE.md` | Déjà mis à jour (v1.2) |
+| `SPEC_TIMERS.md` | Si ajustements pendant l'implémentation |
+| `SPEC_TRANSITIONS.md` | Si ajustements pendant l'implémentation |
 
-**Fichiers qui ne changent pas — ne pas re-uploader :**
-`CLAUDE.md`, `CONVENTIONS.md`, `WORKFLOW.md`, `README.md`
+**Fichiers qui ne changent pas :**
+`CONVENTIONS.md`, `WORKFLOW.md`, `README.md`, `SPEC.md` (sauf §3 si enum étendu)
 
 ---
 
@@ -261,13 +250,15 @@ tout mergé sur `dev`.
 CLAUDE.md  (lu automatiquement par Claude Code)
   │
   ├──→ SPEC.md                 référence fonctionnelle complète (lecture seule)
+  ├──→ SPEC_TIMERS.md          timers et pattern action volontaire / job auto (lecture seule)
+  ├──→ SPEC_TRANSITIONS.md     annonces de phases et reconnexion (lecture seule)
   ├──→ CONVENTIONS.md          règles de codage strictes (lecture seule)
   ├──→ CODE_SNAPSHOT.md        index du code (lecture seule, jamais modifié)
   ├──→ TODO.md                 avancement des tâches (mis à jour par Claude Code)
   ├──→ DECISIONS.md            bugs complexes + choix techniques (mis à jour par Claude Code)
   └──→ BUGS_AND_ROADMAP.md     bugs simples + idées futures (mis à jour par Claude Code)
 
-TASK_PROMPTS_REMAINING.md      prompts tâches A→D (copier-coller dans Claude Code)
+TASK_PROMPTS_REMAINING.md      prompts Étapes 2→5 (copier-coller dans Claude Code)
 WORKFLOW.md                    ce fichier — développeur uniquement, jamais lu par Claude Code
 ```
 
@@ -277,7 +268,9 @@ WORKFLOW.md                    ce fichier — développeur uniquement, jamais lu
 
 | Fichier | Raison |
 |---|---|
-| `CODE_SNAPSHOT.md` | Généré par script externe — écrasé à chaque session |
-| `SPEC.md` | Source de vérité fonctionnelle (sauf §10 — Tâche A) |
+| `CODE_SNAPSHOT.md` | Généré par script externe |
+| `SPEC.md` | Source de vérité fonctionnelle |
+| `SPEC_TIMERS.md` | Spec de référence (lecture seule pour Claude Code) |
+| `SPEC_TRANSITIONS.md` | Spec de référence (lecture seule pour Claude Code) |
 | `WORKFLOW.md` | Développeur uniquement |
-| `TASK_PROMPTS.md` | Archivé — remplacé par `TASK_PROMPTS_REMAINING.md` |
+| `TASK_PROMPTS_REMAINING.md` | Source d'instructions (lecture seule pour Claude Code) |

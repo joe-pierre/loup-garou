@@ -1,644 +1,436 @@
-# TASK_PROMPTS_REMAINING.md — Tâches restantes v1.1
+# TASK_PROMPTS_REMAINING.md — Tâches v1.2
 
-> Tâches 1→37 terminées. Ce fichier contient uniquement ce qu'il reste à faire.
+> Tâches v1.1 (1→40 + bugfixes E→K) terminées et taggées v1.1.1.
+> Ce fichier contient uniquement les Étapes v1.2.
 > Coller un prompt à la fois dans Claude Code.
-> ⚠️ Bugfixes critiques (E→I) à traiter en priorité avant les tâches A→C.
+> Respecter impérativement l'ordre des étapes — chaque étape s'appuie sur la précédente.
 
 ---
 
-## TÂCHE E — Correction de l’ENUM `games.status` (ajout de `processing_day`)
+## ÉTAPE 2 — State machine Symfony Workflow (refactoring partiel)
 
 ```
 AVANT DE COMMENCER :
-git checkout -b fix/enum-processing-day
+git checkout -b refactor/workflow-state-machine
 
 Contexte :
-- Une migration fantôme `2026_06_10_004809_add_processing_night_to_games_status_enum.php` existe avec `up()` vide → à supprimer.
-- `processing_night` est déjà présent via `2026_06_10_000001_add_processing_night_to_games_status.php`.
-- Seul `processing_day` manque.
-- L'ENUM complet actuel en prod est : waiting, electing_mayor, night, day, finished, processing_night, processing_wolves, wolves_turn.
-```
-Étapes :
+- Lis SPEC.md §3 (modèle de données, enum games.status), §5 (architecture).
+- Lis DECISIONS.md : toutes les entrées mentionnant lockForUpdate(), startNight(),
+  startDay(), processing_day, processing_night.
+- Lis SPEC_TIMERS.md §2 (architecture générique des phases actives).
+- CODE_SNAPSHOT.md pour cibler les fichiers concernés.
 
-1. Supprimer la migration orpheline :
-   rm database/migrations/2026_06_10_004809_add_processing_night_to_games_status_enum.php
-
-2. Créer une nouvelle migration (timestamp) :
-   php artisan make:migration add_processing_day_to_games_status_enum
-
-3. Contenu de la migration :
-```php
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
-
-return new class extends Migration
-{
-    public function up(): void
-    {
-        DB::statement("ALTER TABLE games MODIFY status ENUM(
-            'waiting',
-            'electing_mayor',
-            'night',
-            'day',
-            'finished',
-            'processing_night',
-            'processing_wolves',
-            'wolves_turn',
-            'processing_day'
-        ) NOT NULL DEFAULT 'waiting'");
-    }
-
-    public function down(): void
-    {
-        DB::statement("ALTER TABLE games MODIFY status ENUM(
-            'waiting',
-            'electing_mayor',
-            'night',
-            'day',
-            'finished',
-            'processing_night',
-            'processing_wolves',
-            'wolves_turn'
-        ) NOT NULL DEFAULT 'waiting'");
-    }
-};
+Objectif : refactoring pur — comportement identique, architecture améliorée.
+Ne pas modifier la logique métier. Ne pas ajouter de fonctionnalité.
+Ne pas toucher aux statuts intermédiaires (processing_night, processing_day,
+wolves_turn, processing_wolves, role_reveal) — ils restent gérés manuellement
+dans les jobs. Seuls les statuts principaux migrent vers Workflow.
 ```
 
-4. Vérifier le rollback :
-   php artisan migrate:rollback --step=1
-   php artisan migrate
+### Périmètre exact
 
-Quand c’est fait :
-- Commit : `git add -A && git commit -m "fix(db): remove orphan migration, add processing_day to games.status enum"`
-- Ne pas merger.
-```
-```
-
-## TÂCHE F — Correction du double‑fire `ProcessDayVote` avec atomicité dans `VoteService`
+Statuts qui passent sous Symfony Workflow (transitions principales) :
 
 ```
-AVANT DE COMMENCER :
-git checkout -b fix/dayvote-atomic
-
-Contexte : Tâche E terminée. `processing_day` disponible.
-```
-Modifications :
-
-1. Dans `app/Services/VoteService.php`, modifier `resolveDayVote(Game $game)` :
-
-```php
-public function resolveDayVote(Game $game)
-{
-    return DB::transaction(function () use ($game) {
-        $locked = Game::where('id', $game->id)
-            ->where('status', 'day')
-            ->lockForUpdate()
-            ->first();
-
-        if (!$locked) {
-            return; // déjà traité
-        }
-
-        $locked->update(['status' => 'processing_day']);
-
-        // --- toute la logique existante de résolution du vote jour ---
-        // (agrégation des votes, élimination, succession, etc.)
-        // --- en conservant les appels à WinConditionChecker et PhaseManager ---
-    });
-}
+waiting → electing_mayor → night → day → finished
+                        ↗         ↘
+               (loop night/day)    (processing_day → night)
 ```
 
-2. Dans `app/Jobs/ProcessDayVote.php`, simplifier `handle()` :
+Statuts qui restent hors Workflow (gérés manuellement, inchangés) :
+`role_reveal`, `processing_night`, `processing_wolves`, `wolves_turn`, `processing_day`
 
-```php
-public function handle(VoteService $voteService)
-{
-    $game = Game::find($this->gameId);
-    if (!$game || $game->status !== 'day' || $game->round !== $this->round) {
-        return;
-    }
+### Installation
 
-    $voteService->resolveDayVote($game);
-}
+```bash
+composer require symfony/workflow
 ```
 
-3. Vérifier que `PhaseManager::startDay()` ne peut pas être appelé depuis un état `processing_day` (normalement c’est impossible car `resolveDayVote` ne se termine pas sans changer le statut).
+Pas de bundle Symfony — uniquement le composant standalone.
+Pas de provider tiers — configuration via `AppServiceProvider`.
 
-Test :
-- Simuler deux déclenchements simultanés de `ProcessDayVote` → seul le premier passe, le second est ignoré.
+### 1. Configuration du Workflow
 
-Commit : `git add -A && git commit -m "fix(dayvote): atomic resolution with processing_day guard in VoteService"`
-```
-```
-
-## TÂCHE G — Succession du maire déclenchée la nuit, sans appel à `startDay`/`startNight` depuis le job de succession
-
-```
-AVANT DE COMMENCER :
-git checkout -b fix/mayor-succession-night
-
-Contexte :
-- `ProcessNightActions` doit dispatcher `ProcessMayorSuccession` si la victime est le maire.
-- `ProcessMayorSuccession` ne doit **pas** déclencher de nouvelle phase (ni `startDay`, ni `startNight`) en contexte nuit.
-- La fin de nuit sera gérée par `ProcessNightEnd` (Tâche H) avec un délai suffisant.
-```
-
-Modifications :
-
-1. Dans `app/Jobs/ProcessNightActions.php` (après avoir déterminé `$victim`) :
-
-```php
-if ($victim && $victim->is_mayor) {
-    ProcessMayorSuccession::dispatch($game->id, $game->round, $victim->id)
-        ->delay(now()->addSeconds(config('game.timers.mayor_succession', 15)));
-}
-```
-
-2. Dans `app/Jobs/ProcessMayorSuccession.php` :
-
-- Garder le guard `in_array($game->status, ['night', 'processing_night', 'day'])`.
-- Calculer `$phaseToStart` (par exemple `$phaseToStart = $game->status === 'night' ? 'night' : 'day'`).
-- **Ne pas appeler `startNight()` ou `startDay()` dans le cas `$phaseToStart === 'night'`.** Retourner simplement après avoir élu le nouveau maire.
-- Laisser `$phaseToStart === 'day'` se comporter comme avant (appel à `startNight` après succession, ou `startDay` selon le contexte – à vérifier selon la logique existante).
-
-3. S’assurer que `WinConditionChecker::check()` est appelé **avant** le dispatch de `ProcessMayorSuccession` dans `ProcessNightActions` (pour éviter une succession sur une partie déjà terminée).
-
-Test :
-- Partie avec un maire, le tuer la nuit → `ProcessMayorSuccession` est dispatché, un nouveau maire est élu, la nuit se termine normalement via `ProcessNightEnd`.
-
-Commit : `git add -A && git commit -m "fix(night): trigger mayor succession at night without ending phase prematurely"`
-```
-```
-
-## TÂCHE H — Garantir la fin de nuit même sans voyante, via `ProcessNightEnd` avec délai buffer
-
-```
-AVANT DE COMMENCER :
-git checkout -b fix/night-end-universal
-
-Contexte :
-- `ProcessNightActions` ne doit plus appeler directement `startDay()`.
-- Un job `ProcessNightEnd` est dispatché systématiquement à la fin de `ProcessNightActions` avec un délai = `TIMER_MAYOR_SUCCESSION + buffer` (ex: 20s).
-- Ce délai couvre la succession du maire si elle a lieu.
-- La méthode `PhaseManager::endNight()` contient la logique métier (vérification victoire + `startDay()`).
-```
-
-Modifications :
-
-1. Dans `app/Services/PhaseManager.php`, ajouter :
-
-```php
-public function endNight(Game $game): void
-{
-    // Vérifier que la partie est toujours en nuit (ou processing_night)
-    if (!in_array($game->status, ['night', 'processing_night'])) {
-        return;
-    }
-
-    $winChecker = app(WinConditionChecker::class);
-    if ($winChecker->check($game)) {
-        return; // partie terminée
-    }
-
-    $this->startDay($game, null);
-}
-```
-
-2. Créer `app/Jobs/ProcessNightEnd.php` :
+Créer `app/Providers/WorkflowServiceProvider.php` :
 
 ```php
 <?php
 
-namespace App\Jobs;
+namespace App\Providers;
 
 use App\Models\Game;
-use App\Services\PhaseManager;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\ServiceProvider;
+use Symfony\Component\Workflow\DefinitionBuilder;
+use Symfony\Component\Workflow\MarkingStore\MethodMarkingStore;
+use Symfony\Component\Workflow\Registry;
+use Symfony\Component\Workflow\SupportStrategy\InstanceOfSupportStrategy;
+use Symfony\Component\Workflow\Transition;
+use Symfony\Component\Workflow\Workflow;
 
-class ProcessNightEnd implements ShouldQueue
+class WorkflowServiceProvider extends ServiceProvider
 {
-    use Dispatchable, InteractsWithQueue, SerializesModels;
-
-    public function __construct(protected int $gameId, protected int $round) {}
-
-    public function handle(PhaseManager $phaseManager)
+    public function register(): void
     {
-        $game = Game::find($this->gameId);
-        if (!$game || $game->round !== $this->round || !in_array($game->status, ['night', 'processing_night'])) {
-            return;
-        }
+        $this->app->singleton(Registry::class, function () {
+            $builder = new DefinitionBuilder();
 
-        $phaseManager->endNight($game);
+            $builder->addPlaces([
+                'waiting',
+                'electing_mayor',
+                'night',
+                'day',
+                'finished',
+            ]);
+
+            $builder->addTransitions([
+                new Transition('start_election',  'waiting',        'electing_mayor'),
+                new Transition('start_night',     'electing_mayor', 'night'),
+                new Transition('start_day',       'night',          'day'),
+                new Transition('continue_night',  'day',            'night'),
+                new Transition('finish',          'night',          'finished'),
+                new Transition('finish',          'day',            'finished'),
+            ]);
+
+            $definition = $builder->build();
+            $marking    = new MethodMarkingStore(true, 'status');
+            $workflow   = new Workflow($definition, $marking, null, 'game');
+            $registry   = new Registry();
+            $registry->addWorkflow($workflow, new InstanceOfSupportStrategy(Game::class));
+
+            return $registry;
+        });
     }
 }
 ```
 
-3. Dans `app/Jobs/ProcessNightActions.php` :
+Enregistrer dans `config/app.php` (section `providers`) :
+```php
+App\Providers\WorkflowServiceProvider::class,
+```
 
-- Retirer tout appel direct à `startDay()`.
-- À la fin du `handle()`, **toujours** dispatcher `ProcessNightEnd` :
+### 2. Méthode helper sur le modèle Game
+
+Ajouter dans `app/Models/Game.php` :
 
 ```php
-ProcessNightEnd::dispatch($game->id, $game->round)
-    ->delay(now()->addSeconds(config('game.timers.mayor_succession', 15) + 5)); // buffer 5s
+public function canTransition(string $transitionName): bool
+{
+    $registry = app(\Symfony\Component\Workflow\Registry::class);
+    return $registry->get($this)->can($this, $transitionName);
+}
+
+public function applyTransition(string $transitionName): void
+{
+    $registry = app(\Symfony\Component\Workflow\Registry::class);
+    $registry->get($this)->apply($this, $transitionName);
+    $this->save();
+}
 ```
 
-4. Supprimer dans `ProcessSeerTurn.php` tout appel à `startDay()` ou `startNight()` ; il ne doit que dispatcher `ProcessWerewolvesTurn` ou `ProcessNightEnd`.
+⚠️ `applyTransition()` ne doit jamais être appelé à l'intérieur d'un
+`lockForUpdate()`. Utiliser `canTransition()` comme guard de validation
+uniquement dans ce contexte, puis écrire `$locked->status` manuellement.
 
-Test :
-- Nuit normale (voyante vivante, pas de mort du maire) → `ProcessNightEnd` se déclenche après le délai et passe au jour.
-- Nuit avec succession du maire → `ProcessNightEnd` attend que la succession soit terminée (délai 20s) puis passe au jour.
-- Voyante morte dès le début → `ProcessNightEnd` est quand même dispatché → loups jouent → jour.
+### 3. Modifications dans PhaseManager
 
-Commit : `git add -A && git commit -m "fix(night): add ProcessNightEnd to always conclude night phase"`
+Remplacer les `$game->update(['status' => 'X'])` par `$game->applyTransition('X')`
+dans les méthodes principales. Les guards `lockForUpdate()` et `whereIn('status', [...])`
+existants sont conservés.
+
+Mapping :
+
+| Méthode                   | Transition            |
+|---------------------------|-----------------------|
+| `startMayorElection()`    | `start_election`      |
+| `startNight()` (1er round)| `start_night`         |
+| `startNight()` (loop)     | `continue_night`      |
+| `startDay()`              | `start_day`           |
+| `finishGame()`            | `finish`              |
+
+`startNight()` doit détecter le contexte :
+```php
+$transitionName = $locked->status === 'electing_mayor'
+    ? 'start_night'
+    : 'continue_night';
+
+if (!$locked->canTransition($transitionName)) {
+    \Log::warning("Transition '$transitionName' refusée depuis status={$locked->status}");
+    return;
+}
+// Écriture manuelle dans le lockForUpdate() uniquement :
+$locked->status = 'night';
+$locked->save();
 ```
+
+### 4. Modifications dans les Jobs
+
+Ajouter `canTransition()` comme double-check uniquement dans les jobs
+qui déclenchent une transition principale :
+
+- `ProcessNightEnd::handle()` → vérifier `canTransition('start_day')` avant `endNight()`
+- `ProcessMayorElection::handle()` → vérifier `canTransition('start_night')`
+- `ProcessDayVote::handle()` → vérifier via `resolveDayVote()`
+
+Jobs non concernés : `ProcessSeerTurn`, `ProcessWerewolvesTurn`,
+`ProcessNightActions`, `ProcessMayorSuccession`, `CheckReconnectionTimeout`.
+
+### 5. Créer WorkflowTransitionTest.php
+
+```php
+// tests/Feature/Game/WorkflowTransitionTest.php
+// Transitions autorisées :
+test_waiting_peut_passer_a_electing_mayor()
+test_electing_mayor_peut_passer_a_night()
+test_night_peut_passer_a_day()
+test_day_peut_passer_a_night()
+test_night_peut_passer_a_finished()
+test_day_peut_passer_a_finished()
+
+// Transitions interdites :
+test_waiting_ne_peut_pas_passer_directement_a_night()
+test_finished_ne_peut_faire_aucune_transition()
+test_day_ne_peut_pas_faire_start_night()
+test_electing_mayor_ne_peut_pas_faire_continue_night()
+
+// Persistance :
+test_apply_transition_persiste_le_nouveau_status()
 ```
 
-## TÂCHE I — Tests de non‑régression pour E, F, G, H
+### Vérification et commit
 
-```
-AVANT DE COMMENCER :
-git checkout -b fix/tests-night-day
-
-Contexte : Toutes les corrections précédentes sont en place.
-```
-
-Créer ou compléter les tests suivants :
-
-1. `tests/Feature/Game/ProcessDayVoteTest.php` :
-   - `test_double_fire_does_not_execute_twice()`
-   - `test_day_vote_does_not_accept_processing_day_as_initial_state()`
-
-2. `tests/Feature/Game/NightPhaseTest.php` :
-   - `test_mayor_succession_triggered_at_night()`
-   - `test_mayor_succession_not_triggered_if_victory_occurs_simultaneously()`
-   - `test_night_ends_with_werewolves_turn_even_when_seer_dead()`
-   - `test_night_end_dispatched_after_mayor_succession_with_buffer()`
-
-3. `tests/Feature/Game/MigrationTest.php` (nouveau) :
-   - `test_processing_day_added_to_enum()`
-   - `test_rollback_of_processing_day_removes_it()`
-
-Exécution :
 ```bash
-php artisan test --filter=ProcessDayVoteTest
-php artisan test --filter=NightPhaseTest
-php artisan test --filter=MigrationTest
+php artisan test --filter=WorkflowTransitionTest
+php artisan test  # suite complète — aucune régression
 ```
 
-Commit : `git add -A && git commit -m "test: cover night fixes, dayvote atomicity, and enum migration"`
+Ajouter dans `DECISIONS.md` : choix `canTransition()` dans `lockForUpdate()`
+vs `applyTransition()` hors transaction.
+Cocher `[x]` l'Étape 2 dans `TODO.md`.
+
 ```
+git add -A && git commit -m "refactor(workflow): add Symfony Workflow for main game status transitions"
 ```
 
 ---
- 
-## TÂCHE J — Correctif : modale succession bloquée si successeur tué la nuit suivante
- 
-````
+
+## ÉTAPE 3 — Timers configurables par partie
+
+```
 AVANT DE COMMENCER :
-git checkout -b fix/mayor-succession-cascade
- 
+git checkout -b feature/timers-configurables
+
 Contexte :
-Lis DECISIONS.md entrée "Mort du maire la nuit — vote jour du round sacrifié" et
-entrée "ProcessMayorSuccession en contexte nuit".
- 
-Symptôme : quand le maire est tué la nuit et qu'un successeur est désigné,
-si ce successeur est lui-même tué par les loups la nuit suivante,
-la partie reste bloquée sur la modale "Succession du Maire".
- 
-Cause : ProcessMayorSuccession reçoit le contexte via $game->status au moment
-de son exécution. Si le nouveau maire meurt la nuit suivante, ProcessNightActions
-dispatche à nouveau ProcessMayorSuccession — mais ce job ne sait pas s'il tourne
-en contexte "nuit" ou "jour", et peut se retrouver dans un état incohérent avec
-la modale client qui attend un MayorSuccessionDone qui ne vient pas.
-````
- 
-### Modifications
- 
-1. Dans `app/Jobs/ProcessMayorSuccession.php` :
-Ajouter un paramètre `bool $shouldStartNight` au constructeur :
- 
-````php
-public function __construct(
-    protected int $gameId,
-    protected int $round,
-    protected bool $shouldStartNight = false
-) {}
-````
- 
-Dans `handle()`, remplacer le calcul de `$phaseToStart` basé sur `$game->status`
-par l'utilisation directe du flag :
- 
-````php
-// AVANT
-$phaseToStart = in_array($locked->status, ['night', 'processing_night']) ? 'night' : 'day';
- 
-// APRÈS
-$phaseToStart = $this->shouldStartNight ? 'night' : 'day';
-````
- 
-Le reste de la logique existante est inchangé :
-- `$phaseToStart === 'night'` → return après MayorSuccessionDone (ProcessNightEnd gère la suite)
-- `$phaseToStart === 'day'` → appel à startNight() après MayorSuccessionDone
-2. Dans `app/Jobs/ProcessNightActions.php`, mettre à jour le dispatch :
-````php
-// AVANT
-ProcessMayorSuccession::dispatch($game->id, $game->round)
-    ->delay(now()->addSeconds($game->timer('mayor_succession')));
- 
-// APRÈS
-ProcessMayorSuccession::dispatch($game->id, $game->round, shouldStartNight: true)
-    ->delay(now()->addSeconds($game->timer('mayor_succession')));
-````
- 
-3. Dans `app/Services/VoteService.php` (resolveDayVote), vérifier que le dispatch
-existant passe bien `shouldStartNight: false` (valeur par défaut — aucune
-modification nécessaire si la valeur par défaut est false).
-4. Dans `app/Services/PhaseManager.php` (endNight), si ProcessNightEnd appelle
-endNight() qui vérifie WinConditionChecker avant startDay() :
-- S'assurer que endNight() rafraîchit le game depuis la DB avant de vérifier
-  le statut, pour ne pas travailler sur un modèle périmé après la succession.
-### Vérification manuelle
-- Partie 6 joueurs : maire tué nuit 1 → successeur désigné → successeur tué nuit 2
-  → vérifier que la modale se ferme correctement et que le jour 2 démarre
-- Partie 6 joueurs : maire tué le jour → successeur désigné → successeur tué la
-  nuit suivante → même vérification
-### Tests à créer (Tâche K)
-Ne pas écrire les tests dans cette tâche — ils seront ajoutés en Tâche K.
- 
-Quand c'est fait :
-1. Vérifier que les tests existants passent : `php artisan test`
-2. Ajouter une entrée dans DECISIONS.md (format habituel) documentant le choix
-   du flag shouldStartNight vs calcul dynamique depuis $game->status
-3. Cocher `[x]` la Tâche J dans TODO.md
-4. Commit : `git add -A && git commit -m "fix(succession): flag shouldStartNight résout la modale bloquée en cascade"`
-5. Ne pas merger sur dev avant la Tâche K.
-````
-````
+- Lis SPEC_TIMERS.md §4 (tableau timers v1.2), §5 (stockage et validation).
+- Lis DECISIONS.md pour les choix sur TimerCalculator et $game->timer().
+- Lis CODE_SNAPSHOT.md pour cibler TimerCalculator, PhaseManager,
+  LobbyController, waiting-room.blade.php.
+- L'Étape 2 est mergée sur dev.
 
- 
----
- 
-## TÂCHE K — Tests de non-régression : succession maire en cascade
- 
-````
-AVANT DE COMMENCER :
-git checkout -b fix/tests-succession-cascade
-(ou continuer sur la branche fix/mayor-succession-cascade si Tâche J non mergée)
- 
-Contexte : Tâche J terminée. Lis DECISIONS.md pour les contraintes du flag shouldStartNight.
-````
- 
-Compléter `tests/Feature/Game/MayorSuccessionTest.php` avec les cas suivants :
- 
+Objectif : permettre au host de configurer les timers depuis la waiting-room.
+TIMER_RECONNECTION, TIMER_READY_TIMEOUT et TIMER_NIGHT_START_DELAY restent
+fixes — toujours ignorés même si présents dans settings.
+```
+
+### 1. config/game.php — ajout des limites
+
 ```php
-// Cas 1 : successeur tué la nuit suivante → modale ne reste pas bloquée
-public function test_successeur_tué_nuit_suivante_ne_bloque_pas_la_modale()
+'limits' => [
+    'mayor_election'   => ['min' => 20,  'max' => 60,  'host_configurable' => true],
+    'seer'             => ['min' => 15,  'max' => 60,  'host_configurable' => true],
+    'werewolves'       => ['min' => 15,  'max' => 60,  'host_configurable' => true],
+    'witch'            => ['min' => 15,  'max' => 60,  'host_configurable' => true],
+    'hunter'           => ['min' => 10,  'max' => 30,  'host_configurable' => true],
+    'mayor_succession' => ['min' => 10,  'max' => 30,  'host_configurable' => true],
+    'day_vote'         => ['min' => 60,  'max' => 180, 'host_configurable' => true],
+    'reconnection'     => ['min' => 30,  'max' => 30,  'host_configurable' => false],
+    'ready_timeout'    => ['min' => 60,  'max' => 60,  'host_configurable' => false],
+    'night_start_delay'=> ['min' => 4,   'max' => 4,   'host_configurable' => false],
+    'mayor_reveal'     => ['min' => 5,   'max' => 5,   'host_configurable' => false],
+],
+```
+
+### 2. TimerCalculator — lecture de settings['timers']
+
+```php
+public function get(Game $game, string $key): int
 {
-    // Setup : partie en cours, maire tué nuit 1, successeur désigné
-    // Action : successeur tué nuit 2
-    // Assert : ProcessMayorSuccession dispatché avec shouldStartNight=true
-    // Assert : MayorSuccessionDone broadcasté (modale fermée)
-    // Assert : game.status passe à 'day' après ProcessNightEnd
-}
- 
-// Cas 2 : flag shouldStartNight=true → pas d'appel à startNight() en double
-public function test_shouldStartNight_true_ne_déclenche_pas_startNight()
-{
-    // Setup : ProcessMayorSuccession instancié avec shouldStartNight=true
-    // Assert : PhaseManager::startNight() non appelé dans handle()
-    // Assert : MayorSuccessionDone broadcasté
-}
- 
-// Cas 3 : flag shouldStartNight=false (contexte jour) → startNight() appelé
-public function test_shouldStartNight_false_déclenche_startNight()
-{
-    // Setup : ProcessMayorSuccession instancié avec shouldStartNight=false
-    // Assert : PhaseManager::startNight() appelé dans handle()
-}
- 
-// Cas 4 : succession en cascade (3 maires successifs tués)
-public function test_succession_triple_ne_bloque_pas_la_partie()
-{
-    // Setup : maire1 → tué nuit 1 → maire2 désigné → tué nuit 2 → maire3 désigné
-    // Assert : à chaque cycle, MayorSuccessionDone est broadcasté
-    // Assert : la partie continue normalement (pas bloquée)
+    $fixed = ['reconnection', 'ready_timeout', 'night_start_delay', 'mayor_reveal'];
+    if (in_array($key, $fixed)) {
+        return config("game.timers.{$key}");
+    }
+    $settings = $game->settings['timers'] ?? [];
+    if (isset($settings[$key]) && is_int($settings[$key])) {
+        return $settings[$key];
+    }
+    return config("game.timers.{$key}", 30);
 }
 ```
- 
-Exécution :
-```bash
-php artisan test --filter=MayorSuccessionTest
-php artisan test  # suite complète pour non-régression
-```
- 
-Quand c'est fait :
-1. Cocher `[x]` la Tâche K dans TODO.md
-2. Commit : `git add -A && git commit -m "test: non-régression succession maire en cascade"`
-3. Merger les deux branches (J + K) sur dev :
-```bash
-   git checkout dev
-   git merge fix/mayor-succession-cascade --no-ff
-   git merge fix/tests-succession-cascade --no-ff
-```
-   Ou, si J et K sont sur la même branche :
-```bash
-   git checkout dev
-   git merge fix/mayor-succession-cascade --no-ff
-```
 
+### 3. GameService::validateTimerSettings() et updateTimerSettings()
 
+Voir SPEC_TIMERS.md §5 pour l'implémentation complète.
 
-----------------------------------------------------------------------------------
-----------------------------------------------------------------------------------
+### 4. Endpoint POST /game/{id}/settings/timers
 
-## TÂCHE A — UI : Police de corps + cancelled.blade.php + spectator.blade.php
+- Route, FormRequest `UpdateTimersRequest`, `LobbyController@updateTimers`
+- Policy `GamePolicy::updateSettings()` — is_host + status = waiting
+
+### 5. UI waiting-room.blade.php — panneau timers host
+
+Voir ETAPE3_PROMPT.md §5 pour le HTML et le composant Alpine `timerSettings()`.
+
+### 6. Tests TimerSettingsTest.php
 
 ```
-AVANT DE COMMENCER :
-git checkout -b feature/tache-A-ui-vues
-
-Contexte : lis SPEC.md §10 (Design), CONVENTIONS.md §Partials Alpine, TODO.md Phase 10.
+test_host_peut_modifier_les_timers()
+test_joueur_non_host_ne_peut_pas_modifier_les_timers()
+test_timer_hors_plage_est_rejeté()
+test_timer_non_configurable_est_rejeté()
+test_game_timer_lit_settings_en_priorite()
+test_game_timer_fallback_sur_config()
+test_timers_fixes_ignorent_settings()
+test_modification_impossible_hors_waiting()
 ```
 
-Fais dans l'ordre :
+### Commit
 
-1. POLICE DE CORPS — choisir et uniformiser
-   - Inspecte app.css et les vues Blade pour trouver toutes les occurrences de "EB Garamond" et "Crimson Text"
-   - Décision : conserver EB Garamond (déjà en place côté CSS), supprimer toutes les références à Crimson Text
-   - Mettre à jour SPEC.md §10 pour refléter ce choix
-
-2. cancelled.blade.php
-   - Créer resources/views/game/cancelled.blade.php
-   - @extends layout principal
-   - Affiche : titre "Partie annulée", message explicatif (trop de joueurs inactifs), bouton CTA retour vers /
-   - Pas de données dynamiques nécessaires — vue statique
-   - Style cohérent avec les autres vues (variables CSS existantes, pas de nouvelles classes)
-
-3. spectator.blade.php
-   - Créer resources/views/game/spectator.blade.php
-   - @extends layout principal
-   - Vue lecture seule pour joueurs morts : voit le chat village (channel general), ne voit pas le chat loups
-   - Pas de formulaire de vote, pas d'action disponible
-   - Affiche la liste des joueurs vivants/morts (depuis gameState store Alpine)
-   - Écoute les events WebSocket game.{gameId} pour mise à jour temps réel (phase, éliminations)
-   - Utilise $watch sur gameState.phase pour afficher la phase courante
-   - Aucune propriété dupliquée depuis le store central gameState
-
-CONTRAINTES :
-- Aucune logique métier dans les vues
-- Aucune variable Blade injectée dans un store Alpine local
-- Respecter §Partials Alpine de CONVENTIONS.md
-
-Quand c'est fait :
-1. Liste les fichiers créés ou modifiés
-2. Fais un commit : `git add -A && git commit -m "feat(ui): police EB Garamond unifiée, cancelled et spectator blade"`
-3. Ne merge pas sur dev.
 ```
+git add -A && git commit -m "feat(timers): host-configurable timers from waiting-room"
 ```
 
 ---
 
-## TÂCHE B — Tests : Phases 5→9 (nuit, jour, chat, race conditions)
-
-> Regroupe les tâches 38 et 39 de TASK_PROMPTS.md + couverture manquante phases 5→9.
+## ÉTAPE 4 — Rôles v1.2 : Sorcière et Chasseur
 
 ```
 AVANT DE COMMENCER :
-git checkout -b feature/tache-B-tests
+git checkout -b feature/roles-v1-2
 
-Contexte : lis SPEC.md §4 (votes, anonymat), §13 (race conditions), CONVENTIONS.md §Tests.
-Tâches phases 5→9 terminées. Lis CODE_SNAPSHOT.md pour identifier les services et controllers concernés.
+Contexte :
+- Lis SPEC.md §3 (enum game_players.role), §4 (règles métier), §8 (extensibilité).
+- Lis SPEC_TIMERS.md en entier — pattern endpoint volontaire / job auto.
+- Lis SPEC_TRANSITIONS.md §4 (messages privés rôles actifs).
+- Lis DECISIONS.md — entrées mentionnant RoleDistributor, isVillagerSide(),
+  processeurs de nuit.
+- Lis CODE_SNAPSHOT.md pour cibler les fichiers concernés.
+- Les Étapes 2 et 3 sont mergées sur dev.
 
-Crée les fichiers suivants dans l'ordre :
+Objectif : ajouter Sorcière et Chasseur.
+Ne pas implémenter Loup Blanc, Cupidon, Petite Fille (v1.3+).
+```
 
-1. tests/Unit/Models/GameActionTest.php
-   → scopeAnonymized() ne retourne pas player_id dans les colonnes
-   → scopeAnonymized() retourne toutes les lignes (pas de filtre sur le type)
-   → scopeAnonymized() retourne bien target_player_id, type, weight, round, phase
+### Ordre nocturne v1.2 (⚠️ différent de v1.1)
+1. Voyante → `/seer/done` OU `ProcessSeerAutoAction`
+2. Loups → résolution anticipée OU `ProcessNightAutoAction`
+3. Sorcière → `/witch/act` OU `ProcessWitchAutoAction`
 
-2. tests/Unit/Events/EventPayloadTest.php
-   → MayorVoteCast payload ne contient pas player_id
-   → DayVoteCast payload ne contient pas player_id
-   → SeerResult broadcasté uniquement sur channel privé (pas Channel public)
-   → WerewolfChatMessage broadcasté uniquement sur game.{id}.werewolves
+La Sorcière agit après les loups pour connaître la victime.
 
-3. tests/Feature/Game/NightPhaseTest.php
-   → Voyante ne peut pas s'inspecter elle-même (403)
-   → Loup ne peut pas voter pour un autre loup (403)
-   → Action voyante après expiration timer → ignorée
-   → Vote nuit hors phase night → 409
+### Éléments à créer
 
-4. tests/Feature/Game/DayPhaseTest.php
-   → Un joueur ne vote pas pour lui-même (403)
-   → Égalité vote jour → aucun joueur éliminé, événement NoElimination broadcasté
-   → Vote maire avec weight=2 correctement compté
-   → Vote hors phase day → 409
+- Migration : ajout `witch` et `hunter` à l'enum `game_players.role`
+- `isVillagerSide()` mis à jour
+- `RoleDistributor` : lire `settings['roles']` (witch, hunter optionnels)
+- `ProcessWitchTurn`, `ProcessWitchAutoAction`
+- `ProcessHunterTurn`, `ProcessHunterAutoAction`
+- `POST /game/{id}/witch/act` (SeerDoneRequest pattern)
+- `POST /game/{id}/hunter/shoot`
+- `POST /game/{id}/settings/roles`
+- Events `WitchTurnStarted`, `WitchActed`, `HunterTurnStarted`, `HunterShot`
+- UI `night.blade.php` — sections Sorcière et Chasseur conditionnelles
+- UI `waiting-room.blade.php` — panneau composition rôles (host)
 
-5. tests/Feature/Game/ChatTest.php
-   → Message loups visible uniquement sur channel werewolves
-   → Joueur villageois ne peut pas écrire sur channel werewolves (403)
-   → Message après mort → 403
+### Règles métier Sorcière
+- 1 potion de soin + 1 potion de mort, une fois chacune par partie
+- État des potions dans `game_players.settings['witch_heal_used']` / `['witch_kill_used']`
+- Pas d'auto-sauvetage si elle est la victime
+- Pas de double action la même nuit
 
-6. tests/Feature/Game/RaceConditionTest.php
-   → joinGame race : max_players=6, 6 insertions quasi-simultanées → exactement 6 joueurs, pas 7
-   → startGame race : startGame() ne peut pas être appelé deux fois (status change atomique)
-   → mayorVote race : deux votes simultanés du même joueur → un seul inséré
-   → dayVote race mayor : weight=2 correct même si changement de maire concurrent
+### Règles métier Chasseur
+- Agit uniquement à sa mort (nuit ou jour), timer 15s
+- Si inactif → pas d'élimination supplémentaire
+- Son tir vérifie `WinConditionChecker` après élimination
 
-CONVENTIONS : factories, RefreshDatabase, pas de mocks sauf pour les broadcasts.
+### Tests WitchTest.php et HunterTest.php
 
-Quand c'est fait :
-1. Liste les fichiers créés et le nombre de tests par fichier
-2. Fais un commit : `git add -A && git commit -m "test: couverture phases 5→9 nuit, jour, chat, race conditions"`
-3. Ne merge pas sur dev.
+Voir SPEC_TIMERS.md pour les noms de tests à écrire.
+
+### Commit
+
+```
+git add -A && git commit -m "feat(roles): add Witch and Hunter for v1.2"
 ```
 
 ---
 
-## TÂCHE C — Responsive
+## ÉTAPE 5 — Tests d'intégration v1.2
 
 ```
 AVANT DE COMMENCER :
-git checkout -b feature/tache-C-responsive
+git checkout -b feature/tests-v1-2
 
-Contexte : lis SPEC.md §10 (Design, breakpoints), CONVENTIONS.md §CSS.
-Lis CODE_SNAPSHOT.md pour identifier toutes les vues Blade.
+Contexte :
+- Lis SPEC_TIMERS.md §8 (notes Claude Code — tests auto_action).
+- Lis SPEC_TRANSITIONS.md §10 (tests à écrire).
+- Les Étapes 2, 3 et 4 sont mergées sur dev.
+- Lancer php artisan test avant de commencer — tous les tests existants passent.
 
-Applique le responsive sur toutes les vues dans l'ordre de priorité :
-1. waiting-room.blade.php
-2. role-reveal.blade.php
-3. mayor-election.blade.php
-4. night.blade.php
-5. day.blade.php
-6. finished.blade.php
-7. cancelled.blade.php
-8. spectator.blade.php
-9. Landing page (Écran 1)
-
-Pour chaque vue :
-- Mobile first (min-width breakpoints)
-- Breakpoints : sm=640px, md=768px, lg=1024px (Tailwind standard)
-- Aucune nouvelle classe CSS — utiliser uniquement les utilitaires Tailwind existants
-- Tester mentalement : liste des joueurs, boutons de vote, chat loups, timer affiché
-
-CONTRAINTES :
-- Ne pas modifier la logique Alpine.js
-- Ne pas modifier les controllers ni les services
-- Modifier uniquement les classes HTML dans les vues Blade
-
-Quand c'est fait :
-1. Liste les vues modifiées
-2. Fais un commit : `git add -A && git commit -m "feat(ui): responsive mobile-first toutes les vues"`
-3. Ne merge pas sur dev.
+Objectif : couverture complète v1.2. Aucune modification de code applicatif.
 ```
 
----
+### Fichiers à créer
 
-## TÂCHE D — Recette finale et audit sécurité
+1. `tests/Feature/Game/AutoActionTest.php`
+   - Voyante : `test_seer_auto_action_skipped_if_already_acted()`,
+     `test_seer_auto_action_passes_to_wolves_if_inactive()`,
+     `test_seer_done_endpoint_dispatches_wolves_immediately()`,
+     `test_seer_done_rejected_if_already_acted()`,
+     `test_seer_done_rejected_if_self_target()`
+   - Sorcière : `test_witch_auto_action_skipped_if_already_acted()`,
+     `test_witch_auto_action_passes_if_inactive()`
+   - Chasseur : `test_hunter_auto_action_skipped_if_already_shot()`,
+     `test_hunter_auto_action_no_elimination_if_inactive()`
 
-> Correspond à la Tâche 40 de TASK_PROMPTS.md — à exécuter en dernier.
+2. `tests/Feature/Game/PhaseAnnouncementTest.php`
+   - `test_night_fall_broadcasted_on_start_night()`
+   - `test_day_break_broadcasted_on_end_night()`
+   - `test_seer_turn_not_broadcasted_publicly()`
+   - `test_phase_announcement_uses_public_channel()`
+   - `test_public_phase_duration_is_constant()`
 
+3. `tests/Feature/Game/ReconnectionTest.php`
+   - `test_state_endpoint_retourne_phase_courante()`
+   - `test_state_traduit_wolves_turn_en_night()`
+   - `test_state_traduit_processing_day_en_day()`
+
+4. `tests/Feature/Game/RoleSettingsTest.php`
+   - `test_host_peut_activer_sorciere()`
+   - `test_host_peut_activer_chasseur()`
+   - `test_role_distributor_inclut_sorciere_si_configuree()`
+   - `test_role_distributor_remplit_villageois_automatiquement()`
+   - `test_deux_sorcieres_impossibles()`
+   - `test_villageois_residuels_toujours_positifs()`
+
+### Exécution
+
+```bash
+php artisan test --filter=AutoActionTest
+php artisan test --filter=PhaseAnnouncementTest
+php artisan test --filter=ReconnectionTest
+php artisan test --filter=RoleSettingsTest
+php artisan test  # suite complète
 ```
-AVANT DE COMMENCER :
-git checkout -b feature/tache-D-audit-final
 
-Contexte : toutes les tâches précédentes terminées. Lis SPEC.md en entier une dernière fois.
+### Commit et tag final
 
-Vérifie et corrige dans l'ordre :
+```bash
+git add -A && git commit -m "test: integration tests for v1.2"
 
-SÉCURITÉ :
-1. routes/channels.php — chaque channel privé a bien sa vérification d'appartenance
-2. Chaque Controller vérifie game_id + player_id cohérents (anti-spoofing)
-3. Aucune réponse publique n'expose un rôle de joueur vivant
-4. Middleware 'auth' présent sur toutes les routes protégées
-
-ACCESSIBILITÉ :
-5. prefers-reduced-motion respecté dans app.css ET dans les handlers GSAP de game-state.js
-6. Contraste WCAG AA vérifié sur : #c9a84c sur #0a0f1e, #e8e0d0 sur #111827, #ff4444 sur #1a0000
-7. focus:ring-2 focus:ring-[#c9a84c] présent sur tous les éléments interactifs
-8. aria-label sur tous les boutons d'action, role="log" sur les zones de chat
-
-FONCTIONNEL :
-9. Flux complet (landing → auth → lobby → partie 6 joueurs → fin) sans erreur console
-10. Flux reconnexion : couper la connexion en cours de nuit et de jour, vérifier restauration via /state
-11. Partage lien d'invite : copier le lien, l'ouvrir dans un autre navigateur, vérifier pré-remplissage code
-12. Paste input 6 cases : coller un code seul (ABC123) + coller une URL complète (?code=ABC123)
-13. Suppression en cascade : créer une partie, la terminer, attendre scheduler ou appeler games:clean manuellement
-
-PRODUCTION :
-14. config/queue.php → driver=redis en production
-15. Supervisor : workers + Reverb configurés
-16. php artisan config:cache && route:cache && view:cache en production
-17. RoleDistributor extensible : ajouter un rôle fictif 'witch'=>1 dans config/game.php et vérifier que distribute() l'intègre sans modifier la logique core
-
-Quand c'est fait :
-1. Génère un rapport final : liste les points OK et ceux nécessitant une correction
-2. Fais un commit : `git add -A && git commit -m "audit: recette finale sécurité, accessibilité, production"`
-3. Ne merge pas sur dev.
+git checkout dev
+git merge refactor/workflow-state-machine --no-ff
+git merge feature/timers-configurables --no-ff
+git merge feature/roles-v1-2 --no-ff
+git merge feature/tests-v1-2 --no-ff
+git tag v1.2.0
+git push origin v1.2.0
 ```

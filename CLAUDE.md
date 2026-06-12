@@ -4,6 +4,8 @@
 
 Lis ces fichiers dans l'ordre avant de faire quoi que ce soit :
 - `SPEC.md`
+- `SPEC_TIMERS.md`
+- `SPEC_TRANSITIONS.md`
 - `CONVENTIONS.md`
 - `TODO.md`
 - `DECISIONS.md`
@@ -88,105 +90,90 @@ FormRequest dédié pour chaque endpoint — jamais valider dans le Controller
 ## Services clés
 - GameService.php — orchestration générale
 - RoleDistributor.php — distribution rôles (extensible v1.2)
-- PhaseManager.php — transitions de phases (prévoir hooks before/after)
-- VoteService.php — votes maire, jour, loups
+- PhaseManager.php — transitions de phases + hooks
+- VoteService.php — votes maire, jour, loups, seer, witch, hunter
 - WinConditionChecker.php — vérifications post-élimination
 - ChatService.php — visibilité messages
+- TimerCalculator.php — accès aux timers (settings en priorité, fallback config)
 
-## Modèles — méthodes importantes à toujours implémenter
+## Modèles — méthodes importantes
 - GamePlayer::isWerewolf() → role IN ('werewolf', 'white_wolf')
-  ⚠️ `isWerewolf()` inclut intentionnellement 'white_wolf' bien que cette valeur soit absente
-  de l'enum DB en v1.1 et v1.2. C'est une anticipation v1.3+. Ne pas supprimer et ne pas
-  ajouter la valeur à l'enum avant la v1.3.
+  ⚠️ white_wolf absent de l'enum DB en v1.1 et v1.2 — anticipation v1.3+.
 - GamePlayer::isVillagerSide() → role IN ('villager', 'seer', 'witch', 'hunter')
-  ⚠️ `witch` et `hunter` absents de l'enum DB en v1.1. Anticipation v1.2.
-  Ne pas ajouter à l'enum avant la v1.2.
+  ⚠️ witch et hunter ajoutés à l'enum en v1.2 (Étape 4).
 - GameAction::scopeAnonymized() → select() toutes colonnes SAUF player_id
-    NE PAS utiliser whereNotIn — toutes les lignes sont retournées, seul player_id est exclu
+  NE PAS utiliser whereNotIn.
 
 ## Channels WebSocket
 - game.{gameId} — public, tous les joueurs
 - game.{gameId}.werewolves — privé, loups uniquement
 - game.{gameId}.player.{playerId} — privé, joueur individuel
 
-## Détection déconnexion
-Reverb n'expose pas d'événement serveur natif de déconnexion client.
-Solution : PresenceChannel("game.{gameId}.presence") côté Reverb
-+ POST /game/{id}/disconnect déclenché par window.addEventListener('beforeunload') côté client
-CheckReconnectionTimeout dispatché avec delay 30s après déconnexion détectée
+## Timers
+Toujours via `$game->timer('nom_interne')` — jamais `config('game.timers.x')` directement.
+TimerCalculator lit `$game->settings['timers']` en priorité, fallback config/game.php.
+Timers fixes (jamais surchargés) : reconnection, ready_timeout, night_start_delay, mayor_reveal.
+Voir SPEC_TIMERS.md §4 pour le tableau complet v1.1 et v1.2.
 
-## Timers (v1.1)
-Timers gérés via `TimerCalculator` (app/Services/TimerCalculator.php) et accessibles
-via `$game->timer('phase_name')`. Ne pas utiliser `config('game.timers.x')` directement.
-Tous les timers sauf TIMER_RECONNECTION et TIMER_READY_TIMEOUT sont configurables
-par le host depuis la waiting-room (v1.2).
+## Timers — pattern action volontaire / job auto (v1.2)
+Voir SPEC_TIMERS.md §2 et §3 pour l'implémentation complète.
+Résumé :
+- Endpoint POST /game/{id}/X/done → résolution immédiate, dispatch ProcessWerewolvesTurn delay(0)
+- Job ProcessXAutoAction dispatché avec delay($game->timer('X')) depuis ProcessXTurn
+- Guard : vérifier existence de X_check en base avant d'agir (si existant → return)
+- ProcessSeerAutoAction : si inactif → NE PAS créer de seer_check, dispatch wolves directement
 
-- Élection maire : 30s
-- Révélation maire : 5s
-- Action voyante : 30s
-- Action loups : 30s
-- Succession maire : 15s
-- Débat + vote jour : 90s
-- Reconnexion : 30s  ← fixe, non configurable (contrainte technique, pas gameplay)
-- Ready timeout : 60s  ← fixe, non configurable (attente écran révélation rôle)
+## Annonces de phases (v1.2)
+Voir SPEC_TRANSITIONS.md pour l'implémentation complète.
+Résumé :
+- PhaseAnnouncement broadcasté sur canal public avant chaque event de phase
+- seer_turn et werewolves_turn jamais publics
+- File announcements[] dans gameState, consommation FIFO via consumeAnnouncements()
+- Events à différer pendant overlay : NightStarted, DayStarted, MayorElected
+- Events immédiats : GameFinished, PlayerDisconnected, PlayerInactive, chat, votes
 
-## Méthodes utilitaires
-- `$game->timer('mayor_election')` → secondes du timer
-- `$game->phaseRemainingSeconds()` → secondes restantes dans la phase courante
-- `Game::timer()` → accès générique aux timers via TimerCalculator
+## Symfony Workflow (v1.2 — Étape 2)
+- `$game->canTransition('X')` → guard de validation (utilisable dans lockForUpdate())
+- `$game->applyTransition('X')` → applique + save() — jamais dans lockForUpdate()
+- Statuts principaux couverts : waiting, electing_mayor, night, day, finished
+- Statuts intermédiaires hors Workflow : processing_night, processing_day, wolves_turn
 
 ## Architecture Alpine.js — Règles critiques
+`game-state.js` est le seul store source de vérité pour :
+`role`, `allies`, `phase`, `players[]`, `mayorId`, `isConnected`,
+`announcements`, `isAnnouncing` (v1.2).
 
-`game-state.js` est le **seul store source de vérité** pour : `role`, `allies`, `phase`,
-`players[]`, `mayorId`.
-
-**Règles :**
-- Les vues ne doivent pas dupliquer ces propriétés dans un store local
-- Pour réagir à un event WebSocket reçu après chargement : utiliser `$watch`, **jamais** `setTimeout`
-- Toute variable Blade injectée dans un store Alpine risque d'être `null` si la vue se charge après un changement d'état — voir CONVENTIONS.md §Partials Alpine
-
-**Propriétés publiques du store `gameState` :**
-`role`, `allies`, `phase`, `players[]`, `mayorId`, `isConnected`
-
-**Méthodes publiques :**
-`syncRole()`, `handleSeerTurnReady()`, `handleWerewolvesTurnReady()`
-
-**Flag `seerWatchTriggered` dans `night.blade.php` :** guard anti-double exécution du
-`$watch` sur `pendingSeerEvent`. Ne pas supprimer — sans ce flag, `handleSeerTurnReady()`
-peut être appelé deux fois si Alpine réévalue le `$watch`.
+Règles :
+- Les vues ne dupliquent pas ces propriétés dans un store local
+- `$watch` pour réagir aux events WebSocket, jamais `setTimeout`
+- `window.dispatchEvent` pour les events cross-composants, jamais `$dispatch()`
+- `const GAME_ID = @json($game->id)` en haut de chaque partial avec script
 
 ## Règles métier critiques (ne jamais oublier)
 - Un joueur ne vote pas pour lui-même (sauf élection maire)
 - Les loups ne votent pas pour un autre loup
 - La voyante ne s'inspecte pas elle-même
+- La sorcière ne peut pas s'auto-sauver (v1.2)
 - Vérifier la phase côté serveur avant toute action
-- Vote maire : is_mayor = true, weight = 2 dans game_actions (day_vote uniquement)
+- Vote maire : weight = 2 dans game_actions (day_vote uniquement)
 - Égalité vote jour → personne éliminé
-- Égalité vote loups/maire → aléatoire parmi ex-aequo
 - > 50% inactifs → partie annulée (winner_team = null, rôles non révélés)
 - Quitter depuis waiting-room → DELETE game_players (pas quitGame())
-- Quitter depuis une vue de jeu → quitGame() → is_alive = false
 
 ## Distribution rôles (RoleDistributor)
 Lit `$game->settings['roles']` en priorité, fallback sur `config('game.roles')`.
 Ne jamais hardcoder la composition dans RoleDistributor.
-
-Villageois = toujours fill (max_players - tous les autres). Non configurable par le host.
-
-Validation serveur (GameService::validateRoleSettings()) :
-- nb_loups >= 1 et <= Max loups défini dans le tableau de fourchettes (SPEC.md §4)
-- chaque rôle spécial : 0 ou 1 max
-- villageois résultants >= 1
-- Modifiable uniquement si status = waiting
-
-v1.1 par défaut : 6j→1L|4V, 8j→2L|5V, 10j→2L|7V, 12j→3L|8V (toujours 1 voyante)
+Villageois = toujours fill. Non configurable par le host.
+Rôles spéciaux (seer, witch, hunter) : 0 ou 1 max chacun.
 
 ## Versioning
-- v1.1 (en cours) : Villageois, Loup-Garou, Voyante, Maire électif
-- v1.2 (anticiper) : Sorcière, Chasseur — timers + composition rôles configurables par le host (waiting-room)
+- v1.1 ✅ : Villageois, Loup-Garou, Voyante, Maire électif
+- v1.2 (en cours) : Sorcière, Chasseur — timers + composition rôles configurables
 - v1.3+ (ne pas anticiper) : Loup Blanc, Cupidon, Petite Fille
 
 ## État d'avancement
 → Voir TODO.md (source de vérité unique pour les tâches)
-→ Voir TASK_PROMPTS_REMAINING.md (prompts des tâches A→D restantes à exécuter)
+→ Voir TASK_PROMPTS_REMAINING.md (prompts des Étapes 2→5)
 → Voir DECISIONS.md (bugs résolus + décisions techniques)
+→ Voir SPEC_TIMERS.md (timers, pattern action volontaire / job auto)
+→ Voir SPEC_TRANSITIONS.md (annonces de phases, file Alpine, reconnexion)
