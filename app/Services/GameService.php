@@ -24,6 +24,7 @@ use App\Models\GamePlayer;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class GameService
@@ -118,6 +119,11 @@ class GameService
                 ->first();
 
             if (! $locked) {
+                return;
+            }
+
+            if (! $locked->canTransition('start_election')) {
+                Log::warning("Transition 'start_election' refusée depuis status={$locked->status}");
                 return;
             }
 

@@ -141,7 +141,7 @@
 ## Phase v1.2 — Améliorations différées
 - [x] **Étape 1 — Réorganisation documentaire**
   (SPEC_TIMERS.md, SPEC_TRANSITIONS.md)
-- [ ] **Étape 2 — State machine Symfony Workflow**
+- [x] **Étape 2 — State machine Symfony Workflow**
   Refactoriser les transitions de phases (successions en cascade, extensibilité rôles)
 - [ ] **Étape 3 — Timers configurables par partie**
   Stockage dans `games.settings['timers']`, fallback config/game.php, UI dans waiting-room

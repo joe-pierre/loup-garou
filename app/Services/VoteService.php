@@ -14,6 +14,7 @@ use App\Models\GameAction;
 use App\Models\GamePlayer;
 use App\Notifications\PlayerEliminatedDayNotification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class VoteService
 {
@@ -73,6 +74,11 @@ class VoteService
                 ->first();
 
             if (! $locked) {
+                return null;
+            }
+
+            if (! $locked->canTransition('start_night')) {
+                Log::warning("Transition 'start_night' refusée depuis status={$locked->status}");
                 return null;
             }
 
@@ -214,6 +220,11 @@ class VoteService
                 ->first();
 
             if (! $locked) {
+                return;
+            }
+
+            if (! $locked->canTransition('continue_night')) {
+                Log::warning("Transition 'continue_night' refusée depuis status={$locked->status}");
                 return;
             }
 

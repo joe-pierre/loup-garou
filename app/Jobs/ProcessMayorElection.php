@@ -11,6 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class ProcessMayorElection implements ShouldQueue
 {
@@ -23,6 +24,12 @@ class ProcessMayorElection implements ShouldQueue
         $game = Game::find($this->gameId);
 
         if (! $game || $game->status !== 'electing_mayor') {
+            return;
+        }
+
+        // Double-check Workflow : statut 'electing_mayor' toujours canonique ici.
+        if (! $game->canTransition('start_night')) {
+            Log::warning("Transition 'start_night' refusée depuis status={$game->status}");
             return;
         }
 

@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class ProcessNightEnd implements ShouldQueue
 {
@@ -24,6 +25,12 @@ class ProcessNightEnd implements ShouldQueue
         $game = Game::find($this->gameId);
 
         if (! $game || $game->round !== $this->round || ! in_array($game->status, ['night', 'processing_night'])) {
+            return;
+        }
+
+        // Double-check Workflow : 'processing_night' (Tâches E-H) reste hors périmètre et bypasse le guard.
+        if ($game->status === 'night' && ! $game->canTransition('start_day')) {
+            Log::warning("Transition 'start_day' refusée depuis status={$game->status}");
             return;
         }
 

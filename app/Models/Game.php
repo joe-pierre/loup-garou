@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Symfony\Component\Workflow\Registry;
 
 class Game extends Model
 {
@@ -69,5 +70,35 @@ class Game extends Model
         }
 
         return max(0, (int) now()->diffInSeconds($this->phase_deadline, false));
+    }
+
+    /**
+     * Accessors requis par MethodMarkingStore (Symfony Workflow) — la marking
+     * store en mode "single state" exige une méthode getStatus()/setStatus()
+     * publique, les attributs Eloquent dynamiques n'étant pas détectés par
+     * réflexion.
+     */
+    public function getStatus(): string
+    {
+        return $this->status;
+    }
+
+    public function setStatus(string $status, array $context = []): void
+    {
+        $this->status = $status;
+    }
+
+    public function canTransition(string $transitionName): bool
+    {
+        $registry = app(Registry::class);
+
+        return $registry->get($this)->can($this, $transitionName);
+    }
+
+    public function applyTransition(string $transitionName): void
+    {
+        $registry = app(Registry::class);
+        $registry->get($this)->apply($this, $transitionName);
+        $this->save();
     }
 }

@@ -9,6 +9,7 @@ use App\Jobs\ProcessSeerTurn;
 use App\Models\Game;
 use App\Models\GamePlayer;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PhaseManager
 {
@@ -25,6 +26,13 @@ class PhaseManager
                 ->first();
 
             if (! $locked) {
+                return;
+            }
+
+            // canTransition() ne connaît que les statuts canoniques du Workflow :
+            // 'processing_night' (Tâche E-H) reste hors de son périmètre et bypasse le guard.
+            if ($locked->status === 'night' && ! $locked->canTransition('start_day')) {
+                Log::warning("Transition 'start_day' refusée depuis status={$locked->status}");
                 return;
             }
 
@@ -56,6 +64,13 @@ class PhaseManager
                 ->first();
 
             if (! $locked) {
+                return;
+            }
+
+            // canTransition() ne connaît que les statuts canoniques du Workflow :
+            // 'processing_day' (Tâches F-G) reste hors de son périmètre et bypasse le guard.
+            if ($locked->status === 'day' && ! $locked->canTransition('continue_night')) {
+                Log::warning("Transition 'continue_night' refusée depuis status={$locked->status}");
                 return;
             }
 
