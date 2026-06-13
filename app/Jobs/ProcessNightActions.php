@@ -13,6 +13,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class ProcessNightActions implements ShouldQueue
@@ -53,6 +54,10 @@ class ProcessNightActions implements ShouldQueue
             $victim->update(['is_alive' => false]);
             broadcast(new PlayerEliminated($game, $victim, 'night_kill'));
 
+            if ($victim->isHunter()) {
+                Cache::put("hunter_must_shoot_{$game->id}", $victim->id, now()->addMinutes(10));
+            }
+
             try {
                 $victim->load('user');
                 $victim->user->notify(new PlayerKilledNightNotification());
@@ -61,6 +66,11 @@ class ProcessNightActions implements ShouldQueue
 
         if ($winChecker->check($game)) {
             return;
+        }
+
+        $witch = $game->players()->where('role', 'witch')->where('is_alive', true)->first();
+        if ($witch) {
+            ProcessWitchTurn::dispatch($game->id, $game->round)->delay(0);
         }
 
         if ($victim?->is_mayor) {

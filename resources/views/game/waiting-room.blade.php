@@ -181,6 +181,36 @@
                 <span x-show="error" x-text="error" class="text-sm" style="color: #fca5a5;"></span>
             </div>
         </div>
+
+        {{-- Réglages de la composition des rôles (host uniquement) --}}
+        <div id="wr-roles" class="mb-6 rounded-lg p-5" x-data="roleSettings()" style="background-color: #111827; border: 1px solid rgba(201,168,76,0.25);">
+            <h3 class="font-medieval text-base mb-4 tracking-wide" style="color: #c9a84c;">Composition des rôles</h3>
+
+            <template x-for="key in Object.keys(roles)" :key="key">
+                <label class="flex items-center justify-between mb-3 cursor-pointer">
+                    <span class="text-sm" style="color: #e8e0d0;" x-text="labels[key]"></span>
+                    <input
+                        type="checkbox"
+                        :checked="roles[key] === 1"
+                        @change="roles[key] = $event.target.checked ? 1 : 0"
+                        class="w-5 h-5"
+                    >
+                </label>
+            </template>
+
+            <div class="flex items-center gap-3 mt-2">
+                <button
+                    @click="save()"
+                    :disabled="saving"
+                    class="btn-primary px-4 py-2 text-sm disabled:opacity-50"
+                >
+                    <span x-show="!saving">Enregistrer la composition</span>
+                    <span x-show="saving">Enregistrement…</span>
+                </button>
+                <span x-show="saved" class="text-sm" style="color: #4ade80;">Enregistré ✓</span>
+                <span x-show="error" x-text="error" class="text-sm" style="color: #fca5a5;"></span>
+            </div>
+        </div>
         @endif
 
         {{-- Liste des joueurs --}}
@@ -380,6 +410,44 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
                         body: JSON.stringify({ timers: this.timers }),
+                    });
+                    const json = await res.json();
+                    if (json.success) {
+                        this.saved = true;
+                        setTimeout(() => { this.saved = false; }, 1500);
+                    } else {
+                        this.error = json.message || 'Une erreur est survenue.';
+                    }
+                } catch { this.error = 'Impossible de contacter le serveur.'; }
+                finally { this.saving = false; }
+            },
+        };
+    }
+
+    function roleSettings() {
+        return {
+            roles: {
+                witch:  @json($game->settings['roles']['witch'] ?? 0),
+                hunter: @json($game->settings['roles']['hunter'] ?? 0),
+            },
+            labels: {
+                witch:  'Sorcière',
+                hunter: 'Chasseur',
+            },
+
+            saving: false,
+            saved:  false,
+            error:  '',
+
+            async save() {
+                this.saving = true;
+                this.saved  = false;
+                this.error  = '';
+                try {
+                    const res = await fetch(`/game/${GAME_ID}/settings/roles`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                        body: JSON.stringify({ roles: this.roles }),
                     });
                     const json = await res.json();
                     if (json.success) {

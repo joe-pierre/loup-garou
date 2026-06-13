@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Game;
 use Illuminate\Support\Collection;
 
 class RoleDistributor
@@ -12,10 +13,10 @@ class RoleDistributor
      * @param  Collection<int, \App\Models\GamePlayer> $players
      * @return array<int, string>  [player_id => role]
      */
-    public function distribute(Collection $players): array
+    public function distribute(Collection $players, Game $game): array
     {
         $total    = $players->count();
-        $counts   = $this->computeCounts($total);
+        $counts   = $this->computeCounts($total, $game);
         $shuffled = $players->shuffle()->values();
 
         $assignments = [];
@@ -34,18 +35,32 @@ class RoleDistributor
     }
 
     /**
-     * Retourne la configuration des rôles depuis config/game.php.
-     * Surcharger cette méthode en v1.2 pour ajouter de nouveaux rôles.
+     * Retourne la configuration des rôles : config/game.php en base,
+     * surchargée par $game->settings['roles'] (witch/hunter, v1.2).
+     * villager='fill' reste toujours en dernière position.
      *
      * @return array<string, int|string>  [role => count|'auto'|'fill']
      */
-    public function getRoleConfig(): array
+    public function getRoleConfig(Game $game): array
     {
-        return config('game.roles', [
-            'seer'     => 1,
-            'werewolf' => 'auto',
-            'villager' => 'fill',
-        ]);
+        $overrides = $game->settings['roles'] ?? [];
+
+        $config = [
+            'seer'     => config('game.roles.seer', 1),
+            'werewolf' => config('game.roles.werewolf', 'auto'),
+        ];
+
+        if (($overrides['witch'] ?? 0) > 0) {
+            $config['witch'] = $overrides['witch'];
+        }
+
+        if (($overrides['hunter'] ?? 0) > 0) {
+            $config['hunter'] = $overrides['hunter'];
+        }
+
+        $config['villager'] = 'fill';
+
+        return $config;
     }
 
     /**
@@ -53,9 +68,9 @@ class RoleDistributor
      *
      * @return array<string, int>  [role => count]
      */
-    private function computeCounts(int $total): array
+    private function computeCounts(int $total, Game $game): array
     {
-        $config   = $this->getRoleConfig();
+        $config   = $this->getRoleConfig($game);
         $resolved = [];
         $usedSlots = 0;
 

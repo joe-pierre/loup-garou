@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateGameRequest;
 use App\Http\Requests\ExcludePlayerRequest;
 use App\Http\Requests\JoinGameRequest;
+use App\Http\Requests\UpdateRolesRequest;
 use App\Http\Requests\UpdateTimersRequest;
 use App\Models\Game;
 use App\Models\GamePlayer;
@@ -80,6 +81,24 @@ class LobbyController extends Controller
         return response()->json([
             'success' => true,
             'data'    => ['timers' => $game->settings['timers'] ?? []],
+        ]);
+    }
+
+    public function updateRoles(UpdateRolesRequest $request, int $id): JsonResponse
+    {
+        $game = Game::findOrFail($id);
+
+        $player = GamePlayer::where('game_id', $id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        $this->authorize('updateSettings', [$game, $player]);
+
+        $game = $this->gameService->updateRoleSettings($game, $request->validated('roles'));
+
+        return response()->json([
+            'success' => true,
+            'data'    => ['roles' => $game->settings['roles'] ?? []],
         ]);
     }
 

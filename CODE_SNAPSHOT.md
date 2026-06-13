@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 20h12
+Generated at: 00h50
 
 ## PHP Analysis (Core Logic)
 
@@ -84,12 +84,14 @@ GamePlayer.php
       - timestamps
       - fillable
     functions:
-      - casts() → return ['is_alive' => 'boolean', 'is_host' => 'boolean', 'is_mayor' => 'boolean', 'is_inactive' => 'boolean', 'is_ready' => 'boolean', 'joined_at' => 'datetime']
+      - casts() → return ['is_alive' => 'boolean', 'is_host' => 'boolean', 'is_mayor' => 'boolean', 'is_inactive' => 'boolean', 'is_ready' => 'boolean', 'joined_at' => 'datetime', 'settings' => 'array']
       - game() → return $this->belongsTo(Game::class)
       - user() → return $this->belongsTo(User::class)
       - actions() → return $this->hasMany(GameAction::class, 'player_id')
       - isWerewolf() → return in_array($this->role, ['werewolf', 'white_wolf'])
       - isVillagerSide() → return in_array($this->role, ['villager', 'seer', 'witch', 'hunter'])
+      - isWitch() → return $this->role === 'witch'
+      - isHunter() → return $this->role === 'hunter'
 
 // app/Jobs/ProcessMayorSuccession.php
 ProcessMayorSuccession.php
@@ -135,6 +137,17 @@ ProcessNightEnd.php
       - __construct(int $gameId, int $round) {}
       - handle(PhaseManager $phaseManager) → void
 
+// app/Jobs/ProcessWitchTurn.php
+ProcessWitchTurn.php
+    attributes:
+      - Dispatchable
+      - InteractsWithQueue
+      - Queueable
+      - SerializesModels
+    functions:
+      - __construct(int $gameId, int $round) {}
+      - handle(VoteService $voteService) → void
+
 // app/Jobs/ProcessDayVote.php
 ProcessDayVote.php
     attributes:
@@ -146,6 +159,17 @@ ProcessDayVote.php
       - __construct(int $gameId, int $round) {}
       - handle(VoteService $voteService) → void
 
+// app/Jobs/ProcessHunterAutoAction.php
+ProcessHunterAutoAction.php
+    attributes:
+      - Dispatchable
+      - InteractsWithQueue
+      - Queueable
+      - SerializesModels
+    functions:
+      - __construct(int $gameId, int $round, int $hunterId, bool $fromNight) {}
+      - handle(PhaseManager $phaseManager, WinConditionChecker $winChecker) → void
+
 // app/Jobs/ProcessSeerTurn.php
 ProcessSeerTurn.php
     attributes:
@@ -155,6 +179,17 @@ ProcessSeerTurn.php
       - SerializesModels
     functions:
       - __construct(int $gameId) {}
+      - handle() → void
+
+// app/Jobs/ProcessWitchAutoAction.php
+ProcessWitchAutoAction.php
+    attributes:
+      - Dispatchable
+      - InteractsWithQueue
+      - Queueable
+      - SerializesModels
+    functions:
+      - __construct(int $gameId, int $round) {}
       - handle() → void
 
 // app/Jobs/CheckReconnectionTimeout.php
@@ -201,6 +236,17 @@ ProcessSeerAutoAction.php
       - __construct(int $gameId, int $seerId, int $round) {}
       - handle() → void
 
+// app/Jobs/ProcessHunterTurn.php
+ProcessHunterTurn.php
+    attributes:
+      - Dispatchable
+      - InteractsWithQueue
+      - Queueable
+      - SerializesModels
+    functions:
+      - __construct(int $gameId, int $round, int $hunterId) {}
+      - handle(PhaseManager $phaseManager, WinConditionChecker $winChecker) → void
+
 // app/Events/Game/PlayerInactive.php
 PlayerInactive.php
     attributes:
@@ -213,6 +259,18 @@ PlayerInactive.php
       - broadcastOn() → return [new Channel("game.{$this->gameId}")]
       - broadcastAs() → return 'player.inactive'
       - broadcastWith() → return ['pseudo' => $this->pseudo]
+
+// app/Events/Game/WitchActed.php
+WitchActed.php
+    attributes:
+      - Dispatchable
+      - InteractsWithSockets
+      - SerializesModels
+    functions:
+      - __construct(Game $game, GamePlayer $witch, string $action, ?GamePlayer $target) {}
+      - broadcastOn() → return [new PrivateChannel("game.{$this->game->id}.player.{$this->witch->id}")]
+      - broadcastAs() → return 'witch.acted'
+      - broadcastWith() → return ['action' => $this->action, 'target_player_id' => $this->target?->id, 'pseudo' => $this->target?->pseudo]
 
 // app/Events/Game/NightStarted.php
 NightStarted.php
@@ -298,6 +356,30 @@ NoElimination.php
       - broadcastAs() → return 'no.elimination'
       - broadcastWith() → return ['reason' => $this->reason]
 
+// app/Events/Game/HunterTurnStarted.php
+HunterTurnStarted.php
+    attributes:
+      - Dispatchable
+      - InteractsWithSockets
+      - SerializesModels
+    functions:
+      - __construct(Game $game, GamePlayer $hunter) {}
+      - broadcastOn() → return [new PrivateChannel("game.{$this->game->id}.player.{$this->hunter->id}")]
+      - broadcastAs() → return 'hunter.turn.started'
+      - broadcastWith() → return ['timer' => $this->game->timer('hunter')]
+
+// app/Events/Game/WitchTurnStarted.php
+WitchTurnStarted.php
+    attributes:
+      - Dispatchable
+      - InteractsWithSockets
+      - SerializesModels
+    functions:
+      - __construct(Game $game, GamePlayer $witch, GamePlayer $victim, bool $healAvailable, bool $killAvailable) {}
+      - broadcastOn() → return [new PrivateChannel("game.{$this->game->id}.player.{$this->witch->id}")]
+      - broadcastAs() → return 'witch.turn.started'
+      - broadcastWith() → return ['victim' => ['id' => $this->victim->id, 'pseudo' => $this->victim->pseudo], 'heal_available' => $this->healAvailable, 'kill_available' => $this->killAvailable, 'timer' => $this->game->timer('witch')]
+
 // app/Events/Game/GameStarted.php
 GameStarted.php
     attributes:
@@ -325,6 +407,18 @@ PlayerEliminated.php
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'player.eliminated'
       - broadcastWith() → return ['player_id' => $this->player->id, 'pseudo' => $this->player->pseudo, 'role' => $this->player->role, 'reason' => $this->reason]
+
+// app/Events/Game/HunterShot.php
+HunterShot.php
+    attributes:
+      - Dispatchable
+      - InteractsWithSockets
+      - SerializesModels
+    functions:
+      - __construct(Game $game, GamePlayer $hunter, GamePlayer $target) {}
+      - broadcastOn() → return [new Channel("game.{$this->game->id}")]
+      - broadcastAs() → return 'hunter.shot'
+      - broadcastWith() → return ['hunter_pseudo' => $this->hunter->pseudo, 'target_player_id' => $this->target->id, 'target_pseudo' => $this->target->pseudo]
 
 // app/Events/Game/SeerResult.php
 SeerResult.php
@@ -531,6 +625,13 @@ GamePolicy.php
       - viewHistory(User $user, Game $game) → return $game->players()->where('user_id', $user->id)->exists()
       - updateSettings(User $user, Game $game, GamePlayer $player) → return $player->is_host
 
+// app/Http/Requests/HunterShootRequest.php
+HunterShootRequest.php
+    functions:
+      - authorize() → return true
+      - rules() → return ['target_player_id' => ['required', 'integer', Rule::exists('game_players', 'id')->where('game_id', $gameId)->where('is_alive', true), Rule::notIn($selfId)]]
+      - messages() → return ['target_player_id.required' => 'La cible est obligatoire.', 'target_player_id.exists' => 'Ce joueur n\'existe pas ou est déjà éliminé.', 'target_player_id.not_in' => 'Le chasseur ne peut pas se tirer lui-même.']
+
 // app/Http/Requests/DayVoteRequest.php
 DayVoteRequest.php
     functions:
@@ -565,12 +666,26 @@ UpdateTimersRequest.php
       - rules() → return ['timers' => ['required', 'array', 'min:1'], 'timers.*' => ['required', 'integer']]
       - messages() → return ['timers.required' => 'Les timers sont obligatoires.', 'timers.array' => 'Format de timers invalide.', 'timers.min' => 'Au moins un timer doit être fourni.', 'timers.*.required' => 'La valeur du timer est obligatoire.', 'timers.*.integer' => 'Chaque timer doit être un nombre entier de secondes.']
 
+// app/Http/Requests/WitchActRequest.php
+WitchActRequest.php
+    functions:
+      - authorize() → return true
+      - rules() → return ['action' => ['required', 'string', 'in:heal,kill,pass'], 'target_player_id' => ['nullable', 'required_if:action,heal,kill', 'integer', Rule::exists('game_players', 'id')->where('game_id', $gameId)]]
+      - messages() → return ['action.required' => 'L\'action est obligatoire.', 'action.in' => 'Action invalide.', 'target_player_id.required_if' => 'La cible est obligatoire pour cette action.', 'target_player_id.exists' => 'Ce joueur n\'existe pas.']
+
 // app/Http/Requests/JoinGameRequest.php
 JoinGameRequest.php
     functions:
       - authorize() → return true
       - rules() → return ['pseudo' => ['required', 'string', 'min:2', 'max:20']]
       - messages() → return ['pseudo.required' => 'Le pseudo est obligatoire.', 'pseudo.min' => 'Le pseudo doit faire au moins 2 caractères.', 'pseudo.max' => 'Le pseudo ne peut pas dépasser 20 caractères.']
+
+// app/Http/Requests/UpdateRolesRequest.php
+UpdateRolesRequest.php
+    functions:
+      - authorize() → return true
+      - rules() → return ['roles' => ['required', 'array', 'min:1'], 'roles.*' => ['required', 'integer', 'in:0,1']]
+      - messages() → return ['roles.required' => 'La composition des rôles est obligatoire.', 'roles.array' => 'Format de composition invalide.', 'roles.min' => 'Au moins un rôle doit être fourni.', 'roles.*.required' => 'La valeur du rôle est obligatoire.', 'roles.*.integer' => 'Chaque rôle doit valoir 0 ou 1.', 'roles.*.in' => 'Chaque rôle doit valoir 0 ou 1.']
 
 // app/Http/Requests/CreateGameRequest.php
 CreateGameRequest.php
@@ -620,6 +735,7 @@ LobbyController.php
       - join(JoinGameRequest $request, string $code) → return response()->json(['success' => true, 'data' => ['player_id' => $player->id, 'game_code' => strtoupper($code)]])
       - exclude(ExcludePlayerRequest $request, int $id, int $playerId) → return response()->json(['success' => true, 'data' => []])
       - updateTimers(UpdateTimersRequest $request, int $id) → return response()->json(['success' => true, 'data' => ['timers' => $game->settings['timers'] ?? []]])
+      - updateRoles(UpdateRolesRequest $request, int $id) → return response()->json(['success' => true, 'data' => ['roles' => $game->settings['roles'] ?? []]])
       - lobbyState(int $id) → return response()->json(['success' => true, 'data' => ['status' => $game->status, 'players_count' => count($players), 'max_players' => $game->max_players, 'slots_remaining' => $game->max_players - count($players), 'players' => $players]])
       - waitingRoom(string $code) → return view('game.waiting-room', compact('game', 'player', 'players'))
 
@@ -659,6 +775,8 @@ ActionController.php
       - __construct(GameService $gameService) {}
       - ready(Request $request, int $id) → return response()->json(['success' => true, 'data' => []])
       - seerCheck(SeerCheckRequest $request, int $id) → return response()->json(['success' => true, 'data' => ['target_player_id' => $target->id, 'pseudo' => $target->pseudo, 'role' => $target->role]])
+      - witchAct(WitchActRequest $request, int $id) → return response()->json(['success' => true, 'data' => $result['action'] === 'pass' ? [] : ['target_player_id' => $result['target']?->id]])
+      - hunterShoot(HunterShootRequest $request, int $id) → return response()->json(['success' => true, 'data' => ['target_player_id' => $target->id]])
       - mayorSuccession(MayorSuccessionRequest $request, int $id) → return response()->json(['success' => true, 'data' => []])
       - roleReveal(Request $request, string $code) → return view('game.role-reveal', compact('game', 'player', 'allies', 'nbReady', 'total'))
 
@@ -723,9 +841,9 @@ PlayerEliminatedDayNotification.php
 // app/Services/RoleDistributor.php
 RoleDistributor.php
     functions:
-      - distribute(Collection $players) → return $assignments
-      - getRoleConfig() → return config('game.roles', ['seer' => 1, 'werewolf' => 'auto', 'villager' => 'fill'])
-      - computeCounts(int $total) → return $resolved
+      - distribute(Collection $players, Game $game) → return $assignments
+      - getRoleConfig(Game $game) → return $config
+      - computeCounts(int $total, Game $game) → return $resolved
       - resolveAmount(string $role, int|string $amount, int $total) → return 0
       - werewolfCount(int $playerCount) → return max(1, (int) floor($playerCount * 0.2))
 
@@ -776,6 +894,10 @@ GameService.php
       - quitGame(Game $game, GamePlayer $player) → void
       - validateTimerSettings(array $timers) → void
       - updateTimerSettings(Game $game, array $timers) → return $game
+      - validateRoleSettings(array $roles) → void
+      - updateRoleSettings(Game $game, array $roles) → return $game
+      - witchAct(GamePlayer $witch, string $action, ?int $targetId) → return $result
+      - hunterShoot(GamePlayer $hunter, int $targetId) → return DB::transaction(function () use ($hunter, $targetId, $game) { $alreadyShot = GameAction::where('game_id', $game->id)->where('player_id', $hunter->id)->where('type', 'hunter_shot')->where('round', $game->round)->lockForUpdate()->exists(); if ($alreadyShot) { abort(409, 'Vous avez déjà tiré ce round.'); } $target = GamePlayer::where('id', $targetId)->where('game_id', $game->id)->where('is_alive', true)->lockForUpdate()->first(); if (!$target) { abort(404, 'Cible invalide.'); } $target->update(['is_alive' => false]); GameAction::create(['game_id' => $game->id, 'player_id' => $hunter->id, 'type' => 'hunter_shot', 'target_player_id' => $target->id, 'round' => $game->round, 'phase' => in_array($game->status, ['night', 'processing_night']) ? 'night' : 'day']); return $target; })
       - cancelGame(Game $game) → void
       - generateUniqueCode() → return $code
 
@@ -916,6 +1038,21 @@ MayorSuccessionTest.php
       - test_succession_nuit_ne_redemarre_pas_la_nuit_si_le_statut_est_deja_passe_a_day() → void
       - test_cascade_succession_nuit_puis_nouveau_maire_tue_la_nuit_suivante() → void
 
+// tests/Feature/Game/WitchTest.php
+WitchTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - makeNightGame() → return Game::factory()->create(['status' => 'night', 'max_players' => 6, 'round' => 1])
+      - test_sorciere_peut_sauver_la_victime_des_loups() → void
+      - test_sorciere_ne_peut_pas_sauver_si_elle_est_la_victime() → void
+      - test_sorciere_peut_empoisonner_un_joueur() → void
+      - test_sorciere_ne_peut_pas_utiliser_deux_fois_la_meme_potion() → void
+      - test_witch_turn_skipped_si_egalite_loups() → void
+      - test_witch_turn_dispatche_par_night_actions_uniquement() → void
+      - test_witch_turn_non_double_dispatche_meme_round() → void
+      - test_sorciere_auto_action_sans_victime_ne_bloque_pas() → void
+
 // tests/Feature/Game/ProcessDayVoteTest.php
 ProcessDayVoteTest.php
     attributes:
@@ -1041,6 +1178,12 @@ TestCase.php
       - up() → void
       - down() → void
 
+// database/migrations/2026_06_12_203056_add_witch_hunter_to_game_players_role_enum.php
+2026_06_12_203056_add_witch_hunter_to_game_players_role_enum.php
+    functions:
+      - up() → void
+      - down() → void
+
 // database/migrations/2026_06_10_000002_add_processing_wolves_to_games_status.php
 2026_06_10_000002_add_processing_wolves_to_games_status.php
     functions:
@@ -1083,6 +1226,18 @@ TestCase.php
       - up() → void
       - down() → void
 
+// database/migrations/2026_06_12_203056_add_witch_hunter_actions_to_game_actions_type_enum.php
+2026_06_12_203056_add_witch_hunter_actions_to_game_actions_type_enum.php
+    functions:
+      - up() → void
+      - down() → void
+
+// database/migrations/2026_06_12_203056_add_settings_to_game_players_table.php
+2026_06_12_203056_add_settings_to_game_players_table.php
+    functions:
+      - up() → void
+      - down() → void
+
 // database/factories/ChatMessageFactory.php
 ChatMessageFactory.php
     functions:
@@ -1111,6 +1266,8 @@ GamePlayerFactory.php
       - definition() → return ['game_id' => Game::factory(), 'user_id' => User::factory(), 'pseudo' => fake()->userName(), 'role' => null, 'is_alive' => true, 'is_host' => false, 'is_mayor' => false, 'is_inactive' => false, 'is_ready' => false, 'joined_at' => now()]
       - werewolf() → return $this->state(['role' => 'werewolf'])
       - seer() → return $this->state(['role' => 'seer'])
+      - witch() → return $this->state(['role' => 'witch'])
+      - hunter() → return $this->state(['role' => 'hunter'])
       - villager() → return $this->state(['role' => 'villager'])
       - host() → return $this->state(['is_host' => true])
       - dead() → return $this->state(['is_alive' => false])

@@ -2,12 +2,19 @@
 
 namespace App\Http\Controllers\Game;
 
+use App\Events\Game\HunterShot;
 use App\Events\Game\MayorSuccessionDone;
+use App\Events\Game\PlayerEliminated;
 use App\Events\Game\SeerResult;
+use App\Events\Game\WitchActed;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\HunterShootRequest;
 use App\Http\Requests\MayorSuccessionRequest;
 use App\Http\Requests\SeerCheckRequest;
+use App\Http\Requests\WitchActRequest;
+use App\Jobs\ProcessHunterAutoAction;
 use App\Jobs\ProcessWerewolvesTurn;
+use App\Jobs\ProcessWitchAutoAction;
 use App\Models\Game;
 use App\Models\GamePlayer;
 use App\Services\GameService;
@@ -52,6 +59,52 @@ class ActionController extends Controller
                 'role'             => $target->role,
             ],
         ]);
+    }
+
+    public function witchAct(WitchActRequest $request, int $id): JsonResponse
+    {
+        $witch = GamePlayer::where('game_id', $id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        $result = $this->gameService->witchAct(
+            $witch,
+            $request->validated('action'),
+            $request->validated('target_player_id'),
+        );
+
+        broadcast(new WitchActed($witch->game, $witch, $result['action'], $result['target']));
+
+        if ($result['action'] === 'kill' && $result['target']) {
+            broadcast(new PlayerEliminated($witch->game, $result['target'], 'witch_kill'));
+        }
+
+        // L'action est résolue immédiatement -> ProcessWitchAutoAction termine le tour sans attendre le timer
+        ProcessWitchAutoAction::dispatch($witch->game_id, $witch->game->round)->delay(0);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $result['action'] === 'pass' ? [] : ['target_player_id' => $result['target']?->id],
+        ]);
+    }
+
+    public function hunterShoot(HunterShootRequest $request, int $id): JsonResponse
+    {
+        $hunter = GamePlayer::where('game_id', $id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        $fromNight = in_array($hunter->game->status, ['night', 'processing_night']);
+
+        $target = $this->gameService->hunterShoot($hunter, $request->validated('target_player_id'));
+
+        broadcast(new PlayerEliminated($hunter->game, $target, 'hunter_shot'));
+        broadcast(new HunterShot($hunter->game, $hunter, $target));
+
+        // Le tir est résolu immédiatement -> ProcessHunterAutoAction déclenche la transition sans attendre le timer
+        ProcessHunterAutoAction::dispatch($hunter->game_id, $hunter->game->round, $hunter->id, $fromNight)->delay(0);
+
+        return response()->json(['success' => true, 'data' => ['target_player_id' => $target->id]]);
     }
 
     public function mayorSuccession(MayorSuccessionRequest $request, int $id): JsonResponse

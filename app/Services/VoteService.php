@@ -7,12 +7,14 @@ use App\Events\Game\NoElimination;
 use App\Events\Game\PlayerEliminated;
 use App\Events\Game\RandomElimination;
 use App\Jobs\ProcessDayVote;
+use App\Jobs\ProcessHunterTurn;
 use App\Jobs\ProcessMayorSuccession;
 use App\Jobs\ProcessNightActions;
 use App\Models\Game;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
 use App\Notifications\PlayerEliminatedDayNotification;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -243,6 +245,10 @@ class VoteService
                 if ($victim) {
                     $victim->update(['is_alive' => false]);
                     $randomVictim = $victim;
+
+                    if ($victim->isHunter()) {
+                        Cache::put("hunter_must_shoot_{$game->id}", $victim->id, now()->addMinutes(10));
+                    }
                 }
                 return;
             }
@@ -258,6 +264,10 @@ class VoteService
             $elim = GamePlayer::with('user')->find($topCandidates->first()->target_player_id);
             $elim->update(['is_alive' => false]);
             $eliminated = $elim;
+
+            if ($elim->isHunter()) {
+                Cache::put("hunter_must_shoot_{$game->id}", $elim->id, now()->addMinutes(10));
+            }
         });
 
         // Tout ce qui suit est HORS transaction
@@ -271,6 +281,10 @@ class VoteService
         if ($randomVictim) {
             broadcast(new RandomElimination($game, $randomVictim));
             if ($this->winConditionChecker->check($game)) {
+                return;
+            }
+            if (Cache::pull("hunter_must_shoot_{$game->id}")) {
+                ProcessHunterTurn::dispatch($game->id, $game->round, $randomVictim->id)->delay(0);
                 return;
             }
             $this->phaseManager->startNight($game);
@@ -299,6 +313,8 @@ class VoteService
             broadcast(new MayorSuccessionStarted($game, $eliminated->pseudo));
             ProcessMayorSuccession::dispatch($game->id, $game->round)
                 ->delay(now()->addSeconds($successionDelay));
+        } elseif (Cache::pull("hunter_must_shoot_{$game->id}")) {
+            ProcessHunterTurn::dispatch($game->id, $game->round, $eliminated->id)->delay(0);
         } else {
             $this->phaseManager->startNight($game);
         }
