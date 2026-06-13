@@ -11,11 +11,11 @@ return [
         'day_vote'         => 90,
         'reconnection'     => 30,
         'ready_timeout'    => 60,
-        'mayor_reveal'     => 5,
+        'mayor_reveal'     => 8,
         // Délai entre NightStarted broadcasté et ProcessSeerTurn dispatché,
         // pour laisser le temps aux clients de se rediriger vers /night
         // et de s'abonner au canal privé avant que SeerTurnStarted parte.
-        'night_start_delay' => 4,
+        'night_start_delay' => 8,
 
         // Limites de configuration des timers par le host (Étape 3, v1.2)
         // host_configurable = false → timer toujours ignoré dans settings['timers']
