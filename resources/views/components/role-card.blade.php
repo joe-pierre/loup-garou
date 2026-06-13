@@ -7,7 +7,7 @@
     $roles = [
         'villager' => [
             'label'       => 'Villageois',
-            'emoji'       => '🏘',
+            'emoji'       => '🧑‍🌾',
             'color'       => '#e8e0d0',
             'description' => 'Un citoyen ordinaire. Votez avec sagesse pour éliminer les loups du village.',
         ],
@@ -22,6 +22,18 @@
             'emoji'       => '🔮',
             'color'       => '#a78bfa',
             'description' => 'Chaque nuit, inspectez un joueur et découvrez son vrai rôle.',
+        ],
+        'witch'    => [
+            'label'       => 'Sorcière',
+            'emoji'       => '🧙‍♀️',
+            'color'       => '#3493d3',
+            'description' => 'Vous disposez de deux potions : sauvez une victime ou empoisonnez un joueur.',
+        ],
+        'hunter'   => [
+            'label'       => 'Chasseur',
+            'emoji'       => '🏹',
+            'color'       => '#fbbf24',
+            'description' => 'Si vous êtes éliminé, emportez un adversaire avec vous.',
         ],
     ];
     $info = $roles[$role] ?? ['label' => $role, 'emoji' => '?', 'color' => '#e8e0d0', 'description' => ''];

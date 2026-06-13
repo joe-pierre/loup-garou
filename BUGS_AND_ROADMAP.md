@@ -162,6 +162,22 @@
 
 ---
 
+### [x] 2026-06-13 — Modale succession maire bloquée si NightStarted précède MayorSuccessionDone
+
+- **Symptôme :** modale "Succession du Maire" ne se fermait jamais quand le maire
+  était éliminé le jour — la partie semblait bloquée sur /day. En cascade (successeur
+  éliminé à son tour), le bug se reproduisait à chaque succession.
+- **Cause :** game-state.js ne trackait pas l'état de succession. handleNightStarted()
+  redirigeait immédiatement vers /night en détruisant la page /day et tous ses
+  listeners window — dont celui qui ferme la modale sur mayor-succession-done.
+  Un flag booléen aurait cassé la cascade (N successions consécutives).
+- **Fix :** compteur successionDepth dans le store central (incrémenté à chaque
+  MayorSuccessionStarted, décrémenté à chaque MayorSuccessionDone). handleNightStarted()
+  attend successionDepth === 0 avant de rediriger. Garde-fou 20s dans
+  openSuccessionModal() côté day.blade.php.
+
+---
+
 # ROADMAP (idées / améliorations futures)
  
 - [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)

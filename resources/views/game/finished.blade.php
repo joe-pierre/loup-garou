@@ -5,14 +5,18 @@
 @php
 $isVillage = $game->winner_team === 'villagers';
 $roleLabel = fn(?string $r) => match($r) {
-    'villager' => '🏘 Villageois',
+    'villager' => '🧑‍🌾 Villageois',
     'werewolf' => '🐺 Loup-Garou',
     'seer'     => '🔮 Voyante',
+    'witch'    => '🧙‍♀️ Sorcière',
+    'hunter'   => '🏹 Chasseur',
     default    => $r ?? '?',
 };
 $roleClass = fn(?string $r) => match($r) {
     'werewolf' => 'role-badge-werewolf',
     'seer'     => 'role-badge-seer',
+    'witch'    => 'role-badge-witch',
+    'hunter'   => 'role-badge-hunter',
     default    => 'role-badge-villager',
 };
 @endphp
@@ -53,6 +57,8 @@ $roleClass = fn(?string $r) => match($r) {
     .role-badge-villager { background: rgba(232,224,208,0.1); color: #e8e0d0; }
     .role-badge-werewolf { background: rgba(139,0,0,0.25); color: #f87171; }
     .role-badge-seer     { background: rgba(124,58,237,0.2); color: #a78bfa; }
+    .role-badge-witch    { background: rgba(52,147,211,0.2); color: #3493d3; }
+    .role-badge-hunter   { background: rgba(247,191,36,0.2); color: #fbbf24; }
     .btn-primary {
         background-color: #c9a84c;
         color: #0a0f1e;
@@ -121,12 +127,16 @@ $roleClass = fn(?string $r) => match($r) {
                         'werewolf' => '#ff4444',
                         'seer'     => '#a78bfa',
                         'villager' => '#4ade80',
+                        'witch'    => '#3493d3',
+                        'hunter'   => '#fbbf24',
                         default    => '#e8e0d0',
                     };
                     $roleLabel2 = match($p->role) {
                         'werewolf' => 'Loup-Garou',
                         'seer'     => 'Voyante',
                         'villager' => 'Villageois',
+                        'witch'    => 'Sorcière',
+                        'hunter'   => 'Chasseur',
                         default    => $p->role,
                     };
                     $rowBg = $loop->even

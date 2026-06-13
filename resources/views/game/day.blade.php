@@ -288,6 +288,7 @@
             confirmQuit:      false,
             successionOpen:   false,
             dyingMayorPseudo: '',
+            _successionTimer: null,
 
             isAlive:         MY_IS_ALIVE,
             showDeathBanner: sessionStorage.getItem('dead_' + MY_PLAYER_ID) === '1',
@@ -464,10 +465,19 @@
                         gsap.from(this.$refs.successionModal, { opacity: 0, y: 30, duration: 0.4, ease: 'power2.out' });
                     }
                 });
+                // Garde-fou : fermeture automatique si mayor-succession-done non reçu dans 20s
+                if (this._successionTimer) clearTimeout(this._successionTimer);
+                this._successionTimer = setTimeout(() => {
+                    this.closeSuccessionModal();
+                }, 20000);
             },
 
             closeSuccessionModal() {
                 this.successionOpen = false;
+                if (this._successionTimer) {
+                    clearTimeout(this._successionTimer);
+                    this._successionTimer = null;
+                }
             },
 
             submitQuit() {

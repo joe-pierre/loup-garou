@@ -26,6 +26,10 @@ export function gameState(gameId, userId) {
         isAlive:              true,
         winnerTeam:           null,
         nightVictim:          null,
+        // Compteur de successions actives. Incrémenté à chaque MayorSuccessionStarted,
+        // décrémenté à chaque MayorSuccessionDone. Permet de gérer les cascades
+        // (successeur éliminé à son tour) sans perdre le fil.
+        successionDepth:      0,
 
         // ── Phases nuit ──────────────────────────────────────────────────────
         nightPhase:       'village_sleeping',
@@ -111,7 +115,10 @@ export function gameState(gameId, userId) {
                 .listen('.mayor.election.started',     e => this._handleMayorElectionStarted(e))
                 .listen('.mayor.elected',              e => this.handleMayorElected(e))
                 .listen('.mayor.vote.cast',            e => this._handleMayorVoteCast(e))
-                .listen('.mayor.succession.started',   e => window.dispatchEvent(new CustomEvent('mayor-succession-started', { detail: e })))
+                .listen('.mayor.succession.started',   e => {
+                    this.successionDepth++;
+                    window.dispatchEvent(new CustomEvent('mayor-succession-started', { detail: e }));
+                })
                 .listen('.mayor.succession.done',      e => this.handleMayorSuccessionDone(e))
                 .listen('.day.vote.cast',              e => this._handleDayVoteCast(e))
                 .listen('.player.eliminated',          e => this.handlePlayerEliminated(e))
@@ -213,6 +220,22 @@ export function gameState(gameId, userId) {
                     if (this.gameCode) window.location.href = `/game/${this.gameCode}/night`;
                 };
 
+                // Si une ou plusieurs successions sont en cours, attendre qu'elles soient
+                // toutes terminées avant de rediriger. Couvre la cascade N maires successifs.
+                if (this.successionDepth > 0) {
+                    const waitForSuccession = () => {
+                        if (this.successionDepth > 0) return; // cascade encore en cours
+                        window.removeEventListener('mayor-succession-done', waitForSuccession);
+                        this._doNightRedirect(redirect);
+                    };
+                    window.addEventListener('mayor-succession-done', waitForSuccession);
+                    return;
+                }
+
+                this._doNightRedirect(redirect);
+            },
+
+            _doNightRedirect(redirect) {
                 if (this._motion) {
                     gsap.to(document.body, {
                         backgroundColor: '#030712',
@@ -280,6 +303,7 @@ export function gameState(gameId, userId) {
         },
 
         handleMayorSuccessionDone(e) {
+            this.successionDepth = Math.max(0, this.successionDepth - 1);
             this.handleMayorElected({ player_id: e.new_mayor_id });
             window.dispatchEvent(new CustomEvent('mayor-succession-done', { detail: e }));
         },
