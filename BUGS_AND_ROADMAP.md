@@ -178,6 +178,14 @@
 
 ---
 
+### [x] 2026-06-13 — Timer GSAP désynchronisé en arrière-plan sur /day
+
+- **Symptôme :** quand l'onglet passe en arrière-plan, le navigateur throttle `setInterval` mais GSAP poursuit son tween — le compteur affiche 0s alors que la barre de progression reste partiellement remplie.
+- **Cause :** `gsap.to(el, { width: '0%', duration: PHASE_SECONDS, ease: 'none' })` tournait en parallèle et indépendamment du `setInterval` qui décrémente `dayTimerSeconds`.
+- **Fix :** suppression du tween GSAP continu sur `width` ; la largeur de la barre est désormais recalculée à chaque tick du `setInterval` (`pct = dayTimerSeconds / totalSeconds`). GSAP conservé uniquement pour les transitions de couleur (or → orange ≤10s → rouge ≤5s).
+
+---
+
 # ROADMAP (idées / améliorations futures)
  
 - [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)

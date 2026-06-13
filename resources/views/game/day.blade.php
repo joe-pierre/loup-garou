@@ -360,30 +360,34 @@
 
             _startDayTimer() {
                 const el = document.getElementById('day-vote-timer');
+                const totalSeconds = {{ $game->timer('day_vote') }};
 
-                // Si le temps est déjà écoulé : barre à 0% et on arrête
                 if (PHASE_SECONDS <= 0) {
                     if (el) el.style.width = '0%';
                     this.dayTimerSeconds = 0;
                     return;
                 }
 
-                // Largeur initiale = ratio temps restant / timer total (90s par défaut)
-                const totalSeconds = {{ $game->timer('day_vote') }};
-                const initialPct   = Math.min(100, Math.round((PHASE_SECONDS / totalSeconds) * 100));
+                this.dayTimerSeconds = PHASE_SECONDS;
+                const initialPct = Math.min(100, Math.round((PHASE_SECONDS / totalSeconds) * 100));
                 if (el) el.style.width = initialPct + '%';
-
-                if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-                    if (el) gsap.to(el, { width: '0%', duration: PHASE_SECONDS, ease: 'none' });
-                }
 
                 const iv = setInterval(() => {
                     this.dayTimerSeconds = Math.max(0, this.dayTimerSeconds - 1);
+                    const pct = Math.round((this.dayTimerSeconds / totalSeconds) * 100);
+                    if (el) el.style.width = pct + '%';
+
+                    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                        if (this.dayTimerSeconds <= 5 && el) {
+                            gsap.to(el, { backgroundColor: '#ef4444', duration: 0.3, overwrite: true });
+                        } else if (this.dayTimerSeconds <= 10 && el) {
+                            gsap.to(el, { backgroundColor: '#f97316', duration: 0.3, overwrite: true });
+                        }
+                    }
+
                     if (this.dayTimerSeconds <= 0) {
                         clearInterval(iv);
-                        if (el && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-                            el.style.width = '0%';
-                        }
+                        if (el) el.style.width = '0%';
                     }
                 }, 1000);
             },

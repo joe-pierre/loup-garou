@@ -202,7 +202,7 @@
 > Chaque prompt est indépendant et produit sa propre branche + commit.
 > Respecter l'ordre A → E : B et E touchent tous deux `waiting-room.blade.php`.
 
-- [ ] **Prompt A** — Timer GSAP désynchronisé en arrière-plan (`fix/timer-gsap-sync`)
+- [x] **Prompt A** — Timer GSAP désynchronisé en arrière-plan (`fix/timer-gsap-sync`)
   - `day.blade.php` : `_startDayTimer()` synchronisé avec `setInterval`, GSAP limité aux changements de couleur
 - [ ] **Prompt B** — Anonymat du pseudo host pour les autres joueurs (`fix/host-anonymity`)
   - `config/game.php` : `night_start_delay` → 8s, `mayor_reveal` → 8s
