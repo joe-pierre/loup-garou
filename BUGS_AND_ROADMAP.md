@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-13 — Chat village indisponible pendant la résolution du vote jour
+
+- **Symptôme :** les joueurs ne pouvaient plus écrire dans le chat général pendant le statut `processing_day` (entre la fin du vote et le démarrage de la nuit/jour suivant).
+- **Cause :** `ChatService::sendMessage()` n'autorisait le canal `general` que pour `['electing_mayor', 'day']`.
+- **Fix :** ajout de `'processing_day'` à la liste des statuts autorisés pour le canal `general`.
+
+---
+
 ### [x] 2026-06-11 — Double-fire ProcessDayVote bloque la phase jour
 
 - **Symptôme :** la partie se bloque en phase jour — la résolution du vote est déclenchée deux fois

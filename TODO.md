@@ -207,7 +207,7 @@
 - [x] **Prompt B** — Anonymat du pseudo host pour les autres joueurs (`fix/host-anonymity`)
   - `config/game.php` : `night_start_delay` → 8s, `mayor_reveal` → 8s
   - `waiting-room.blade.php` : pseudo host masqué pour les non-host, badge "(Hôte)" pour le host lui-même
-- [ ] **Prompt C** — Chat en `processing_day` + rôles révélés des joueurs morts (`fix/day-improvements`)
+- [x] **Prompt C** — Chat en `processing_day` + rôles révélés des joueurs morts (`fix/day-improvements`)
   - `ChatService.php` : accepter `processing_day` pour le canal `general`
   - `day.blade.php` : affichage du rôle révélé sous le pseudo des joueurs morts + tri vivants en premier
 - [ ] **Prompt D** — Votes loups : afficher qui vote pour qui (`fix/wolves-vote-visibility`)
