@@ -25,7 +25,7 @@ class ChatService
         }
 
         if ($channel === 'general') {
-            if (! in_array($game->status, ['electing_mayor', 'day'])) {
+            if (! in_array($game->status, ['electing_mayor', 'day', 'processing_day'])) {
                 abort(409, 'Le chat général n\'est disponible que pendant l\'élection du maire et le jour.');
             }
         }

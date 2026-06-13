@@ -157,6 +157,12 @@
                             <span x-show="p.id === MY_PLAYER_ID" class="text-xs flex-shrink-0" style="color:rgba(232,224,208,0.3);">(toi)</span>
                             <span x-show="!p.is_alive" class="text-xs flex-shrink-0">💀</span>
                         </div>
+                        <span
+                            x-show="!p.is_alive && p.revealed_role_label"
+                            class="text-xs italic"
+                            style="color:rgba(232,224,208,0.4);"
+                            x-text="p.revealed_role_label"
+                        ></span>
                         <div class="vote-bar-wrap" x-show="totalVoteWeight > 0">
                             <div class="vote-bar-fill" :id="'vbar-' + p.id" :style="'width:' + getVotePercent(p.id) + '%'"></div>
                         </div>
@@ -256,10 +262,18 @@
 
 @php
     $playersJson = $players->map(fn ($p) => [
-        'id'       => $p->id,
-        'pseudo'   => $p->pseudo,
-        'is_mayor' => $p->is_mayor,
-        'is_alive' => $p->is_alive,
+        'id'                  => $p->id,
+        'pseudo'              => $p->pseudo,
+        'is_mayor'            => $p->is_mayor,
+        'is_alive'            => $p->is_alive,
+        'revealed_role'       => $p->is_alive ? null : $p->role,
+        'revealed_role_label' => $p->is_alive ? null : match($p->role) {
+            'werewolf' => 'Loup-Garou',
+            'seer'     => 'Voyante',
+            'witch'    => 'Sorcière',
+            'hunter'   => 'Chasseur',
+            default    => 'Villageois',
+        },
     ])->values();
 @endphp
 
@@ -308,6 +322,8 @@
             chatSending:  false,
 
             init() {
+                this.players = [...PLAYERS_DATA].sort((a, b) => b.is_alive - a.is_alive);
+
                 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                     gsap.fromTo('.reveal',
                         { opacity: 0, y: 40 },
@@ -352,7 +368,18 @@
                 // .player.eliminated → mettre à jour la liste locale
                 window.addEventListener('player-eliminated', (e) => {
                     const p = this.players.find(p => p.id === e.detail?.player_id);
-                    if (p) p.is_alive = false;
+                    if (p) {
+                        p.is_alive = false;
+                        const roleLabels = {
+                            werewolf: 'Loup-Garou',
+                            seer:     'Voyante',
+                            witch:    'Sorcière',
+                            hunter:   'Chasseur',
+                            villager: 'Villageois',
+                        };
+                        p.revealed_role       = e.detail?.role ?? null;
+                        p.revealed_role_label = roleLabels[e.detail?.role] ?? '';
+                    }
                 });
 
                 this._startDayTimer();
