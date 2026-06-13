@@ -134,10 +134,20 @@
                 <div class="role-desc" x-show="role === 'seer'" style="color: #c4b5fd;">
                     Chaque nuit, tu découvres la vraie nature d'un joueur de ton choix.
                 </div>
-                <div class="role-icon" x-show="role !== 'werewolf' && role !== 'seer'">🏘️</div>
-                <div class="role-name" x-show="role !== 'werewolf' && role !== 'seer'" style="color: #e8e0d0;">Villageois</div>
-                <div class="role-desc" x-show="role !== 'werewolf' && role !== 'seer'" style="color: #e8e0d0;">
+                <div class="role-icon" x-show="role !== 'werewolf' && role !== 'seer' && role !== 'witch' && role !== 'hunter'">🧑‍🌾</div>
+                <div class="role-name" x-show="role !== 'werewolf' && role !== 'seer' && role !== 'witch' && role !== 'hunter'" style="color: #e8e0d0;">Villageois</div>
+                <div class="role-desc" x-show="role !== 'werewolf' && role !== 'seer' && role !== 'witch' && role !== 'hunter'" style="color: #e8e0d0;">
                     Identifie et élimine les loups-garous avant qu'ils ne vous déciment.
+                </div>
+                <div class="role-icon" x-show="role === 'witch'">🧙‍♀️</div>
+                <div class="role-name" x-show="role === 'witch'" style="color: #3493d3;">Sorcière</div>
+                <div class="role-desc" x-show="role === 'witch'" style="color: #3493d3;">
+                    Tu peux sauver ou empoisonner un joueur chaque nuit.
+                </div>
+                <div class="role-icon" x-show="role === 'hunter'">🏹</div>
+                <div class="role-name" x-show="role === 'hunter'" style="color: #fbbf24;">Chasseur</div>
+                <div class="role-desc" x-show="role === 'hunter'" style="color: #fbbf24;">
+                    Si tu meurs, tu emportes un ennemi avec toi.
                 </div>
             </div>
         </div>
@@ -172,7 +182,7 @@
 @push('scripts')
 <script>
     const GAME_ID    = {{ $game->id }};
-    const ROLE_NAMES = { villager: 'Villageois', werewolf: 'Loup-Garou', seer: 'Voyante' };
+    const ROLE_NAMES = { villager: 'Villageois', werewolf: 'Loup-Garou', seer: 'Voyante', witch: 'Sorcière', hunter: 'Chasseur' };
 
     function roleReveal() {
         return {
