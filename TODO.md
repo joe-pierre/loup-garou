@@ -213,7 +213,7 @@
 - [x] **Prompt D** — Votes loups : afficher qui vote pour qui (`fix/wolves-vote-visibility`)
   - `VoteService::getNightVoteState()` : enrichir le payload avec `target_pseudo`
   - `night.blade.php` : affichage "Loup → Cible" dans la section "Votes de la meute"
-- [ ] **Prompt E** — Config host (timers + rôles) déplacée en modale (`feat/settings-modal`)
+- [x] **Prompt E** — Config host (timers + rôles) déplacée en modale (`feat/settings-modal`)
   - `waiting-room.blade.php` : suppression des panneaux inline `#wr-timers` et `#wr-roles`, remplacement par bouton ⚙️ + modale à deux onglets
   - Suppression du bloc "Exclure un joueur" dupliqué (lignes ~134 et ~185)
 

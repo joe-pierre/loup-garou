@@ -210,6 +210,14 @@
 
 ---
 
+### [x] 2026-06-13 — Bloc "Exclure un joueur" dupliqué dans waiting-room.blade.php
+
+- **Symptôme :** le bouton "Exclure un joueur" était affiché deux fois dans la salle d'attente, avant et après la liste des joueurs.
+- **Cause :** deux blocs identiques laissés en place lors d'itérations successives sur la vue.
+- **Fix :** suppression du bloc dupliqué (avant la liste des joueurs) ; seul celui après la liste est conservé.
+
+---
+
 # ROADMAP (idées / améliorations futures)
  
 - [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)
@@ -217,4 +225,3 @@
 - [ ] Rôles v1.3+ : Loup Blanc, Cupidon, Petite Fille
 - [ ] State machine : étendre Symfony Workflow aux statuts intermédiaires (processing_night, wolves_turn) — post-Étape 4 si nécessaire
 - [ ] Audit performance post-v1.2 : N+1 queries, temps réponse < 200ms (Laravel Telescope)
-- [ ] waiting-room.blade.php : bloc "Exclure un joueur" dupliqué (affiché deux fois, avant et après la liste des joueurs) — supprimer un des deux blocs identiques (lignes ~134 et ~185)
