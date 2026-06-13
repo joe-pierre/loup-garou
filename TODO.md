@@ -138,6 +138,10 @@
 - [x] Tâche J — ProcessMayorSuccession : flag shouldStartNight — correctif bug modale bloquée si successeur tué nuit suivante
 - [x] Tâche K — Tests : non-régression succession en cascade (successeur tué nuit suivante)
 
+## Phase 16 — Bugfix modale succession maire côté client (2026-06-13)
+- [x] game-state.js : compteur successionDepth + handleNightStarted attend la fin des successions avant redirection /night
+- [x] day.blade.php : garde-fou 20s sur la modale "Succession du Maire"
+
 ## Phase v1.2 — Améliorations différées
 - [x] **Étape 1 — Réorganisation documentaire**
   (SPEC_TIMERS.md, SPEC_TRANSITIONS.md)

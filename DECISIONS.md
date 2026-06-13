@@ -444,3 +444,13 @@ SPEC.md §4 mis à jour pour refléter ce choix.
 **Fix / Décision :** Option 2 retenue. `ProcessNightActions` ne contient plus aucun appel à `startDay()`. Il dispatche toujours `ProcessNightEnd` avec `delay(mayor_succession + 5s)`. `PhaseManager::endNight()` contient la logique métier (guard status, WinConditionChecker, startDay). Le job n'est qu'un orchestrateur timer — conforme à CLAUDE.md.
 **Leçon :** Tout job qui se termine par "et après, on passe à la phase suivante" doit déléguer cette transition à un job ou une méthode de service dédiée, jamais l'inliner. Cela permet de couvrir tous les chemins de sortie sans multiplier les branches.
 **Statut :** 🔵 Choix assumé
+---
+
+## [RÉSOLU] Compteur successionDepth pour différer la redirection nuit pendant une cascade de successions
+
+**Contexte :** `resources/js/game-state.js`, `resources/views/game/day.blade.php`
+**Symptôme / Problème :** La modale "Succession du Maire" ne se fermait jamais quand le maire était éliminé le jour. `handleNightStarted()` redirigeait immédiatement vers `/night`, détruisant la page `/day` et tous ses `window.addEventListener` — dont celui qui ferme la modale sur `mayor-succession-done`. Un flag booléen simple (`successionInProgress`) aurait résolu le cas à une seule succession mais cassé la cascade (successeur élu éliminé à son tour le même jour → deuxième `MayorSuccessionStarted` reçu avant que le premier `done` n'ait remis le flag à `false`).
+**Cause / Alternatives :** (1) Flag booléen — rejeté car non réentrant sur les cascades N successions consécutives. (2) Compteur `successionDepth` incrémenté sur chaque `.mayor.succession.started` et décrémenté (avec `Math.max(0, ...)` comme garde-fou) sur chaque `MayorSuccessionDone` — réentrant par construction.
+**Fix / Décision :** `handleNightStarted()` vérifie `successionDepth > 0` : si oui, attend un event `mayor-succession-done` qui ramène le compteur à 0 avant d'appeler `_doNightRedirect()` (logique d'animation/redirection extraite en méthode dédiée). Garde-fou complémentaire côté `day.blade.php` : `openSuccessionModal()` arme un `setTimeout(20000)` qui force `closeSuccessionModal()` si `mayor-succession-done` n'arrive jamais (perte réseau, bug serveur).
+**Leçon :** Pour tout état "N opérations asynchrones en cours" qui peut se déclencher en cascade (le même event de fin peut re-déclencher l'event de début avant d'être traité), utiliser un compteur réentrant plutôt qu'un flag booléen. Par ailleurs, toute redirection de page (`window.location.href`) détruit immédiatement tous les `window.addEventListener` de la page courante — une modale/état "en cours" doit être résolu (ou avoir un timeout de secours) AVANT toute redirection déclenchée par un autre handler.
+**Statut :** ✅ Résolu
