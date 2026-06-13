@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-13 — Votes de la meute illisibles (cible non affichée)
+
+- **Symptôme :** dans la section "Votes de la meute" du canal loups, seul un ✓/? indiquait si un loup avait voté, sans préciser pour qui.
+- **Cause :** `VoteService::getNightVoteState()` ne renvoyait que `has_voted`, sans `target_player_id`/`target_pseudo`.
+- **Fix :** `getNightVoteState()` enrichit chaque entrée avec `target_player_id` et `target_pseudo` ; `night.blade.php` affiche "Loup → Cible" ou "n'a pas encore voté".
+
+---
+
 ### [x] 2026-06-13 — Chat village indisponible pendant la résolution du vote jour
 
 - **Symptôme :** les joueurs ne pouvaient plus écrire dans le chat général pendant le statut `processing_day` (entre la fin du vote et le démarrage de la nuit/jour suivant).

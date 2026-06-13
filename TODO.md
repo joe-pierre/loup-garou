@@ -210,7 +210,7 @@
 - [x] **Prompt C** — Chat en `processing_day` + rôles révélés des joueurs morts (`fix/day-improvements`)
   - `ChatService.php` : accepter `processing_day` pour le canal `general`
   - `day.blade.php` : affichage du rôle révélé sous le pseudo des joueurs morts + tri vivants en premier
-- [ ] **Prompt D** — Votes loups : afficher qui vote pour qui (`fix/wolves-vote-visibility`)
+- [x] **Prompt D** — Votes loups : afficher qui vote pour qui (`fix/wolves-vote-visibility`)
   - `VoteService::getNightVoteState()` : enrichir le payload avec `target_pseudo`
   - `night.blade.php` : affichage "Loup → Cible" dans la section "Votes de la meute"
 - [ ] **Prompt E** — Config host (timers + rôles) déplacée en modale (`feat/settings-modal`)
