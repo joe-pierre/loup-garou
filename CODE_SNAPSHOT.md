@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 22h54
+Generated at: 22h58
 
 ## PHP Analysis (Core Logic)
 
@@ -858,7 +858,7 @@ VoteService.php
       - resolveDayVote(Game $game) → void
       - castDayVote(GamePlayer $voter, int $targetId) → return $this->getDayVoteSummary($voter->game)
       - getDayVoteSummary(Game $game) → return GameAction::where('game_id', $game->id)->where('type', 'day_vote')->where('round', $game->round)->get()->groupBy('target_player_id')->map(fn($group) => $group->sum('weight'))->toArray()
-      - getNightVoteState(Game $game) → return $aliveWolves->map(fn(GamePlayer $w) => ['player_id' => $w->id, 'pseudo' => $w->pseudo, 'has_voted' => in_array($w->id, $votedWolfIds)])->values()->toArray()
+      - getNightVoteState(Game $game) → return $aliveWolves->map(fn(GamePlayer $w) => ['player_id' => $w->id, 'pseudo' => $w->pseudo, 'has_voted' => $votes->has($w->id), 'target_player_id' => $votes->get($w->id)?->target_player_id, 'target_pseudo' => $votes->has($w->id) ? $targets[$votes[$w->id]->target_player_id] ?? null : null])->values()->toArray()
       - getMayorVoteTotals(Game $game) → return GameAction::where('game_actions.game_id', $game->id)->where('game_actions.type', 'mayor_vote')->where('game_actions.round', $game->round)->join('game_players', 'game_actions.target_player_id', '=', 'game_players.id')->selectRaw('game_actions.target_player_id, game_players.pseudo, COUNT(*) as vote_count')->groupBy('game_actions.target_player_id', 'game_players.pseudo')->get()->map(fn($row) => ['target_player_id' => $row->target_player_id, 'pseudo' => $row->pseudo, 'vote_count' => (int) $row->vote_count])->values()->toArray()
 
 // app/Services/PhaseManager.php
