@@ -61,6 +61,17 @@
         padding: 0.5rem 1.25rem; font-family: 'Cinzel', serif; font-weight: 600;
     }
     .btn-primary:hover { background-color: #e0c068; transform: translateY(-2px); }
+
+    .tab-btn {
+        font-family: 'Cinzel', serif; font-size: 0.75rem;
+        padding: 0.4rem 1.1rem; border-radius: 0.375rem;
+        color: rgba(232,224,208,0.45); transition: all 0.2s;
+    }
+    .tab-btn.active {
+        background-color: rgba(201,168,76,0.12);
+        color: #c9a84c;
+        border: 1px solid rgba(201,168,76,0.3);
+    }
 </style>
 @endpush
 
@@ -131,87 +142,18 @@
             <p class="text-center mt-3 text-sm font-medieval" style="color: #c9a84c;" x-text="statusMessage"></p>
         </div>
 
-        {{-- Bouton exclure (host uniquement) --}}
-        <div class="text-center mb-4" x-show="isHost && players.length > 1">
+        {{-- Bouton Paramètres (host uniquement) --}}
+        <div class="text-center mb-4">
             <button
+                x-show="isHost"
+                @click="showSettingsModal = true"
                 class="text-xs px-4 py-2 rounded-lg transition-opacity hover:opacity-75"
-                style="background-color: rgba(139,0,0,0.2); border: 1px solid rgba(139,0,0,0.4); color: #fca5a5;"
-                @click="openExcludeModal()"
-            >
-                Exclure un joueur
+                style="background-color:rgba(201,168,76,0.12);
+                       border:1px solid rgba(201,168,76,0.3);
+                       color:#c9a84c;">
+                ⚙️ Paramètres de la partie
             </button>
         </div>
-
-        @if($player->is_host)
-        {{-- Réglages des timers (host uniquement) --}}
-        <div id="wr-timers" class="mb-6 rounded-lg p-5" x-data="timerSettings()" style="background-color: #111827; border: 1px solid rgba(201,168,76,0.25);">
-            <h3 class="font-medieval text-base mb-4 tracking-wide" style="color: #c9a84c;">Réglages des timers</h3>
-
-            <template x-for="key in Object.keys(timers)" :key="key">
-                <div class="mb-4">
-                    <div class="flex justify-between text-sm mb-1" style="color: #e8e0d0;">
-                        <span x-text="labels[key]"></span>
-                        <span style="color: #c9a84c;" x-text="timers[key] + ' s'"></span>
-                    </div>
-                    <input
-                        type="range"
-                        :min="limits[key].min"
-                        :max="limits[key].max"
-                        step="1"
-                        x-model.number="timers[key]"
-                        class="w-full"
-                    >
-                    <div class="flex justify-between text-xs mt-1" style="color: #e8e0d0; opacity: 0.4;">
-                        <span x-text="limits[key].min + ' s'"></span>
-                        <span x-text="limits[key].max + ' s'"></span>
-                    </div>
-                </div>
-            </template>
-
-            <div class="flex items-center gap-3 mt-2">
-                <button
-                    @click="save()"
-                    :disabled="saving"
-                    class="btn-primary px-4 py-2 text-sm disabled:opacity-50"
-                >
-                    <span x-show="!saving">Enregistrer les timers</span>
-                    <span x-show="saving">Enregistrement…</span>
-                </button>
-                <span x-show="saved" class="text-sm" style="color: #4ade80;">Enregistré ✓</span>
-                <span x-show="error" x-text="error" class="text-sm" style="color: #fca5a5;"></span>
-            </div>
-        </div>
-
-        {{-- Réglages de la composition des rôles (host uniquement) --}}
-        <div id="wr-roles" class="mb-6 rounded-lg p-5" x-data="roleSettings()" style="background-color: #111827; border: 1px solid rgba(201,168,76,0.25);">
-            <h3 class="font-medieval text-base mb-4 tracking-wide" style="color: #c9a84c;">Composition des rôles</h3>
-
-            <template x-for="key in Object.keys(roles)" :key="key">
-                <label class="flex items-center justify-between mb-3 cursor-pointer">
-                    <span class="text-sm" style="color: #e8e0d0;" x-text="labels[key]"></span>
-                    <input
-                        type="checkbox"
-                        :checked="roles[key] === 1"
-                        @change="roles[key] = $event.target.checked ? 1 : 0"
-                        class="w-5 h-5"
-                    >
-                </label>
-            </template>
-
-            <div class="flex items-center gap-3 mt-2">
-                <button
-                    @click="save()"
-                    :disabled="saving"
-                    class="btn-primary px-4 py-2 text-sm disabled:opacity-50"
-                >
-                    <span x-show="!saving">Enregistrer la composition</span>
-                    <span x-show="saving">Enregistrement…</span>
-                </button>
-                <span x-show="saved" class="text-sm" style="color: #4ade80;">Enregistré ✓</span>
-                <span x-show="error" x-text="error" class="text-sm" style="color: #fca5a5;"></span>
-            </div>
-        </div>
-        @endif
 
         {{-- Liste des joueurs --}}
         <div id="wr-players" class="mb-6 flex flex-col gap-3">
@@ -340,6 +282,113 @@
                         <span x-show="excluding">Exclusion…</span>
                     </button>
                 </div>
+            </div>
+        </div>
+
+        {{-- Modale paramètres de la partie (host uniquement) --}}
+        <div x-show="showSettingsModal"
+             x-cloak
+             class="fixed inset-0 z-50 flex items-center justify-center"
+             style="background:rgba(0,0,0,0.75);"
+             @click.self="showSettingsModal = false">
+
+            <div class="relative w-full max-w-lg mx-4 rounded-xl p-6"
+                 style="background:#111827;
+                        border:1px solid rgba(201,168,76,0.35);">
+
+                <button @click="showSettingsModal = false"
+                        class="absolute top-4 right-4 text-lg"
+                        style="color:rgba(232,224,208,0.5);">
+                    ✕
+                </button>
+
+                <h2 class="font-cinzel text-lg mb-4"
+                    style="color:#c9a84c;">
+                    Paramètres de la partie
+                </h2>
+
+                <div class="flex gap-2 mb-6">
+                    <button @click="settingsTab = 'timers'"
+                            class="tab-btn"
+                            :class="{ active: settingsTab === 'timers' }">
+                        Timers
+                    </button>
+                    <button @click="settingsTab = 'roles'"
+                            class="tab-btn"
+                            :class="{ active: settingsTab === 'roles' }">
+                        Rôles
+                    </button>
+                </div>
+
+                {{-- Contenu Timers --}}
+                <div x-show="settingsTab === 'timers'" x-data="timerSettings()">
+                    <h3 class="font-medieval text-base mb-4 tracking-wide" style="color: #c9a84c;">Réglages des timers</h3>
+
+                    <template x-for="key in Object.keys(timers)" :key="key">
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm mb-1" style="color: #e8e0d0;">
+                                <span x-text="labels[key]"></span>
+                                <span style="color: #c9a84c;" x-text="timers[key] + ' s'"></span>
+                            </div>
+                            <input
+                                type="range"
+                                :min="limits[key].min"
+                                :max="limits[key].max"
+                                step="1"
+                                x-model.number="timers[key]"
+                                class="w-full"
+                            >
+                            <div class="flex justify-between text-xs mt-1" style="color: #e8e0d0; opacity: 0.4;">
+                                <span x-text="limits[key].min + ' s'"></span>
+                                <span x-text="limits[key].max + ' s'"></span>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div class="flex items-center gap-3 mt-2">
+                        <button
+                            @click="save()"
+                            :disabled="saving"
+                            class="btn-primary px-4 py-2 text-sm disabled:opacity-50"
+                        >
+                            <span x-show="!saving">Enregistrer les timers</span>
+                            <span x-show="saving">Enregistrement…</span>
+                        </button>
+                        <span x-show="saved" class="text-sm" style="color: #4ade80;">Enregistré ✓</span>
+                        <span x-show="error" x-text="error" class="text-sm" style="color: #fca5a5;"></span>
+                    </div>
+                </div>
+
+                {{-- Contenu Rôles --}}
+                <div x-show="settingsTab === 'roles'" x-data="roleSettings()">
+                    <h3 class="font-medieval text-base mb-4 tracking-wide" style="color: #c9a84c;">Composition des rôles</h3>
+
+                    <template x-for="key in Object.keys(roles)" :key="key">
+                        <label class="flex items-center justify-between mb-3 cursor-pointer">
+                            <span class="text-sm" style="color: #e8e0d0;" x-text="labels[key]"></span>
+                            <input
+                                type="checkbox"
+                                :checked="roles[key] === 1"
+                                @change="roles[key] = $event.target.checked ? 1 : 0"
+                                class="w-5 h-5"
+                            >
+                        </label>
+                    </template>
+
+                    <div class="flex items-center gap-3 mt-2">
+                        <button
+                            @click="save()"
+                            :disabled="saving"
+                            class="btn-primary px-4 py-2 text-sm disabled:opacity-50"
+                        >
+                            <span x-show="!saving">Enregistrer la composition</span>
+                            <span x-show="saving">Enregistrement…</span>
+                        </button>
+                        <span x-show="saved" class="text-sm" style="color: #4ade80;">Enregistré ✓</span>
+                        <span x-show="error" x-text="error" class="text-sm" style="color: #fca5a5;"></span>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -483,6 +532,8 @@
 
             copied:           false,
             confirmQuit:      false,
+            showSettingsModal: false,
+            settingsTab:      'timers',
             showExcludeModal: false,
             excludeTarget:    null,
             excludeReason:    '',
