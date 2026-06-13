@@ -186,6 +186,14 @@
 
 ---
 
+### [x] 2026-06-13 — Pseudo de l'hôte visible par les autres joueurs en salle d'attente
+
+- **Symptôme :** tous les joueurs voyaient le pseudo réel de l'hôte dans la liste de la salle d'attente, alors qu'il n'a pas de rôle de jeu particulier à cette étape.
+- **Cause :** `waiting-room.blade.php` affichait `p.pseudo` sans distinction pour tous les joueurs, y compris l'hôte.
+- **Fix :** affichage de "Hôte" à la place du pseudo pour les autres joueurs ; l'hôte continue de voir son propre pseudo, complété d'un badge "(Hôte)". `night_start_delay` et `mayor_reveal` passés de 4s/5s à 8s dans `config/game.php`.
+
+---
+
 # ROADMAP (idées / améliorations futures)
  
 - [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)
