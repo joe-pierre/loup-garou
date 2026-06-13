@@ -407,16 +407,24 @@ class VoteService
             ->whereIn('role', ['werewolf', 'white_wolf'])
             ->get();
 
-        $votedWolfIds = GameAction::where('game_id', $game->id)
+        $votes = GameAction::where('game_id', $game->id)
             ->where('type', 'night_vote')
             ->where('round', $game->round)
-            ->pluck('player_id')
-            ->toArray();
+            ->get()
+            ->keyBy('player_id');
+
+        $targetIds = $votes->pluck('target_player_id')->filter()->unique();
+        $targets   = GamePlayer::whereIn('id', $targetIds)
+            ->pluck('pseudo', 'id');
 
         return $aliveWolves->map(fn (GamePlayer $w) => [
-            'player_id' => $w->id,
-            'pseudo'    => $w->pseudo,
-            'has_voted' => in_array($w->id, $votedWolfIds),
+            'player_id'        => $w->id,
+            'pseudo'           => $w->pseudo,
+            'has_voted'        => $votes->has($w->id),
+            'target_player_id' => $votes->get($w->id)?->target_player_id,
+            'target_pseudo'    => $votes->has($w->id)
+                ? ($targets[$votes[$w->id]->target_player_id] ?? null)
+                : null,
         ])->values()->toArray();
     }
 

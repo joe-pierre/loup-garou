@@ -316,11 +316,20 @@
                 <p class="text-xs mb-2" style="color:rgba(232,224,208,0.85);">Votes de la meute :</p>
                 <div class="flex flex-col gap-1">
                     <template x-for="wolf in wolfVoteState" :key="wolf.player_id">
-                        <div class="flex items-center gap-2 text-xs" style="color:rgba(232,224,208,0.85);">
-                            <span x-text="wolf.pseudo"></span>
+                        <div class="flex items-center gap-2 text-xs py-1"
+                             style="color:rgba(232,224,208,0.85);">
+                            <span class="font-semibold"
+                                  style="color:#ff8888;"
+                                  x-text="wolf.pseudo"></span>
                             <span style="color:rgba(232,224,208,0.25);">→</span>
-                            <span x-text="wolf.has_voted ? '✓' : '?'"
-                                  :style="wolf.has_voted ? 'color:#16a34a' : 'color:rgba(232,224,208,0.25)'"></span>
+                            <span x-show="wolf.has_voted && wolf.target_pseudo"
+                                  style="color:#ff4444;font-weight:600;"
+                                  x-text="wolf.target_pseudo"></span>
+                            <span x-show="!wolf.has_voted"
+                                  class="italic"
+                                  style="color:rgba(232,224,208,0.3);">
+                                n'a pas encore voté
+                            </span>
                         </div>
                     </template>
                 </div>
