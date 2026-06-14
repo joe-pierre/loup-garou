@@ -336,16 +336,18 @@
                 // On s'abonne à Echo uniquement pour les events locaux à cette vue
                 // (day.vote.cast, chat) pour éviter les doubles handlers.
                 window.Echo.channel(`game.${GAME_ID}`)
-                    .listen('.day.vote.cast',   (data) => { this._updateVoteBars(data.votes ?? []); })
-                    .listen('.chat.message.sent', (data) => {
-                        if (data.channel === 'general') {
-                            this.chatMessages.push(data);
-                            this.$nextTick(() => {
-                                const el = this.$refs.chatMessages;
-                                if (el) el.scrollTop = el.scrollHeight;
-                            });
-                        }
-                    });
+                    .listen('.day.vote.cast', (data) => { this._updateVoteBars(data.votes ?? []); });
+
+                // Messages chat dispatchés par game-state.js (évite le double abonnement Echo)
+                window.addEventListener('chat-message', (e) => {
+                    if (e.detail?.channel === 'general') {
+                        this.chatMessages.push(e.detail);
+                        this.$nextTick(() => {
+                            const el = this.$refs.chatMessages;
+                            if (el) el.scrollTop = el.scrollHeight;
+                        });
+                    }
+                });
 
                 // Écoute des events window dispatchés par game-state.js
                 window.addEventListener('i-was-eliminated', () => {
