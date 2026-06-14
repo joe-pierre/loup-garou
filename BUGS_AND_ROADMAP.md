@@ -1,5 +1,19 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-14 — Succession maire : is_mayor non retiré à l'ancien maire
+
+- **Symptôme :** après une succession de nuit, l'ancien maire (mort) gardait
+  is_mayor = true. Le successeur pouvait ne pas recevoir is_mayor = true.
+  Quand le successeur était éliminé le jour, resolveDayVote() ne détectait pas
+  qu'il était maire → pas de nouvelle succession → partie bloquée en processing_day.
+- **Cause :** ProcessMayorSuccession::handle() n'appelait pas
+  $locked->players()->update(['is_mayor' => false]) avant d'assigner le flag
+  au successeur.
+- **Fix :** reset global is_mayor = false sur tous les joueurs de la partie
+  avant chaque assignation de nouveau maire, dans la transaction DB.
+
+---
+
 ### [x] 2026-06-13 — Votes de la meute illisibles (cible non affichée)
 
 - **Symptôme :** dans la section "Votes de la meute" du canal loups, seul un ✓/? indiquait si un loup avait voté, sans préciser pour qui.

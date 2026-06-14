@@ -186,6 +186,7 @@
 
 - [x] Tâche J — `ProcessMayorSuccession` : flag `shouldStartNight` — correctif bug modale bloquée si successeur tué nuit suivante
 - [x] Tâche K — Tests : non-régression succession en cascade (successeur tué nuit suivante)
+- [x] Fix is_mayor non retiré à l'ancien maire lors d'une succession (2026-06-14)
 
 ---
 
