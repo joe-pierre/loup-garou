@@ -311,6 +311,14 @@ export function gameState(gameId, userId) {
         handlePlayerEliminated(e) {
             this._markPlayerDead(e.player_id);
 
+            const roleLabels = {
+                werewolf: 'Loup-Garou', seer: 'Voyante', witch: 'Sorcière',
+                hunter: 'Chasseur', villager: 'Villageois',
+            };
+            const roleLabel = roleLabels[e.role] ?? e.role ?? '';
+            const msg = `💀 ${e.pseudo} a été éliminé${roleLabel ? ' — ' + roleLabel : ''}`;
+            this._dispatchToast(msg, e.role === 'werewolf' ? 'success' : 'info');
+
             // Propager à toutes les vues pour mise à jour de leurs listes locales
             window.dispatchEvent(new CustomEvent('player-eliminated', { detail: e }));
 

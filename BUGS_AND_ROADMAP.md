@@ -1,5 +1,36 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-14 — Chasseur ne pouvait pas exercer son pouvoir si éliminé le jour
+
+- **Symptôme :** quand le chasseur était éliminé par vote jour, aucune interface
+  ne s'affichait — ProcessHunterAutoAction s'exécutait sans que le joueur ait pu tirer.
+- **Cause :** day.blade.php n'écoutait pas l'event hunter-turn-started dispatché
+  par game-state.js sur window. Seul night.blade.php gérait cet event.
+- **Fix :** ajout d'une modale chasseur dans day.blade.php déclenchée par
+  window.addEventListener('hunter-turn-started'), avec liste des cibles vivantes,
+  timer visuel et appel POST /hunter/shoot.
+
+---
+
+### [x] 2026-06-14 — Éliminations silencieuses pour les autres joueurs
+
+- **Symptôme :** quand un joueur était éliminé, les autres joueurs ne voyaient
+  aucune annonce visuelle — seule la liste des joueurs se mettait à jour silencieusement.
+- **Cause :** handlePlayerEliminated() dans game-state.js ne dispatchait pas de toast.
+- **Fix :** ajout d'un _dispatchToast() dans handlePlayerEliminated() avec le pseudo
+  et le rôle du joueur éliminé, visible par tous les joueurs connectés.
+
+---
+
+### [x] 2026-06-14 — Timers UX trop courts (résultat maire, modale succession)
+
+- **Symptôme :** le résultat de l'élection du maire disparaissait après 4s,
+  la modale succession se fermait après 2.5s — trop rapide pour être lu confortablement.
+- **Cause :** valeurs setTimeout codées en dur trop basses.
+- **Fix :** résultat maire → 6000ms, fermeture modale succession → 5000ms.
+
+---
+
 ### [x] 2026-06-14 — Messages de chat en doublon : cause racine (double abonnement Echo même canal)
 
 - **Symptôme :** chaque message envoyé dans le chat général (jour) apparaissait deux fois.
@@ -307,3 +338,7 @@
 - [ ] Audit performance post-v1.2 : N+1 queries, temps réponse < 200ms (Laravel Telescope)
 - [ ] Implémenter PhaseAnnouncement event + PhaseAnnouncementTest.php (SPEC_TRANSITIONS.md §3)
 - [ ] `phase-header.blade.php` : `$roleLabel`/`$roleBg`/`$roleColor` ne couvrent pas encore witch/hunter et utilisent toujours 🏘 pour villageois (même pattern que `player-list.blade.php`)
+- [ ] PhaseAnnouncement (SPEC_TRANSITIONS.md) — overlays de transition entre phases
+      (nuit → jour, jour → nuit) non encore implémentés — prévu post-v1.2
+- [ ] Révision timers par défaut config/game.php (day_vote, seer, werewolves)
+      et valeurs minimales — prompt séparé après validation prod

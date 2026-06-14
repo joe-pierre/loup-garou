@@ -229,6 +229,11 @@
 - [x] **Prompt 4** — Modale succession : flou + délai (`fix/succession-modal-ux`)
 - [ ] **Prompt 5** — Chat UX : textarea + bouton (`feat/chat-ux-improvements`)
 - [x] **Prompt 6** — Canal des fantômes phase jour (`feat/dead-chat-day`)
+- [x] **Fix chasseur jour** — modale chasseur dans day.blade.php déclenchée
+      par hunter-turn-started (fix/hunter-day-panel-and-ux)
+- [x] **Fix toast éliminations** — toast visible par tous à chaque mort dans
+      game-state.js::handlePlayerEliminated
+- [x] **Fix timers UX** — résultat maire 6s, fermeture modale succession 5s
 
 ---
 
@@ -241,6 +246,9 @@
 - [x] **Étape 5** — Tests intégration v1.2 — couvrir les nouveaux endpoints, jobs auto, file d'annonces, reconnexion
   - Note : `PhaseAnnouncementTest.php` non créé — event `PhaseAnnouncement` non implémenté (prévu SPEC_TRANSITIONS.md)
 - [ ] **Rôles v1.3+** (hors périmètre v1.2) — Loup Blanc, Cupidon, Petite Fille
+- [ ] **Timers par défaut** — révision des valeurs par défaut et minimales
+      dans config/game.php (day_vote, seer, werewolves) — à faire en prompt séparé
+      après validation en prod du fix/hunter-day-panel-and-ux
 
 ---
 

@@ -284,6 +284,69 @@
         </div>
     </div>
 
+    {{-- ═══════ MODALE CHASSEUR ═══════ --}}
+    <div
+        x-show="hunterOpen"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 flex items-center justify-center z-50 px-4"
+        style="background-color: rgba(10,15,30,0.88);"
+    >
+        <div class="w-full max-w-sm p-6 rounded-xl"
+             style="background:#111827; border:2px solid rgba(201,168,76,0.5);">
+            <div class="text-center mb-4">
+                <p class="font-medieval text-xl font-bold mb-1" style="color:#c9a84c;">
+                    🏹 Ton dernier geste, Chasseur...
+                </p>
+                <p class="text-xs italic mb-3" style="color:rgba(232,224,208,0.6);">
+                    Choisis qui t'accompagnera dans la tombe.
+                </p>
+                <div class="flex justify-between text-xs mb-1" style="color:rgba(232,224,208,0.4);">
+                    <span>Temps restant</span>
+                    <span x-text="hunterTimerSeconds + 's'"
+                          :style="hunterTimerSeconds <= 5 ? 'color:#ef4444' : hunterTimerSeconds <= 10 ? 'color:#f97316' : 'color:#c9a84c'"></span>
+                </div>
+                <div style="height:3px;border-radius:9999px;background:rgba(201,168,76,0.12);overflow:hidden;margin-bottom:1rem;">
+                    <div :style="'width:' + (hunterTimerSeconds / {{ $game->timer('hunter') }} * 100) + '%;height:100%;border-radius:9999px;background:#c9a84c;transition:width 1s linear;'"></div>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-2 mb-4" style="max-height:200px;overflow-y:auto;">
+                <template x-for="p in players.filter(p => p.is_alive)" :key="p.id">
+                    <button
+                        type="button"
+                        @click="hunterSelectedTarget = p.id"
+                        class="flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all"
+                        :style="hunterSelectedTarget === p.id
+                            ? 'background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.5);'
+                            : 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);'"
+                        :disabled="hunterActionDone"
+                    >
+                        <div style="width:2rem;height:2rem;border-radius:50%;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:600;font-size:0.75rem;color:#c9a84c;flex-shrink:0;"
+                             x-text="p.pseudo.charAt(0).toUpperCase()"></div>
+                        <span class="text-sm" style="color:#e8e0d0;" x-text="p.pseudo"></span>
+                        <span x-show="hunterSelectedTarget === p.id" class="ml-auto text-xs" style="color:#c9a84c;">✓</span>
+                    </button>
+                </template>
+            </div>
+
+            <button
+                @click="hunterShoot()"
+                :disabled="!hunterSelectedTarget || hunterSubmitting || hunterActionDone"
+                class="w-full py-3 rounded-xl font-medieval font-semibold text-sm disabled:opacity-40"
+                style="background-color:#c9a84c;color:#0a0f1e;"
+            >
+                <span x-show="!hunterSubmitting && !hunterActionDone">🏹 Tirer</span>
+                <span x-show="hunterSubmitting">Tir en cours…</span>
+                <span x-show="hunterActionDone">✓ Tir effectué</span>
+            </button>
+        </div>
+    </div>
+
     {{-- ═══════ MODALE SUCCESSION — lecture seule (automatique) ═══════ --}}
     <div
         x-show="successionOpen"
@@ -363,6 +426,13 @@
             newMayorPseudo:   '',
             _successionTimer: null,
 
+            hunterOpen:           false,
+            hunterSelectedTarget: null,
+            hunterSubmitting:     false,
+            hunterActionDone:     false,
+            hunterTimerSeconds:   0,
+            _hunterTimerInterval: null,
+
             isAlive:         MY_IS_ALIVE,
             showDeathBanner: sessionStorage.getItem('dead_' + MY_PLAYER_ID) === '1',
 
@@ -429,6 +499,20 @@
                 window.addEventListener('mayor-succession-done', (e) => {
                     this.newMayorPseudo = e.detail?.new_mayor_pseudo ?? '';
                     this.closeSuccessionModal();
+                });
+                window.addEventListener('hunter-turn-started', (e) => {
+                    this.hunterOpen           = true;
+                    this.hunterSelectedTarget = null;
+                    this.hunterSubmitting     = false;
+                    this.hunterActionDone     = false;
+                    this.hunterTimerSeconds   = e.detail?.timer ?? {{ $game->timer('hunter') }};
+                    this._hunterTimerInterval = setInterval(() => {
+                        this.hunterTimerSeconds = Math.max(0, this.hunterTimerSeconds - 1);
+                        if (this.hunterTimerSeconds <= 0) {
+                            clearInterval(this._hunterTimerInterval);
+                            this.hunterOpen = false;
+                        }
+                    }, 1000);
                 });
                 // .no.elimination → game-state.js affiche le toast, on écoute aussi localement
                 // pour afficher le message inline
@@ -598,11 +682,34 @@
                 // Délai avant fermeture pour laisser le temps de voir le résultat
                 setTimeout(() => {
                     this.successionOpen = false;
-                }, 2500);
+                }, 5000);
                 if (this._successionTimer) {
                     clearTimeout(this._successionTimer);
                     this._successionTimer = null;
                 }
+            },
+
+            async hunterShoot() {
+                if (!this.hunterSelectedTarget || this.hunterSubmitting || this.hunterActionDone) return;
+                this.hunterSubmitting = true;
+                try {
+                    const res = await fetch(`/game/${GAME_ID}/hunter/shoot`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
+                        body: JSON.stringify({ target_player_id: this.hunterSelectedTarget }),
+                    });
+                    const json = await res.json();
+                    if (json.success) {
+                        this.hunterActionDone = true;
+                        clearInterval(this._hunterTimerInterval);
+                        setTimeout(() => { this.hunterOpen = false; }, 2000);
+                    }
+                } catch { }
+                finally { this.hunterSubmitting = false; }
             },
 
             submitQuit() {
