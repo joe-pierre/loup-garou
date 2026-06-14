@@ -1,3 +1,14 @@
+## [CHOIX] Étape 5 — AutoActionTest adapté au comportement réel de ProcessSeerAutoAction (divergence avec SPEC_TIMERS.md §3.2)
+
+**Contexte :** Étape 5 — `tests/Feature/Game/AutoActionTest.php::test_seer_auto_action_passes_to_wolves_if_inactive`, `app/Jobs/ProcessSeerAutoAction.php`, `app/Jobs/ProcessSeerTurn.php`, `SPEC_TIMERS.md §3.2`.
+**Symptôme / Problème :** Le prompt de tâche attend que `ProcessSeerAutoAction::handle()` dispatche `ProcessWerewolvesTurn` quand la voyante n'a pas encore agi (voyante inactive). Or le code réel en prod fait l'inverse : il effectue une inspection « de consolation » (création d'un `seer_check` aléatoire + broadcast `SeerResult`) et ne dispatche jamais `ProcessWerewolvesTurn`. C'est `ProcessSeerTurn` qui dispatche systématiquement `ProcessWerewolvesTurn` (à `seerTimer + 2`), indépendamment du résultat de `ProcessSeerAutoAction` (dispatché lui à `seerTimer / 2`).
+**Cause / Alternatives :** Le prompt de tâche et `SPEC_TIMERS.md §3.2` décrivent un design où `ProcessSeerAutoAction` est le seul déclencheur du passage aux loups (créer rien + dispatcher `ProcessWerewolvesTurn` si voyante inactive). Le code livré en prod (Étape 4, déjà mergé) a divergé vers un design « double dispatch » par `ProcessSeerTurn` (auto-inspection à mi-timer + passage aux loups au timer complet, dans tous les cas). Consigne explicite de la tâche : aucune modification de code applicatif. (1) Modifier `ProcessSeerAutoAction` pour matcher la spec — rejeté (hors périmètre, régression possible sur le flux actuel). (2) Écrire le test contre le comportement réel — retenu.
+**Fix / Décision :** `test_seer_auto_action_passes_to_wolves_if_inactive()` (nom conservé tel que spécifié) vérifie le comportement réel : voyante `is_inactive=true`, appel direct de `ProcessSeerAutoAction::handle()` → un `seer_check` est créé en base, `SeerResult` est broadcasté, et `ProcessWerewolvesTurn` n'est PAS dispatché par ce job (assertion explicite avec commentaire renvoyant à cette décision).
+**Leçon :** Quand une spec (`SPEC_TIMERS.md`) décrit un pattern « intentionnel » mais que le code livré a évolué différemment, les tests d'intégration doivent documenter et figer le comportement RÉEL (source de vérité = code en prod), pas la spec. Mettre à jour `SPEC_TIMERS.md §3.2` reste à faire (non bloquant, ajouté à la ROADMAP si besoin).
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] Refus de merge fix/mayor-succession-cascade dans dev — fix déjà intégré, branche obsolète
 
 **Contexte :** Tâche demandée — merger `fix/mayor-succession-cascade` (commits `7708271`, `e35e404`) dans `dev` pour appliquer `ProcessMayorSuccession::dispatch(..., shouldStartNight: true)` dans `app/Jobs/ProcessNightActions.php`, et documenter un incident prod (`Data truncated` sur `game_actions.phase`, 32 jobs échoués).
