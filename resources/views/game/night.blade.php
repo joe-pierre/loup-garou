@@ -352,23 +352,29 @@
                         Les loups se taisent pour l'instant...
                     </p>
                 </div>
-                <div class="flex" style="border-top:1px solid rgba(139,0,0,0.2);">
-                    <input
-                        type="text"
+                <div class="flex flex-col gap-2 p-2" style="border-top:1px solid rgba(139,0,0,0.2);">
+                    <textarea
                         x-model="wolfChatInput"
                         :disabled="!isAlive || wolfChatSending"
-                        @keydown.enter.prevent="sendWolfChat()"
+                        @keydown.enter.prevent="if (!$event.shiftKey) sendWolfChat()"
                         maxlength="200"
-                        placeholder="Message aux loups..."
-                        class="flex-1 wolf-chat-input px-3 py-2 text-xs outline-none disabled:opacity-40"
-                        style="background:#1a0505; border:1px solid rgba(255,68,68,0.3); color:#e8e0d0;"
-                    >
-                    <button
-                        @click="sendWolfChat()"
-                        :disabled="!wolfChatInput.trim() || !isAlive || wolfChatSending"
-                        class="px-3 text-xs font-medieval disabled:opacity-30 transition-opacity focus:outline-none focus:ring-2 focus:ring-[#8b0000]"
-                        style="color:#8b0000;"
-                    >✉</button>
+                        rows="2"
+                        placeholder="Message aux loups... (Entrée pour envoyer)"
+                        class="w-full resize-none px-3 py-2 text-xs outline-none disabled:opacity-40 rounded-lg wolf-chat-input"
+                        style="background:#1a0505; border:1px solid rgba(255,68,68,0.25); color:#e8e0d0;"
+                    ></textarea>
+                    <div class="flex justify-end">
+                        <button
+                            @click="sendWolfChat()"
+                            :disabled="!wolfChatInput.trim() || !isAlive || wolfChatSending"
+                            class="px-4 py-1.5 rounded-lg text-xs font-medieval font-semibold
+                                   disabled:opacity-30 transition-all hover:opacity-80"
+                            style="background-color:#8b0000; color:#fca5a5; border:1px solid rgba(255,68,68,0.3); min-width:80px;"
+                        >
+                            <span x-show="!wolfChatSending">Envoyer ✉</span>
+                            <span x-show="wolfChatSending">…</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

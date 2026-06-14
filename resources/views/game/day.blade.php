@@ -204,28 +204,33 @@
                     Le débat n'a pas encore commencé...
                 </p>
             </div>
-            <div style="border-top:1px solid rgba(201,168,76,0.08);">
-                <div class="flex items-center">
-                    <input
-                        type="text"
-                        x-model="chatInput"
-                        :disabled="!isAlive || chatSending"
-                        @keydown.enter.prevent="sendChat()"
-                        maxlength="200"
-                        :placeholder="isAlive ? 'Votre message...' : 'Tu es mort, silence...'"
-                        class="flex-1 bg-transparent px-3 py-2 text-xs outline-none disabled:opacity-40"
-                        style="color:#e8e0d0;"
-                    >
-                    <span class="px-2 char-counter"
+            <div class="flex flex-col gap-2 p-2" style="border-top:1px solid rgba(201,168,76,0.08);">
+                <textarea
+                    x-model="chatInput"
+                    :disabled="!isAlive || chatSending"
+                    @keydown.enter.prevent="if (!$event.shiftKey) sendChat()"
+                    maxlength="200"
+                    rows="2"
+                    :placeholder="isAlive ? 'Votre message... (Entrée pour envoyer)' : 'Tu es mort, silence...'"
+                    class="w-full resize-none bg-transparent px-3 py-2 text-sm outline-none disabled:opacity-40 rounded-lg"
+                    style="color:#e8e0d0; border:1px solid rgba(201,168,76,0.15);
+                           background-color:rgba(255,255,255,0.03);"
+                ></textarea>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs char-counter"
                           :class="chatInput.length >= 195 ? 'cc-danger' : chatInput.length >= 180 ? 'cc-warn' : ''"
                           x-show="chatInput.length >= 150"
-                          x-text="200 - chatInput.length"></span>
+                          x-text="(200 - chatInput.length) + ' restants'"></span>
                     <button
                         @click="sendChat()"
                         :disabled="!chatInput.trim() || !isAlive || chatSending"
-                        class="px-3 text-xs font-medieval disabled:opacity-30 transition-opacity focus:outline-none focus:ring-2 focus:ring-[#c9a84c]"
-                        style="color:#c9a84c;"
-                    >✉</button>
+                        class="px-4 py-1.5 rounded-lg text-xs font-medieval font-semibold
+                               disabled:opacity-30 transition-all hover:opacity-80"
+                        style="background-color:#c9a84c; color:#0a0f1e; min-width:80px;"
+                    >
+                        <span x-show="!chatSending">Envoyer ✉</span>
+                        <span x-show="chatSending">…</span>
+                    </button>
                 </div>
             </div>
         </div>
