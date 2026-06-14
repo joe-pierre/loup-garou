@@ -242,6 +242,8 @@
 - [x] **Fix doublons chat cause racine** — vérifié : aucun window.Echo.channel()
       dans day.blade.php, day-vote-cast et chat-message dispatchés/écoutés via
       window.addEventListener (fix/chat-double-messages-root-cause-final)
+- [x] **Fix toasts timing** — buffer pour les toasts dispatchés avant init Alpine
+      du composant toast (fix/toast-timing)
 
 ---
 

@@ -525,7 +525,23 @@ export function gameState(gameId, userId) {
         },
 
         _dispatchToast(message, type = 'info') {
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: { message, type } }));
+            const detail = { message, type };
+            if (window.__toastReady) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail }));
+            } else {
+                // Alpine pas encore prêt — mettre en buffer
+                window.__toastBuffer = window.__toastBuffer ?? [];
+                window.__toastBuffer.push(detail);
+                // Retry après init Alpine
+                requestAnimationFrame(() => {
+                    if (window.__toastReady && window.__toastBuffer?.length) {
+                        window.__toastBuffer.forEach(d =>
+                            window.dispatchEvent(new CustomEvent('show-toast', { detail: d }))
+                        );
+                        window.__toastBuffer = [];
+                    }
+                });
+            }
         },
 
         _headers() {

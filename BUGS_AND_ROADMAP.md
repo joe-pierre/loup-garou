@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-14 — Toasts dispatchés tôt dans le cycle de vie Alpine perdus
+
+- **Symptôme :** certains toasts (ex. déclenchés très tôt après le chargement de la page) n'apparaissaient jamais.
+- **Cause :** `_dispatchToast()` dispatche `show-toast` sur `window` avant que le composant `toast.blade.php` ait fini son `init()` Alpine — personne n'écoute encore l'event, il est perdu.
+- **Fix :** buffer global `window.__toastBuffer` rempli par `_dispatchToast()` tant que `window.__toastReady` n'est pas vrai ; `toast.blade.php::init()` consomme ce buffer et passe `window.__toastReady = true`. Retry via `requestAnimationFrame` côté `_dispatchToast()`.
+
+---
+
 ### [x] 2026-06-14 — Canal loups jamais souscrit (myRole non renseigné avant initWebSocket)
 
 - **Symptôme :** le chat loups et les events du canal `game.{gameId}.werewolves`
