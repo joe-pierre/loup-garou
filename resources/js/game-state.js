@@ -381,6 +381,7 @@ export function gameState(gameId, userId) {
 
         _handleDayVoteCast(e) {
             this.votes = this._buildVoteMap(e.votes ?? []);
+            window.dispatchEvent(new CustomEvent('day-vote-cast', { detail: e }));
         },
 
         _handleMayorVoteCast(e) {

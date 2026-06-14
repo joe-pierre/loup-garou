@@ -1,5 +1,20 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-14 — Messages de chat en doublon : cause racine (double abonnement Echo même canal)
+
+- **Symptôme :** chaque message envoyé dans le chat général (jour) apparaissait deux fois.
+- **Cause :** day.blade.php appelait window.Echo.channel(`game.${GAME_ID}`) pour écouter
+  .day.vote.cast, en plus de game-state.js qui s'abonnait déjà au même canal. Laravel Echo
+  réutilise la souscription Pusher/Reverb existante et déclenche tous les listeners deux fois,
+  y compris .chat.message.sent. Un premier fix (branche fix/chat-double-messages) avait supprimé
+  un listener .chat.message.sent dupliqué mais n'avait pas identifié ce second abonnement Echo.
+- **Fix :** suppression de window.Echo.channel() dans day.blade.php. day-vote-cast est désormais
+  dispatché sur window par game-state.js (_handleDayVoteCast) et écouté via
+  window.addEventListener dans day.blade.php — cohérent avec le pattern chat-message,
+  player-eliminated, etc.
+
+---
+
 ### [x] 2026-06-14 — backdrop-filter blur sur la modale succession rendu flou/dégradé
 
 - **Symptôme :** la modale "Succession du Maire" s'affichait avec un rendu visuellement flou/dégradé sur certains navigateurs.

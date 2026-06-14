@@ -1,3 +1,22 @@
+## [RÉSOLU] Double abonnement Echo game.{gameId} — cause racine des messages en doublon
+
+**Contexte :** Phase 18 Prompt 1 — game-state.js, day.blade.php
+**Symptôme / Problème :** messages chat doublés sur /day malgré un premier fix.
+**Cause / Alternatives :** deux appels Echo.channel() sur le même canal déclenchent
+tous les listeners deux fois côté Pusher/Reverb. Le premier fix avait supprimé un
+listener .chat.message.sent explicite dans day.blade.php, mais day.blade.php
+conservait un appel Echo.channel() pour .day.vote.cast — suffisant pour réactiver
+le double déclenchement.
+**Fix / Décision :** règle absolue — un seul composant s'abonne à Echo par canal
+(game-state.js). Toute vue qui a besoin d'un event du canal public doit passer par
+window.addEventListener sur un CustomEvent dispatché par game-state.js.
+**Leçon :** ne jamais appeler window.Echo.channel() dans une vue Blade si game-state.js
+s'abonne déjà au même canal. Même un seul .listen() supplémentaire sur le même canal
+suffit à déclencher tous les handlers deux fois.
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] Canal des fantômes ('dead') — broadcast public tagué, pas de canal privé dédié
 
 **Contexte :** Prompt 6 (Phase 18) — `app/Services/ChatService.php`, `app/Events/Game/ChatMessageSent.php`, `app/Http/Controllers/Game/ChatController.php`, `app/Http/Requests/SendMessageRequest.php`, `database/migrations/2026_06_14_000000_add_dead_to_chat_messages_channel_enum.php`, `resources/views/game/day.blade.php`, `app/Http/Controllers/Game/GameController.php`.
