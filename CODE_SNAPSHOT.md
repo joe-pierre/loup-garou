@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 11h34
+Generated at: 15h53
 
 ## PHP Analysis (Core Logic)
 
@@ -442,7 +442,7 @@ MayorElectionStarted.php
       - __construct(Game $game) {}
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'mayor.election.started'
-      - broadcastWith() → return ['timer' => config('game.timers.mayor_election', 30)]
+      - broadcastWith() → return ['timer' => $this->game->timer('mayor_election')]
 
 // app/Events/Game/DayStarted.php
 DayStarted.php
@@ -517,7 +517,7 @@ WerewolvesTurnStarted.php
       - __construct(Game $game, array $eligibleTargets) {}
       - broadcastOn() → return [new PrivateChannel("game.{$this->game->id}.werewolves")]
       - broadcastAs() → return 'werewolves.turn.started'
-      - broadcastWith() → return ['timer' => config('game.timers.werewolves', 30), 'eligible_targets' => $this->eligibleTargets]
+      - broadcastWith() → return ['timer' => $this->game->timer('werewolves'), 'eligible_targets' => $this->eligibleTargets]
 
 // app/Events/Game/PlayerDisconnected.php
 PlayerDisconnected.php
@@ -542,7 +542,7 @@ MayorSuccessionStarted.php
       - __construct(Game $game, string $dyingMayorPseudo) {}
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'mayor.succession.started'
-      - broadcastWith() → return ['timer' => config('game.timers.mayor_succession', 15), 'dying_mayor_pseudo' => $this->dyingMayorPseudo]
+      - broadcastWith() → return ['timer' => $this->game->timer('mayor_succession'), 'dying_mayor_pseudo' => $this->dyingMayorPseudo]
 
 // app/Events/Game/SeerTurnStarted.php
 SeerTurnStarted.php
@@ -554,7 +554,7 @@ SeerTurnStarted.php
       - __construct(Game $game, GamePlayer $seer) {}
       - broadcastOn() → return [new PrivateChannel("game.{$this->game->id}.player.{$this->seer->id}")]
       - broadcastAs() → return 'seer.turn.started'
-      - broadcastWith() → return ['timer' => config('game.timers.seer', 30)]
+      - broadcastWith() → return ['timer' => $this->game->timer('seer')]
 
 // app/Events/Game/PlayerReconnected.php
 PlayerReconnected.php
