@@ -223,7 +223,7 @@
 
 ## Phase 18 — UX & Polish (post-v1.2)
 
-- [ ] **Prompt 1** — Fix doublons chat (`fix/chat-double-messages`)
+- [x] **Prompt 1** — Fix doublons chat (`fix/chat-double-messages`)
 - [x] **Prompt 2** — Rôles manquants partout (`fix/roles-completeness`)
 - [x] **Prompt 3** — Élection maire : carte avec rôle (`feat/mayor-election-role-card`)
 - [x] **Prompt 4** — Modale succession : flou + délai (`fix/succession-modal-ux`)

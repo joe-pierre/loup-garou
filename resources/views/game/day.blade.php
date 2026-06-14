@@ -394,12 +394,12 @@
                     );
                 }
 
-                // Les events gérés par game-state.js (player.eliminated, night.started, game.finished)
-                // sont propagés via window.dispatchEvent — on écoute ici via window.
-                // On s'abonne à Echo uniquement pour les events locaux à cette vue
-                // (day.vote.cast, chat) pour éviter les doubles handlers.
-                window.Echo.channel(`game.${GAME_ID}`)
-                    .listen('.day.vote.cast', (data) => { this._updateVoteBars(data.votes ?? []); });
+                // Les events gérés par game-state.js (player.eliminated, night.started, game.finished,
+                // day.vote.cast) sont propagés via window.dispatchEvent — on écoute ici via window
+                // pour éviter tout abonnement Echo supplémentaire sur le même canal.
+                window.addEventListener('day-vote-cast', (e) => {
+                    this._updateVoteBars(e.detail.votes ?? []);
+                });
 
                 // Messages chat dispatchés par game-state.js (évite le double abonnement Echo)
                 window.addEventListener('chat-message', (e) => {
