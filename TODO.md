@@ -225,7 +225,7 @@
 
 - [ ] **Prompt 1** — Fix doublons chat (`fix/chat-double-messages`)
 - [x] **Prompt 2** — Rôles manquants partout (`fix/roles-completeness`)
-- [ ] **Prompt 3** — Élection maire : carte avec rôle (`feat/mayor-election-role-card`)
+- [x] **Prompt 3** — Élection maire : carte avec rôle (`feat/mayor-election-role-card`)
 - [ ] **Prompt 4** — Modale succession : flou + délai (`fix/succession-modal-ux`)
 - [ ] **Prompt 5** — Chat UX : textarea + bouton (`feat/chat-ux-improvements`)
 - [ ] **Prompt 6** — Canal des fantômes phase jour (`feat/dead-chat-day`)
