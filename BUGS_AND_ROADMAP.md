@@ -1,5 +1,19 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-14 — Canal loups jamais souscrit (myRole non renseigné avant initWebSocket)
+
+- **Symptôme :** le chat loups et les events du canal `game.{gameId}.werewolves`
+  (votes de la meute, démarrage du tour loups) ne s'affichaient jamais pour
+  certains loups.
+- **Cause :** `isWerewolf` (getter sur `this.myRole`) pouvait valoir `false` au
+  moment de `initWebSocket()` si `_loadState()` échouait silencieusement et que
+  `window.MY_ROLE` n'était pas encore disponible au moment de l'appel.
+- **Fix :** ajout d'un fallback `if (!this.myRole) this.myRole = window.MY_ROLE ?? null;`
+  dans `init()`, juste avant `this.initWebSocket()`, garantissant que `myRole`
+  est renseigné avant l'évaluation de `isWerewolf`.
+
+---
+
 ### [x] 2026-06-14 — Sorcière ne pouvait pas utiliser son poison si égalité loups
 
 - **Symptôme :** les nuits où les loups étaient en égalité (pas de victime),
