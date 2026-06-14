@@ -74,6 +74,19 @@
 
 ---
 
+### [x] 2026-06-14 — Fix doublons chat cause racine : vérification finale (aucune régression)
+
+- **Symptôme :** N/A — vérification de non-régression du fix précédent.
+- **Cause :** N/A.
+- **Fix :** Vérifié que day.blade.php n'a aucun appel window.Echo.channel()/window.Echo.private(),
+  écoute bien .day.vote.cast via window.addEventListener('day-vote-cast', ...) et les messages
+  chat via window.addEventListener('chat-message', ...). Vérifié que game-state.js dispatche
+  bien window.dispatchEvent(new CustomEvent('day-vote-cast', { detail: e })) dans
+  _handleDayVoteCast() et window.dispatchEvent(new CustomEvent('chat-message', { detail: e }))
+  dans _handleChatMessage(). Code conforme, aucune modification nécessaire.
+
+---
+
 ### [x] 2026-06-14 — backdrop-filter blur sur la modale succession rendu flou/dégradé
 
 - **Symptôme :** la modale "Succession du Maire" s'affichait avec un rendu visuellement flou/dégradé sur certains navigateurs.
