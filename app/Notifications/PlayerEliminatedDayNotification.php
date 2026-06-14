@@ -16,6 +16,8 @@ class PlayerEliminatedDayNotification extends Notification implements ShouldQueu
         'villager' => 'Villageois',
         'werewolf' => 'Loup-Garou',
         'seer'     => 'Voyante',
+        'witch'    => 'Sorcière',
+        'hunter'   => 'Chasseur',
     ];
 
     public function __construct(public readonly string $role) {}
