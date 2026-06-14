@@ -305,6 +305,10 @@ class VoteService
             return;
         }
 
+        // Le flag is_mayor a pu être modifié par une transaction concurrente
+        // (ex. ProcessMayorSuccession) entre le chargement et ce point
+        $eliminated->refresh();
+
         if ($eliminated->is_mayor) {
             $successionDelay = $eliminated->is_inactive
                 ? 0

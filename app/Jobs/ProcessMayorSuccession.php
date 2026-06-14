@@ -58,7 +58,6 @@ class ProcessMayorSuccession implements ShouldQueue
             }
 
             $deadMayor = $locked->players()->where('is_mayor', true)->first();
-            $deadMayor?->update(['is_mayor' => false]);
 
             $successor = $locked->alivePlayers()->inRandomOrder()->first();
 
@@ -66,6 +65,9 @@ class ProcessMayorSuccession implements ShouldQueue
                 return null;
             }
 
+            // Retirer le flag maire à tous les joueurs de la partie avant de
+            // l'assigner au successeur (idempotent, indépendant de l'état actuel)
+            $locked->players()->update(['is_mayor' => false]);
             $successor->update(['is_mayor' => true]);
 
             GameAction::create([
