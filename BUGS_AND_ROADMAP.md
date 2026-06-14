@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-14 — welcome.blade.php renommé en home.blade.php, landing.blade.php supprimé
+
+- welcome.blade.php était la vue active (route / → view('welcome')) mais
+  landing.blade.php existait en parallèle sans être référencé par aucune route.
+- Fix : renommage welcome → home, mise à jour de la route, suppression de landing.
+
+---
+
 ### [x] 2026-06-14 — Timers erronés broadcastés aux clients (Events + night.blade.php)
 
 - **Symptôme :** si le host configure des timers personnalisés (ex. seer=15s),
