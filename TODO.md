@@ -237,6 +237,8 @@
 - [x] **Fix sorcière égalité loups** — tour maintenu si poison disponible,
       WitchTurnStarted avec victim:null, panel client adapté, tests mis à jour,
       RISK_GUARDS.md Guard #3 révisé (fix/witch-turn-no-victim)
+- [x] **Fix chat loups** — fallback myRole avant initWebSocket() pour garantir
+      la souscription au canal loups (fix/wolf-chat-and-role-init)
 
 ---
 

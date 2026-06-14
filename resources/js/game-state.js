@@ -75,6 +75,13 @@ export function gameState(gameId, userId) {
                 await this._loadState();
             }
 
+            // Fallback garanti avant initWebSocket() — window.MY_ROLE est défini
+            // par le script inline de la vue après le bundle Vite, mais au moment
+            // de init() (déclenché par Alpine au chargement du DOM), il peut ne pas
+            // encore être disponible si _loadState() a échoué silencieusement.
+            if (!this.myRole) {
+                this.myRole = window.MY_ROLE ?? null;
+            }
             this.initWebSocket();
             this._setupBeforeUnload();
             this._reconnect();
