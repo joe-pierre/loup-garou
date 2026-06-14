@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 16h58
+Generated at: 17h16
 
 ## PHP Analysis (Core Logic)
 
@@ -502,10 +502,10 @@ ChatMessageSent.php
       - InteractsWithSockets
       - SerializesModels
     functions:
-      - __construct(Game $game, GamePlayer $player, string $message, string $timestamp) {}
+      - __construct(Game $game, GamePlayer $player, string $message, string $timestamp, string $channel) {}
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'chat.message.sent'
-      - broadcastWith() → return ['pseudo' => $this->player->pseudo, 'message' => $this->message, 'channel' => 'general', 'timestamp' => $this->timestamp]
+      - broadcastWith() → return ['pseudo' => $this->player->pseudo, 'message' => $this->message, 'channel' => $this->channel, 'timestamp' => $this->timestamp]
 
 // app/Events/Game/WerewolvesTurnStarted.php
 WerewolvesTurnStarted.php
@@ -642,8 +642,8 @@ DayVoteRequest.php
 SendMessageRequest.php
     functions:
       - authorize() → return true
-      - rules() → return ['message' => ['required', 'string', 'max:200'], 'channel' => ['required', 'string', Rule::in(['general', 'werewolves'])]]
-      - messages() → return ['message.required' => 'Le message est obligatoire.', 'message.max' => 'Le message ne peut pas dépasser 200 caractères.', 'channel.required' => 'Le canal est obligatoire.', 'channel.in' => 'Canal invalide. Valeurs acceptées : general, werewolves.']
+      - rules() → return ['message' => ['required', 'string', 'max:200'], 'channel' => ['required', 'string', Rule::in(['general', 'werewolves', 'dead'])]]
+      - messages() → return ['message.required' => 'Le message est obligatoire.', 'message.max' => 'Le message ne peut pas dépasser 200 caractères.', 'channel.required' => 'Le canal est obligatoire.', 'channel.in' => 'Canal invalide. Valeurs acceptées : general, werewolves, dead.']
 
 // app/Http/Requests/ExcludePlayerRequest.php
 ExcludePlayerRequest.php
@@ -1289,6 +1289,12 @@ TestCase.php
 
 // database/migrations/2026_06_12_203056_add_witch_hunter_actions_to_game_actions_type_enum.php
 2026_06_12_203056_add_witch_hunter_actions_to_game_actions_type_enum.php
+    functions:
+      - up() → void
+      - down() → void
+
+// database/migrations/2026_06_14_000000_add_dead_to_chat_messages_channel_enum.php
+2026_06_14_000000_add_dead_to_chat_messages_channel_enum.php
     functions:
       - up() → void
       - down() → void
