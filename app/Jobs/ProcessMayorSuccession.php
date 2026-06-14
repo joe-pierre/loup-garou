@@ -50,6 +50,7 @@ class ProcessMayorSuccession implements ShouldQueue
             $alreadyDone = GameAction::where('game_id', $locked->id)
                 ->where('type', 'mayor_succession')
                 ->where('round', $locked->round)
+                ->where('phase', $phaseToStart)
                 ->lockForUpdate()
                 ->exists();
 

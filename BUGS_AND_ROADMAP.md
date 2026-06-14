@@ -1,5 +1,17 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-14 — Guard $alreadyDone bloquait la succession de jour après une succession de nuit au même round
+
+- **Symptôme :** quand le maire mourait la nuit et son successeur était éliminé
+  le jour du même round, la partie restait bloquée en processing_day. Aucun
+  failed_job, aucune erreur — ProcessMayorSuccession retournait silencieusement null.
+- **Cause :** le guard $alreadyDone cherchait mayor_succession par (game_id, round)
+  sans distinguer la phase. L'action de nuit bloquait l'action de jour au même round.
+- **Fix :** ajout de ->where('phase', $phaseToStart) dans le guard — une succession
+  de nuit et une succession de jour au même round sont désormais indépendantes.
+
+---
+
 ### [x] 2026-06-14 — Succession maire : is_mayor non retiré à l'ancien maire
 
 - **Symptôme :** après une succession de nuit, l'ancien maire (mort) gardait
