@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 23h03
+Generated at: 23h08
 
 ## PHP Analysis (Core Logic)
 
@@ -375,10 +375,10 @@ WitchTurnStarted.php
       - InteractsWithSockets
       - SerializesModels
     functions:
-      - __construct(Game $game, GamePlayer $witch, GamePlayer $victim, bool $healAvailable, bool $killAvailable) {}
+      - __construct(Game $game, GamePlayer $witch, ?GamePlayer $victim, bool $healAvailable, bool $killAvailable) {}
       - broadcastOn() → return [new PrivateChannel("game.{$this->game->id}.player.{$this->witch->id}")]
       - broadcastAs() → return 'witch.turn.started'
-      - broadcastWith() → return ['victim' => ['id' => $this->victim->id, 'pseudo' => $this->victim->pseudo], 'heal_available' => $this->healAvailable, 'kill_available' => $this->killAvailable, 'timer' => $this->game->timer('witch')]
+      - broadcastWith() → return ['victim' => $this->victim ? ['id' => $this->victim->id, 'pseudo' => $this->victim->pseudo] : null, 'heal_available' => $this->healAvailable, 'kill_available' => $this->killAvailable, 'timer' => $this->game->timer('witch')]
 
 // app/Events/Game/GameStarted.php
 GameStarted.php
@@ -1109,7 +1109,9 @@ WitchTest.php
       - test_sorciere_ne_peut_pas_sauver_si_elle_est_la_victime() → void
       - test_sorciere_peut_empoisonner_un_joueur() → void
       - test_sorciere_ne_peut_pas_utiliser_deux_fois_la_meme_potion() → void
-      - test_witch_turn_skipped_si_egalite_loups() → void
+      - test_witch_turn_avec_poison_disponible_si_egalite_loups() → void
+      - test_witch_turn_skipped_si_egalite_loups_et_potions_epuisees() → void
+      - test_witch_turn_avec_soin_epuise_mais_poison_disponible() → void
       - test_witch_turn_dispatche_par_night_actions_uniquement() → void
       - test_witch_turn_non_double_dispatche_meme_round() → void
       - test_sorciere_auto_action_sans_victime_ne_bloque_pas() → void
