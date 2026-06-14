@@ -16,7 +16,7 @@ class SendMessageRequest extends FormRequest
     {
         return [
             'message' => ['required', 'string', 'max:200'],
-            'channel' => ['required', 'string', Rule::in(['general', 'werewolves'])],
+            'channel' => ['required', 'string', Rule::in(['general', 'werewolves', 'dead'])],
         ];
     }
 
@@ -26,7 +26,7 @@ class SendMessageRequest extends FormRequest
             'message.required' => 'Le message est obligatoire.',
             'message.max'      => 'Le message ne peut pas dépasser 200 caractères.',
             'channel.required' => 'Le canal est obligatoire.',
-            'channel.in'       => 'Canal invalide. Valeurs acceptées : general, werewolves.',
+            'channel.in'       => 'Canal invalide. Valeurs acceptées : general, werewolves, dead.',
         ];
     }
 }

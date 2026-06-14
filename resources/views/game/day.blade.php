@@ -34,7 +34,7 @@
         box-shadow: 0 0 18px rgba(201,168,76,0.5);
         background-color: rgba(201,168,76,0.07);
     }
-    .vote-player-card.v-dead { opacity: .3; filter: grayscale(100%); }
+    .vote-player-card.v-dead { opacity: .3; filter: grayscale(100%); cursor: not-allowed; }
     .vote-player-card.v-dead:hover { transform: none; }
     .vote-player-card.v-clickable { cursor: pointer; }
     .vote-player-card.v-clickable:hover { transform: translateY(-3px); transition: transform 0.15s ease; }
@@ -236,6 +236,54 @@
         </div>
     </div>
 
+    {{-- ── CHAT FANTÔMES (morts uniquement) ── --}}
+    <div x-show="!isAlive" x-cloak class="mt-6">
+        <p class="font-medieval text-sm tracking-widest mb-2" style="color:rgba(139,0,0,0.7);">
+            💀 CANAL DES FANTÔMES
+        </p>
+        <div class="rounded-xl overflow-hidden" style="border:1px solid rgba(139,0,0,0.3);background:#0d0505;">
+            <div class="p-3 overflow-y-auto flex flex-col gap-2 h-32 sm:h-48"
+                 x-ref="deadChatMessages"
+                 role="log" aria-label="Messages des fantômes" aria-live="polite">
+                <template x-for="(msg, i) in deadChatMessages" :key="i">
+                    <div class="text-xs flex flex-col"
+                         style="background:#1a0808;border:1px solid rgba(139,0,0,0.2);border-radius:0.5rem;padding:0.35rem 0.6rem;"
+                         :class="msg.pseudo === MY_PSEUDO ? 'ml-auto' : ''">
+                        <span class="font-semibold mb-0.5" style="color:rgba(139,0,0,0.8);" x-text="msg.pseudo"></span>
+                        <span style="color:rgba(232,224,208,0.6);" x-text="msg.message"></span>
+                    </div>
+                </template>
+                <p x-show="deadChatMessages.length === 0"
+                   class="text-xs italic text-center m-auto"
+                   style="color:rgba(232,224,208,0.2);">
+                    Les fantômes gardent le silence...
+                </p>
+            </div>
+            <div class="flex flex-col gap-2 p-2" style="border-top:1px solid rgba(139,0,0,0.2);">
+                <textarea
+                    x-model="deadChatInput"
+                    :disabled="deadChatSending"
+                    @keydown.enter.prevent="if (!$event.shiftKey) sendDeadChat()"
+                    maxlength="200"
+                    rows="2"
+                    placeholder="Parle avec les autres fantômes..."
+                    class="w-full resize-none px-3 py-2 text-xs outline-none rounded-lg"
+                    style="background:rgba(139,0,0,0.08); border:1px solid rgba(139,0,0,0.25); color:#e8e0d0;"
+                ></textarea>
+                <div class="flex justify-end">
+                    <button
+                        @click="sendDeadChat()"
+                        :disabled="!deadChatInput.trim() || deadChatSending"
+                        class="px-4 py-1.5 rounded-lg text-xs font-medieval font-semibold disabled:opacity-30"
+                        style="background-color:rgba(139,0,0,0.5);color:#fca5a5;border:1px solid rgba(139,0,0,0.4);">
+                        <span x-show="!deadChatSending">Envoyer</span>
+                        <span x-show="deadChatSending">…</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- ═══════ MODALE SUCCESSION — lecture seule (automatique) ═══════ --}}
     <div
         x-show="successionOpen"
@@ -332,6 +380,10 @@
             chatInput:    '',
             chatSending:  false,
 
+            deadChatMessages: [],
+            deadChatInput:    '',
+            deadChatSending:  false,
+
             init() {
                 this.players = [...PLAYERS_DATA].sort((a, b) => b.is_alive - a.is_alive);
 
@@ -355,6 +407,12 @@
                         this.chatMessages.push(e.detail);
                         this.$nextTick(() => {
                             const el = this.$refs.chatMessages;
+                            if (el) el.scrollTop = el.scrollHeight;
+                        });
+                    } else if (e.detail?.channel === 'dead') {
+                        this.deadChatMessages.push(e.detail);
+                        this.$nextTick(() => {
+                            const el = this.$refs.deadChatMessages;
                             if (el) el.scrollTop = el.scrollHeight;
                         });
                     }
@@ -500,6 +558,25 @@
                     });
                 } catch { }
                 finally { this.chatSending = false; }
+            },
+
+            async sendDeadChat() {
+                const msg = this.deadChatInput.trim();
+                if (!msg || this.deadChatSending) return;
+                this.deadChatInput   = '';
+                this.deadChatSending = true;
+                try {
+                    await fetch(`/game/${GAME_ID}/chat`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
+                        body: JSON.stringify({ message: msg, channel: 'dead' }),
+                    });
+                } catch { }
+                finally { this.deadChatSending = false; }
             },
 
             openSuccessionModal(data) {

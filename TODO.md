@@ -228,7 +228,7 @@
 - [x] **Prompt 3** — Élection maire : carte avec rôle (`feat/mayor-election-role-card`)
 - [x] **Prompt 4** — Modale succession : flou + délai (`fix/succession-modal-ux`)
 - [ ] **Prompt 5** — Chat UX : textarea + bouton (`feat/chat-ux-improvements`)
-- [ ] **Prompt 6** — Canal des fantômes phase jour (`feat/dead-chat-day`)
+- [x] **Prompt 6** — Canal des fantômes phase jour (`feat/dead-chat-day`)
 
 ---
 
