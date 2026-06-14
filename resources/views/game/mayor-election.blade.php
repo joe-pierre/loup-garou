@@ -226,7 +226,7 @@
                         this.electedMayor = data.pseudo;
                         this.wasRandom    = data.was_random;
                         this.showResult   = true;
-                        setTimeout(() => { window.location.href = `/game/${this.gameCode}/night`; }, 4000);
+                        setTimeout(() => { window.location.href = `/game/${this.gameCode}/night`; }, 6000);
                     })
                     .listen('.night.started', () => {
                         window.location.href = `/game/${this.gameCode}/night`;
