@@ -1,6 +1,16 @@
 <div
     x-data="{
         toasts: [],
+        _buffer: [],  // toasts arrivés avant init Alpine
+
+        init() {
+            // Consommer les toasts mis en buffer avant l'init Alpine
+            if (window.__toastBuffer) {
+                window.__toastBuffer.forEach(detail => this.add(detail));
+                window.__toastBuffer = [];
+            }
+            window.__toastReady = true;
+        },
         add(detail) {
             const id    = Date.now() + Math.random();
             const toast = { id, message: detail.message ?? '', type: detail.type ?? 'info' };
