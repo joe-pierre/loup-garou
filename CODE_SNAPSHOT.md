@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 11h12
+Generated at: 11h34
 
 ## PHP Analysis (Core Logic)
 
@@ -923,6 +923,36 @@ GoogleAuthTest.php
       - test_authentifie_le_joueur_après_callback() → void
       - test_exception_socialite_redirige_vers_login_avec_erreur() → void
 
+// tests/Feature/Game/ReconnectionTest.php
+ReconnectionTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_state_endpoint_retourne_phase_courante() → void
+      - test_state_traduit_wolves_turn_en_night() → void
+      - test_state_traduit_processing_day_en_day() → void
+      - test_state_retourne_403_si_joueur_absent() → void
+      - test_state_retourne_404_si_partie_inexistante() → void
+      - test_reconnect_remet_is_inactive_a_false() → void
+      - test_reconnect_invalide_token_cache() → void
+
+// tests/Feature/Game/HunterTest.php
+HunterTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - makeNightGame(int $round) → return Game::factory()->create(['status' => 'night', 'max_players' => 6, 'round' => $round])
+      - makeDayGame(int $round) → return Game::factory()->create(['status' => 'day', 'max_players' => 6, 'round' => $round])
+      - test_chasseur_tire_apres_mort_nuit() → void
+      - test_chasseur_tire_apres_mort_jour() → void
+      - test_chasseur_ne_peut_pas_tirer_sur_lui_meme() → void
+      - test_chasseur_ne_peut_pas_tirer_sur_joueur_mort() → void
+      - test_chasseur_ne_peut_pas_tirer_deux_fois() → void
+      - test_hunter_auto_action_skipped_if_already_shot() → void
+      - test_hunter_auto_action_no_elimination_if_inactive() → void
+      - test_chasseur_tire_apres_resolution_complete_de_nuit() → void
+      - test_chasseur_ne_tire_pas_avant_day_started() → void
+
 // tests/Feature/Game/ChatTest.php
 ChatTest.php
     attributes:
@@ -960,6 +990,23 @@ TimerSettingsTest.php
       - test_timers_fixes_ignorent_settings() → void
       - test_modification_impossible_hors_waiting() → void
 
+// tests/Feature/Game/RoleSettingsTest.php
+RoleSettingsTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - makeWaitingGame(int $maxPlayers) → return Game::factory()->create(['status' => 'waiting', 'max_players' => $maxPlayers, 'round' => 0])
+      - test_host_peut_activer_sorciere() → void
+      - test_host_peut_activer_chasseur() → void
+      - test_joueur_non_host_ne_peut_pas_modifier_roles() → void
+      - test_modification_roles_impossible_hors_waiting() → void
+      - test_role_invalide_est_rejete() → void
+      - test_role_distributor_inclut_sorciere_si_configuree() → void
+      - test_role_distributor_inclut_chasseur_si_configure() → void
+      - test_role_distributor_remplit_villageois_automatiquement() → void
+      - test_deux_sorcieres_impossibles() → void
+      - test_villageois_residuels_toujours_positifs() → void
+
 // tests/Feature/Game/CreateGameTest.php
 CreateGameTest.php
     attributes:
@@ -984,6 +1031,20 @@ JoinGameTest.php
       - test_joueur_exclu_ne_peut_pas_rejoindre_retourne_403() → void
       - test_code_inexistant_retourne_404() → void
       - test_race_condition_deux_joueurs_remplissent_le_dernier_slot() → void
+
+// tests/Feature/Game/AutoActionTest.php
+AutoActionTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - makeNightGame(int $round) → return Game::factory()->create(['status' => 'night', 'max_players' => 6, 'round' => $round])
+      - test_seer_auto_action_skipped_if_already_acted() → void
+      - test_seer_auto_action_passes_to_wolves_if_inactive() → void
+      - test_seer_auto_action_skipped_if_wrong_round() → void
+      - test_seer_auto_action_skipped_if_wrong_status() → void
+      - test_seer_check_endpoint_dispatches_wolves_immediately() → void
+      - test_seer_check_rejected_if_already_acted() → void
+      - test_seer_check_rejected_if_self_target() → void
 
 // tests/Feature/Game/NightPhaseTest.php
 NightPhaseTest.php
