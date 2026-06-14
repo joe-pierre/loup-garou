@@ -239,6 +239,9 @@
       RISK_GUARDS.md Guard #3 révisé (fix/witch-turn-no-victim)
 - [x] **Fix chat loups** — fallback myRole avant initWebSocket() pour garantir
       la souscription au canal loups (fix/wolf-chat-and-role-init)
+- [x] **Fix doublons chat cause racine** — vérifié : aucun window.Echo.channel()
+      dans day.blade.php, day-vote-cast et chat-message dispatchés/écoutés via
+      window.addEventListener (fix/chat-double-messages-root-cause-final)
 
 ---
 
