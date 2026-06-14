@@ -394,7 +394,19 @@
                 🧙 C'est ton tour, Sorcière...
             </p>
             <p class="text-xs italic text-center mb-4" style="color:rgba(232,224,208,0.85);">
-                Les loups ont choisi <span x-text="witchVictim?.pseudo"></span>. Que décides-tu ?
+                <template x-if="witchVictim">
+                    <span>Les loups ont choisi
+                        <span class="font-semibold" style="color:#ff8888;"
+                              x-text="witchVictim.pseudo"></span>.
+                        Que décides-tu ?
+                    </span>
+                </template>
+                <template x-if="!witchVictim">
+                    <span style="color:rgba(232,224,208,0.6);">
+                        Les loups n'ont fait aucune victime cette nuit.
+                        Veux-tu utiliser ton poison ?
+                    </span>
+                </template>
             </p>
             <div class="night-timer-bar mb-5">
                 <div id="witch-timer-bar" class="timer-fill" style="width:100%;background-color:#16a34a;"></div>

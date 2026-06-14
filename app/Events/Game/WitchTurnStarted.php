@@ -17,7 +17,7 @@ class WitchTurnStarted implements ShouldBroadcastNow
     public function __construct(
         public readonly Game $game,
         public readonly GamePlayer $witch,
-        public readonly GamePlayer $victim,
+        public readonly ?GamePlayer $victim,
         public readonly bool $healAvailable,
         public readonly bool $killAvailable,
     ) {}
@@ -35,10 +35,10 @@ class WitchTurnStarted implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'victim' => [
+            'victim' => $this->victim ? [
                 'id'     => $this->victim->id,
                 'pseudo' => $this->victim->pseudo,
-            ],
+            ] : null,
             'heal_available' => $this->healAvailable,
             'kill_available' => $this->killAvailable,
             'timer'          => $this->game->timer('witch'),

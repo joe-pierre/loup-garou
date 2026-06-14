@@ -1,3 +1,34 @@
+## [CHOIX] Sorcière — tour maintenu si poison disponible même sans victime des loups
+
+**Contexte :** fix/witch-turn-no-victim — ProcessWitchTurn.php, WitchTurnStarted.php,
+night.blade.php, WitchTest.php, RISK_GUARDS.md Guard #3.
+**Symptôme / Problème :** la sorcière ne pouvait pas utiliser son poison les nuits
+où les loups étaient en égalité (pas de victime). Son tour était skippé silencieusement
+via ProcessNightEnd, sans qu'elle soit informée ni qu'elle puisse agir. C'était
+contraire aux règles officielles du Loup-Garou (la sorcière se réveille toujours)
+et non intuitif pour les joueurs.
+**Cause / Alternatives :** Guard #3 de RISK_GUARDS.md protégeait contre un blocage
+de la nuit quand resolveNightVote() retourne null. Le guard était trop large — il
+skippait le tour entier au lieu de distinguer les cas selon les potions disponibles.
+(1) Conserver le skip total — rejeté, non conforme aux règles et frustrant.
+(2) Toujours afficher le tour sorcière même potions épuisées — rejeté, inutile
+et potentiellement bloquant si ProcessWitchAutoAction ne gère pas ce cas.
+(3) Skip uniquement si deux potions épuisées OU (pas de victime ET soin seul
+disponible) — retenu.
+**Fix / Décision :** Option 3. ProcessWitchTurn distingue trois cas : (a) deux
+potions épuisées → skip, (b) pas de victime + poison disponible → WitchTurnStarted
+avec victim:null et heal_available:false, (c) victim présente → comportement
+inchangé. WitchTurnStarted accepte désormais victim nullable. Le panel sorcière
+côté client affiche un message adapté selon le cas. Les tests WitchTest.php
+mis à jour pour couvrir les trois cas.
+**Leçon :** un guard de sécurité contre un blocage (null check) ne doit pas
+empêcher une action légitime du joueur. Toujours distinguer "pas de données"
+(null victime) de "action impossible" (potions épuisées). RISK_GUARDS.md mis
+à jour pour refléter le nouveau comportement attendu.
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [RÉSOLU] Double abonnement Echo game.{gameId} — cause racine des messages en doublon
 
 **Contexte :** Phase 18 Prompt 1 — game-state.js, day.blade.php

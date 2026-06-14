@@ -107,54 +107,31 @@ if ($game->status === 'night' || in_array($game->status, ['processing_night'])) 
 
 ---
 
-## GUARD #3 — Sorcière sans victime (égalité vote loups) (Étape 4)
+## GUARD #3 — Sorcière sans victime (égalité vote loups) (révisé)
 
-### Symptôme sans protection
-Égalité du vote des loups → pas de victime → `ProcessWitchAutoAction` cherche
-une victime qui n'existe pas → exception ou blocage silencieux → la nuit
-ne se termine jamais.
+Comportement révisé (fix/witch-turn-no-victim) :
+- Pas de victime ET deux potions épuisées → ProcessNightEnd immédiat (skip)
+- Pas de victime ET poison encore disponible → WitchTurnStarted avec victim:null,
+  heal_available:false, kill_available:true
+- Pas de victime ET soin disponible mais poison épuisé → skip (idem deux épuisées)
 
-### Pattern obligatoire dans ProcessWitchAutoAction::handle()
+Pattern obligatoire dans ProcessWitchTurn::handle() :
 ```php
-$victim = $this->getWerewolvesVictim($game, $this->round);
+$witchSettings = $witch->settings ?? [];
+$healUsed      = $witchSettings['witch_heal_used'] ?? false;
+$killUsed      = $witchSettings['witch_kill_used'] ?? false;
 
-if (!$victim) {
-    // Pas de victime cette nuit (égalité loups) — passer directement à la fin de nuit
-    // Pas de broadcast WitchTurnStarted dans ce cas (rien à sauver/tuer)
-    ProcessNightEnd::dispatch($game->id, $game->round)->delay(0);
+if (! $victim && $healUsed && $killUsed) {
+    ProcessNightEnd::dispatch(...)->delay(0);
     return;
 }
 
-// Comportement normal : proposer les potions à la sorcière
-```
+$healAvailable = ! $healUsed && $victim !== null && $victim->id !== $witch->id;
+$killAvailable = ! $killUsed;
 
-### Pattern obligatoire dans ProcessWitchTurn::handle()
-```php
-$victim = $this->getWerewolvesVictim($game, $this->round);
-
-if (!$victim) {
-    // Idem : broadcaster WitchNoAction (pour cohérence côté client)
-    // et passer à la fin de nuit sans afficher l'interface sorcière
-    ProcessNightEnd::dispatch($game->id, $game->round)->delay(0);
+if (! $victim && ! $killAvailable) {
+    ProcessNightEnd::dispatch(...)->delay(0);
     return;
-}
-
-broadcast(new WitchTurnStarted($game, $witch, $victim, $healAvailable, $killAvailable));
-ProcessWitchAutoAction::dispatch($game->id, $game->round)
-    ->delay(now()->addSeconds($game->timer('witch')));
-```
-
-### Méthode helper getWerewolvesVictim() — à créer dans ProcessWitchTurn et ProcessWitchAutoAction
-```php
-private function getWerewolvesVictim(Game $game, int $round): ?GamePlayer
-{
-    $action = $game->actions()
-        ->where('round', $round)
-        ->where('type', 'night_vote')
-        ->orderByDesc('created_at')
-        ->first(); // le vote résolu par ProcessNightActions
-
-    return $action?->target; // null si égalité (pas de victime)
 }
 ```
 
@@ -306,7 +283,8 @@ Ces tests doivent exister à la fin de l'Étape 5 :
 | #2 | `test_chasseur_tire_apres_resolution_complete_de_nuit()` |
 | #2 | `test_chasseur_ne_tire_pas_avant_day_started()` |
 | #3 | `test_sorciere_auto_action_sans_victime_ne_bloque_pas()` |
-| #3 | `test_witch_turn_skipped_si_egalite_loups()` |
+| #3 | `test_witch_turn_avec_poison_disponible_si_egalite_loups()` |
+| #3 | `test_witch_turn_skipped_si_egalite_loups_et_potions_epuisees()` |
 | #4 | `test_witch_turn_dispatche_par_night_actions_uniquement()` |
 | #5 | `test_apply_transition_hors_transaction_uniquement()` |
 | #6 | `test_witch_turn_non_double_dispatche_meme_round()` |

@@ -1,5 +1,19 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-14 — Sorcière ne pouvait pas utiliser son poison si égalité loups
+
+- **Symptôme :** les nuits où les loups étaient en égalité (pas de victime),
+  la sorcière ne voyait aucune interface et ne pouvait pas utiliser son poison.
+  ProcessNightEnd s'exécutait directement.
+- **Cause :** Guard #3 dans ProcessWitchTurn skippait le tour entier si
+  resolveNightVote() retournait null, sans vérifier si des potions étaient
+  encore disponibles.
+- **Fix :** le tour n'est skippé que si les deux potions sont épuisées,
+  ou si la seule potion disponible est le soin (inutilisable sans victime).
+  WitchTurnStarted accepte victim:null et affiche un message adapté côté client.
+
+---
+
 ### [x] 2026-06-14 — Chasseur ne pouvait pas exercer son pouvoir si éliminé le jour
 
 - **Symptôme :** quand le chasseur était éliminé par vote jour, aucune interface
