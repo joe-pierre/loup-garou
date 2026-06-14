@@ -49,6 +49,16 @@
     <span class="text-xs font-medieval tracking-widest" style="color: rgba(201,168,76,0.7);">👑 ÉLECTION DU MAIRE</span>
 @endsection
 
+@php
+    $myRoleConfig = match($player->role) {
+        'werewolf' => ['icon' => '🐺', 'label' => 'Loup-Garou',  'color' => '#f87171'],
+        'seer'     => ['icon' => '🔮', 'label' => 'Voyante',     'color' => '#a78bfa'],
+        'witch'    => ['icon' => '🧙‍♀️', 'label' => 'Sorcière',   'color' => '#3493d3'],
+        'hunter'   => ['icon' => '🏹', 'label' => 'Chasseur',    'color' => '#fbbf24'],
+        default    => ['icon' => '🧑‍🌾', 'label' => 'Villageois', 'color' => '#e8e0d0'],
+    };
+@endphp
+
 @section('content')
 @include('partials.game.quit-button')
 @include('partials.game.quit-modal')
@@ -102,8 +112,14 @@
             $avatarColor  = $avatarColors[$candidate->id % count($avatarColors)];
             @endphp
             <div class="avatar"
-                 style="background-color: {{ $avatarColor }}; color: #0a0f1e; border: none; font-weight: 700;">
-                {{ strtoupper(mb_substr($candidate->pseudo, 0, 1)) }}
+                 style="{{ $candidate->id === $player->id
+                     ? 'background-color: rgba(' . implode(',', sscanf($myRoleConfig['color'], '#%02x%02x%02x')) . ', 0.15); border: 1px solid ' . $myRoleConfig['color'] . '55; font-size: 1.5rem;'
+                     : 'background-color: ' . $avatarColor . '; color: #0a0f1e; border: none; font-weight: 700;' }}">
+                @if ($candidate->id === $player->id)
+                    <span>{{ $myRoleConfig['icon'] }}</span>
+                @else
+                    {{ strtoupper(mb_substr($candidate->pseudo, 0, 1)) }}
+                @endif
             </div>
 
             <div class="text-center w-full px-1">
@@ -111,7 +127,9 @@
                     {{ $candidate->pseudo }}
                 </p>
                 @if ($candidate->id === $player->id)
-                    <p class="text-xs mt-0.5" style="color: rgba(201,168,76,0.55); font-family: 'EB Garamond';">toi</p>
+                    <p class="text-xs mt-0.5 font-semibold" style="color: {{ $myRoleConfig['color'] }};">
+                        {{ $myRoleConfig['icon'] }} {{ $myRoleConfig['label'] }} · MOI
+                    </p>
                 @endif
             </div>
 
@@ -208,7 +226,7 @@
                         this.electedMayor = data.pseudo;
                         this.wasRandom    = data.was_random;
                         this.showResult   = true;
-                        setTimeout(() => { window.location.href = `/game/${this.gameCode}/night`; }, 2000);
+                        setTimeout(() => { window.location.href = `/game/${this.gameCode}/night`; }, 4000);
                     })
                     .listen('.night.started', () => {
                         window.location.href = `/game/${this.gameCode}/night`;
