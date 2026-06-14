@@ -226,8 +226,9 @@
 - [x] **Étape 1** — Réorganisation documentaire (`SPEC_TIMERS.md`, `SPEC_TRANSITIONS.md`)
 - [x] **Étape 2** — State machine Symfony Workflow — refactoriser les transitions de phases
 - [x] **Étape 3** — Timers configurables par partie — stockage dans `games.settings['timers']`, fallback `config/game.php`, UI dans waiting-room
-- [ ] **Étape 4** — Rôles v1.2 — Sorcière, Chasseur (avec actions volontaires et timers fallback)
-- [ ] **Étape 5** — Tests intégration v1.2 — couvrir les nouveaux endpoints, jobs auto, file d'annonces, reconnexion
+- [x] **Étape 4** — Rôles v1.2 — Sorcière, Chasseur (avec actions volontaires et timers fallback)
+- [x] **Étape 5** — Tests intégration v1.2 — couvrir les nouveaux endpoints, jobs auto, file d'annonces, reconnexion
+  - Note : `PhaseAnnouncementTest.php` non créé — event `PhaseAnnouncement` non implémenté (prévu SPEC_TRANSITIONS.md)
 - [ ] **Rôles v1.3+** (hors périmètre v1.2) — Loup Blanc, Cupidon, Petite Fille
 
 ---

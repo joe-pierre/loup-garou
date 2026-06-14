@@ -251,3 +251,4 @@
 - [ ] Rôles v1.3+ : Loup Blanc, Cupidon, Petite Fille
 - [ ] State machine : étendre Symfony Workflow aux statuts intermédiaires (processing_night, wolves_turn) — post-Étape 4 si nécessaire
 - [ ] Audit performance post-v1.2 : N+1 queries, temps réponse < 200ms (Laravel Telescope)
+- [ ] Implémenter PhaseAnnouncement event + PhaseAnnouncementTest.php (SPEC_TRANSITIONS.md §3)
