@@ -31,7 +31,7 @@ class MayorSuccessionStarted implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'timer'              => config('game.timers.mayor_succession', 15),
+            'timer'              => $this->game->timer('mayor_succession'),
             'dying_mayor_pseudo' => $this->dyingMayorPseudo,
         ];
     }

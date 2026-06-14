@@ -31,7 +31,7 @@ class WerewolvesTurnStarted implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'timer'            => config('game.timers.werewolves', 30),
+            'timer'            => $this->game->timer('werewolves'),
             'eligible_targets' => $this->eligibleTargets,
         ];
     }

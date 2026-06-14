@@ -32,7 +32,7 @@ class SeerTurnStarted implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'timer' => config('game.timers.seer', 30),
+            'timer' => $this->game->timer('seer'),
         ];
     }
 }

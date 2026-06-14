@@ -542,8 +542,8 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const MY_IS_ALIVE   = {{ $player->is_alive ? 'true' : 'false' }};
     const SEER_TIMER    = {{ $game->timer('seer') }};
     const WOLVES_TIMER  = {{ $game->timer('werewolves') }};
-    const WITCH_TIMER   = {{ $game->settings['timers']['witch'] ?? config('game.timers.witch') }};
-    const HUNTER_TIMER  = {{ $game->settings['timers']['hunter'] ?? config('game.timers.hunter') }};
+    const WITCH_TIMER   = {{ $game->timer('witch') }};
+    const HUNTER_TIMER  = {{ $game->timer('hunter') }};
 
     // Exposer sur window pour game-state.js
     window.GAME_ID      = GAME_ID;
