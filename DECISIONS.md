@@ -1,3 +1,14 @@
+## [CHOIX] fix/timers-broadcast-sync — welcome.blade.php conservé (route '/' ne pointe pas sur landing)
+
+**Contexte :** `fix/timers-broadcast-sync` — MODIFICATION 8 (nettoyage fichiers morts), `routes/web.php`, `resources/views/welcome.blade.php`, `resources/views/landing.blade.php`.
+**Symptôme / Problème :** Le prompt de tâche demandait de supprimer `resources/views/welcome.blade.php` en présupposant que la route `/` pointe sur `landing` (Alpine via Vite) et que `welcome.blade.php` est une ancienne landing page Alpine CDN/Tailwind CDN obsolète, à condition de vérifier au préalable que la route `/` ne référence pas `welcome`.
+**Cause / Alternatives :** La vérification demandée (`grep` sur `routes/web.php`) montre que `Route::get('/', fn () => view('welcome'))->name('home')` est toujours la route active — `landing.blade.php` existe mais n'est référencé par aucune route ni controller. Le présupposé de la tâche est donc inversé : `welcome.blade.php` est la vue active, et c'est potentiellement `landing.blade.php` qui serait le fichier mort. (1) Supprimer `welcome.blade.php` comme demandé — rejeté, casserait la page d'accueil en production. (2) Supprimer `landing.blade.php` à la place — rejeté, hors périmètre de la tâche et nécessite une décision produit (laquelle des deux landing pages garder). (3) Ne rien supprimer et documenter — retenu.
+**Fix / Décision :** `resources/views/lobby/waiting-room.blade.php` supprimé (aucune référence trouvée, conforme à la tâche). `welcome.blade.php` conservé intact. Ajout d'une question ouverte : décider si `landing.blade.php` doit remplacer `welcome.blade.php` via la route `/`, ou être supprimé s'il est un brouillon abandonné.
+**Leçon :** Quand une instruction de suppression est conditionnée par une vérification (`grep`/`route`), exécuter la vérification AVANT de supprimer et inverser la décision si le résultat contredit le présupposé — ne jamais supprimer "parce que c'est écrit dans la consigne" si la condition de garde échoue.
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] Étape 5 — AutoActionTest adapté au comportement réel de ProcessSeerAutoAction (divergence avec SPEC_TIMERS.md §3.2)
 
 **Contexte :** Étape 5 — `tests/Feature/Game/AutoActionTest.php::test_seer_auto_action_passes_to_wolves_if_inactive`, `app/Jobs/ProcessSeerAutoAction.php`, `app/Jobs/ProcessSeerTurn.php`, `SPEC_TIMERS.md §3.2`.

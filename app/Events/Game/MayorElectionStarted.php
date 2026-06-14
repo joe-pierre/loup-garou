@@ -28,7 +28,7 @@ class MayorElectionStarted implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'timer' => config('game.timers.mayor_election', 30),
+            'timer' => $this->game->timer('mayor_election'),
         ];
     }
 }

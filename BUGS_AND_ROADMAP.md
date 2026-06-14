@@ -1,5 +1,19 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-14 — Timers erronés broadcastés aux clients (Events + night.blade.php)
+
+- **Symptôme :** si le host configure des timers personnalisés (ex. seer=15s),
+  le client affiche une barre de progression basée sur la valeur par défaut
+  (30s) pendant que le vrai timer serveur est 15s — désynchronisation visible.
+- **Cause :** MayorElectionStarted, MayorSuccessionStarted, SeerTurnStarted,
+  WerewolvesTurnStarted utilisaient config('game.timers.x') directement dans
+  broadcastWith() au lieu de $game->timer('x'). night.blade.php accédait aussi
+  à $game->settings['timers']['x'] directement.
+- **Fix :** remplacement par $game->timer('x') dans les 4 Events et dans
+  night.blade.php — conforme à la règle CLAUDE.md et à TimerCalculator.
+
+---
+
 ### [x] 2026-06-14 — Guard $alreadyDone bloquait la succession de jour après une succession de nuit au même round
 
 - **Symptôme :** quand le maire mourait la nuit et son successeur était éliminé
@@ -248,6 +262,7 @@
  
 - [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)
 - [ ] Harmoniser les appels `config('game.timers.mayor_succession', 15)` restants avec `$game->timer()` (Étape 3)
+- [ ] NightStarted::broadcastWith() utilise encore `config('game.timers.seer', 30)` au lieu de `$game->timer('seer')` — même bug que celui corrigé pour Mayor*/SeerTurnStarted/WerewolvesTurnStarted
 - [ ] Rôles v1.3+ : Loup Blanc, Cupidon, Petite Fille
 - [ ] State machine : étendre Symfony Workflow aux statuts intermédiaires (processing_night, wolves_turn) — post-Étape 4 si nécessaire
 - [ ] Audit performance post-v1.2 : N+1 queries, temps réponse < 200ms (Laravel Telescope)
