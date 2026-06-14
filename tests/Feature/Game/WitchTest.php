@@ -151,11 +151,10 @@ class WitchTest extends TestCase
     }
 
     /**
-     * Guard #3 : aucun night_vote enregistré (égalité/abstention des loups) ->
-     * resolveNightVote() retourne null -> ProcessWitchTurn ne broadcast rien
-     * et passe directement à ProcessNightEnd.
+     * Guard #3 révisé : sans victime des loups, la sorcière reçoit quand même
+     * WitchTurnStarted si elle a encore son poison — heal_available doit être false.
      */
-    public function test_witch_turn_skipped_si_egalite_loups(): void
+    public function test_witch_turn_avec_poison_disponible_si_egalite_loups(): void
     {
         Event::fake();
         Queue::fake();
@@ -163,11 +162,67 @@ class WitchTest extends TestCase
         $game = $this->makeNightGame();
         GamePlayer::factory()->witch()->create(['game_id' => $game->id]);
         GamePlayer::factory()->count(4)->villager()->create(['game_id' => $game->id]);
+        // Pas de night_vote → resolveNightVote() retourne null
+
+        (new ProcessWitchTurn($game->id, $game->round))->handle(app(VoteService::class));
+
+        // WitchTurnStarted doit être broadcasté avec victim null et heal_available false
+        Event::assertDispatched(WitchTurnStarted::class, function ($e) {
+            return $e->victim === null
+                && $e->healAvailable === false
+                && $e->killAvailable === true;
+        });
+        Queue::assertPushed(ProcessWitchAutoAction::class);
+        Queue::assertNotPushed(ProcessNightEnd::class);
+    }
+
+    /**
+     * Guard #3 : si les deux potions sont épuisées ET pas de victime → skip silencieux.
+     */
+    public function test_witch_turn_skipped_si_egalite_loups_et_potions_epuisees(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game = $this->makeNightGame();
+        GamePlayer::factory()->witch()->create([
+            'game_id'  => $game->id,
+            'settings' => ['witch_heal_used' => true, 'witch_kill_used' => true],
+        ]);
+        GamePlayer::factory()->count(4)->villager()->create(['game_id' => $game->id]);
 
         (new ProcessWitchTurn($game->id, $game->round))->handle(app(VoteService::class));
 
         Event::assertNotDispatched(WitchTurnStarted::class);
-        Queue::assertPushed(ProcessNightEnd::class, fn ($job) => $job->gameId === $game->id && $job->round === $game->round);
+        Queue::assertPushed(ProcessNightEnd::class,
+            fn ($job) => $job->gameId === $game->id && $job->round === $game->round
+        );
+    }
+
+    /**
+     * Si seul le soin est épuisé mais pas le poison, et pas de victime →
+     * la sorcière reçoit quand même WitchTurnStarted pour utiliser son poison.
+     */
+    public function test_witch_turn_avec_soin_epuise_mais_poison_disponible(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game = $this->makeNightGame();
+        GamePlayer::factory()->witch()->create([
+            'game_id'  => $game->id,
+            'settings' => ['witch_heal_used' => true, 'witch_kill_used' => false],
+        ]);
+        GamePlayer::factory()->count(4)->villager()->create(['game_id' => $game->id]);
+
+        (new ProcessWitchTurn($game->id, $game->round))->handle(app(VoteService::class));
+
+        Event::assertDispatched(WitchTurnStarted::class, function ($e) {
+            return $e->victim === null
+                && $e->healAvailable === false
+                && $e->killAvailable === true;
+        });
+        Queue::assertPushed(ProcessWitchAutoAction::class);
     }
 
     /**

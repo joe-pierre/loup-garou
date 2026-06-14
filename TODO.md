@@ -234,6 +234,9 @@
 - [x] **Fix toast éliminations** — toast visible par tous à chaque mort dans
       game-state.js::handlePlayerEliminated
 - [x] **Fix timers UX** — résultat maire 6s, fermeture modale succession 5s
+- [x] **Fix sorcière égalité loups** — tour maintenu si poison disponible,
+      WitchTurnStarted avec victim:null, panel client adapté, tests mis à jour,
+      RISK_GUARDS.md Guard #3 révisé (fix/witch-turn-no-victim)
 
 ---
 

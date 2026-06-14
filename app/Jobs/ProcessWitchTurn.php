@@ -44,16 +44,27 @@ class ProcessWitchTurn implements ShouldQueue
             return;
         }
 
-        // Guard #3 : égalité chez les loups -> pas de victime à sauver/voir
+        // Guard #3 (révisé) : égalité chez les loups -> pas de victime à sauver
         $victim = $voteService->resolveNightVote($game);
 
-        if (! $victim) {
+        $witchSettings = $witch->settings ?? [];
+        $healUsed      = $witchSettings['witch_heal_used'] ?? false;
+        $killUsed      = $witchSettings['witch_kill_used'] ?? false;
+
+        // Pas de victime ET les deux potions sont épuisées -> skip silencieux
+        if (! $victim && $healUsed && $killUsed) {
             ProcessNightEnd::dispatch($this->gameId, $this->round)->delay(0);
             return;
         }
 
-        $healAvailable = ! ($witch->settings['witch_heal_used'] ?? false) && $victim->id !== $witch->id;
-        $killAvailable = ! ($witch->settings['witch_kill_used'] ?? false);
+        $healAvailable = ! $healUsed && $victim !== null && $victim->id !== $witch->id;
+        $killAvailable = ! $killUsed;
+
+        // Pas de victime ET pas de poison disponible -> skip silencieux
+        if (! $victim && ! $killAvailable) {
+            ProcessNightEnd::dispatch($this->gameId, $this->round)->delay(0);
+            return;
+        }
 
         broadcast(new WitchTurnStarted($game, $witch, $victim, $healAvailable, $killAvailable));
 
