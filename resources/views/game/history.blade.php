@@ -129,7 +129,7 @@
         default      => '🏁 Annulée',
     };
     $roleLabel = fn(?string $r) => match($r) {
-        'villager' => '🏘 Villageois',
+        'villager' => '🧑‍🌾 Villageois',
         'werewolf' => '🐺 Loup-Garou',
         'seer'     => '🔮 Voyante',
         'witch'    => '🧙‍♀️ Sorcière',

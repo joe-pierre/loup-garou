@@ -291,7 +291,7 @@
       </h2>
       <p class="text-center mb-16 italic opacity-70">Survolez une carte pour découvrir son pouvoir.</p>
 
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="grid grid-cols-2 lg:grid-cols-3 gap-6">
 
         <!-- Loup-Garou -->
         <div class="role-card flip-card">
@@ -325,7 +325,7 @@
         <div class="role-card flip-card">
           <div class="flip-inner">
             <div class="flip-face" style="border: 1px solid rgba(74,222,128,0.5)">
-              <div class="text-6xl mb-4">🪓</div>
+              <div class="text-6xl mb-4">🧑‍🌾</div>
               <h3 class="font-title text-2xl" style="color: #4ade80">Villageois</h3>
             </div>
             <div class="flip-back flip-face" style="border: 1px solid rgba(74,222,128,0.5)">
@@ -345,6 +345,34 @@
             <div class="flip-back flip-face" style="border: 1px solid rgba(201,168,76,0.5)">
               <h3 class="font-title text-xl mb-3" style="color: var(--gold)">Maire</h3>
               <p class="text-sm opacity-85">Élu par le village au premier jour. Son vote compte double lors des égalités.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sorcière -->
+        <div class="role-card flip-card">
+          <div class="flip-inner">
+            <div class="flip-face" style="border: 1px solid rgba(52,147,211,0.5)">
+              <div class="text-6xl mb-4">🧙‍♀️</div>
+              <h3 class="font-title text-2xl" style="color: #3493d3">Sorcière</h3>
+            </div>
+            <div class="flip-back flip-face" style="border: 1px solid rgba(52,147,211,0.5)">
+              <h3 class="font-title text-xl mb-3" style="color: #3493d3">Sorcière</h3>
+              <p class="text-sm opacity-85">Elle dispose d'une potion de soin et d'une potion de poison, à utiliser une seule fois chacune dans la partie.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chasseur -->
+        <div class="role-card flip-card">
+          <div class="flip-inner">
+            <div class="flip-face" style="border: 1px solid rgba(247,191,36,0.5)">
+              <div class="text-6xl mb-4">🏹</div>
+              <h3 class="font-title text-2xl" style="color: #fbbf24">Chasseur</h3>
+            </div>
+            <div class="flip-back flip-face" style="border: 1px solid rgba(247,191,36,0.5)">
+              <h3 class="font-title text-xl mb-3" style="color: #fbbf24">Chasseur</h3>
+              <p class="text-sm opacity-85">Quand il est éliminé, il peut emporter un joueur de son choix dans la mort. Un seul tir, mais décisif.</p>
             </div>
           </div>
         </div>

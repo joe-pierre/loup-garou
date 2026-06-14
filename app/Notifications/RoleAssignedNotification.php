@@ -13,9 +13,11 @@ class RoleAssignedNotification extends Notification implements ShouldQueue
     use Queueable;
 
     private const ROLE_LABELS = [
-        'villager' => '🏘️ Villageois',
+        'villager' => '🧑‍🌾 Villageois',
         'werewolf' => '🐺 Loup-Garou',
         'seer'     => '🔮 Voyante',
+        'witch'    => '🧙‍♀️ Sorcière',
+        'hunter'   => '🏹 Chasseur',
     ];
 
     public function __construct(public readonly string $role) {}
