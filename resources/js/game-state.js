@@ -376,6 +376,7 @@ export function gameState(gameId, userId) {
             if (e.channel === 'general') {
                 this.chat.push(e);
             }
+            window.dispatchEvent(new CustomEvent('chat-message', { detail: e }));
         },
 
         _handleDayVoteCast(e) {

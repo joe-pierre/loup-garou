@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-14 — Messages de chat en doublon (canal général et canal loups)
+
+- **Symptôme :** chaque message envoyé dans le chat général (jour) ou le canal loups (nuit) apparaissait deux fois.
+- **Cause :** `day.blade.php` s'abonnait en plus à `.chat.message.sent` sur `game.${GAME_ID}` alors que `game-state.js` traite déjà cet event via `_handleChatMessage()`.
+- **Fix :** suppression du listener Echo direct dans `day.blade.php` ; `_handleChatMessage()` dispatch désormais `window.dispatchEvent('chat-message')`, écouté par `day.blade.php`. Vérifié `night.blade.php` : aucun abonnement Echo dupliqué sur le canal loups, déjà conforme.
+
+---
+
 ### [x] 2026-06-14 — welcome.blade.php renommé en home.blade.php, landing.blade.php supprimé
 
 - welcome.blade.php était la vue active (route / → view('welcome')) mais
