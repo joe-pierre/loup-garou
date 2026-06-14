@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-14 — backdrop-filter blur sur la modale succession rendu flou/dégradé
+
+- **Symptôme :** la modale "Succession du Maire" s'affichait avec un rendu visuellement flou/dégradé sur certains navigateurs.
+- **Cause :** `backdrop-filter: blur(4px)` sur l'overlay de la modale succession dans `day.blade.php` et `night.blade.php`.
+- **Fix :** suppression du `backdrop-filter`, opacité de l'overlay augmentée de 0.65 à 0.82 pour compenser visuellement.
+
+---
+
 ### [x] 2026-06-14 — Messages de chat en doublon (canal général et canal loups)
 
 - **Symptôme :** chaque message envoyé dans le chat général (jour) ou le canal loups (nuit) apparaissait deux fois.

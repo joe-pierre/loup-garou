@@ -502,7 +502,7 @@
         x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0"
         class="fixed inset-0 flex items-center justify-center z-50 px-4"
-        style="background-color: rgba(10,15,30,0.65); backdrop-filter: blur(4px);"
+        style="background-color: rgba(10,15,30,0.82);"
     >
         <div class="succession-modal w-full max-w-sm p-6" x-ref="successionModal">
             <div class="text-center">
@@ -515,6 +515,11 @@
                     </svg>
                     <p class="text-sm" style="color:#e8e0d0;">Désignation du successeur en cours…</p>
                 </div>
+                <p x-show="newMayorPseudo"
+                   class="text-sm mt-4 font-medieval font-semibold"
+                   style="color:#c9a84c;"
+                   x-text="'👑 ' + newMayorPseudo + ' est le nouveau Maire'">
+                </p>
             </div>
         </div>
     </div>
@@ -555,6 +560,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             confirmQuit:      false,
             successionOpen:   false,
             dyingMayorPseudo: '',
+            newMayorPseudo:   '',
 
             isAlive:             MY_IS_ALIVE,
             showDeathBanner:     sessionStorage.getItem('dead_' + MY_PLAYER_ID) === '1',
@@ -607,7 +613,8 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 window.addEventListener('mayor-succession-started', (e) => {
                     this.openSuccessionModal(e.detail);
                 });
-                window.addEventListener('mayor-succession-done', () => {
+                window.addEventListener('mayor-succession-done', (e) => {
+                    this.newMayorPseudo = e.detail?.new_mayor_pseudo ?? '';
                     this.closeSuccessionModal();
                 });
 
@@ -845,7 +852,9 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             },
 
             closeSuccessionModal() {
-                this.successionOpen = false;
+                setTimeout(() => {
+                    this.successionOpen = false;
+                }, 2500);
             },
 
             submitQuit() {
