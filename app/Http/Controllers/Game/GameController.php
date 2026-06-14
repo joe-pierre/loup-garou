@@ -100,7 +100,7 @@ class GameController extends Controller
             ->where('user_id', $request->user()->id)
             ->firstOrFail();
 
-        $players     = $game->alivePlayers()->get();
+        $players     = $game->players()->orderBy('is_alive', 'desc')->get();
         $nightVictim = null;
 
         return view('game.day', compact('game', 'player', 'players', 'nightVictim'));

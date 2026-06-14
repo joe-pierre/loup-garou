@@ -31,7 +31,7 @@ class ChatController extends Controller
         if ($chatMessage->channel === 'werewolves') {
             broadcast(new WerewolfChatMessage($player->game, $player, $chatMessage->message, $timestamp));
         } else {
-            broadcast(new ChatMessageSent($player->game, $player, $chatMessage->message, $timestamp));
+            broadcast(new ChatMessageSent($player->game, $player, $chatMessage->message, $timestamp, $chatMessage->channel));
         }
 
         return response()->json(['success' => true, 'data' => []]);

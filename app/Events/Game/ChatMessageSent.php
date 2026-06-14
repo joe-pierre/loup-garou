@@ -19,6 +19,7 @@ class ChatMessageSent implements ShouldBroadcastNow
         public readonly GamePlayer $player,
         public readonly string $message,
         public readonly string $timestamp,
+        public readonly string $channel = 'general',
     ) {}
 
     public function broadcastOn(): array
@@ -36,7 +37,7 @@ class ChatMessageSent implements ShouldBroadcastNow
         return [
             'pseudo'    => $this->player->pseudo,
             'message'   => $this->message,
-            'channel'   => 'general',
+            'channel'   => $this->channel,
             'timestamp' => $this->timestamp,
         ];
     }

@@ -11,7 +11,7 @@ class ChatService
     {
         $game = $player->game;
 
-        if (! $player->is_alive) {
+        if (! $player->is_alive && $channel !== 'dead') {
             abort(403, 'Les joueurs éliminés ne peuvent pas envoyer de messages.');
         }
 
@@ -28,6 +28,24 @@ class ChatService
             if (! in_array($game->status, ['electing_mayor', 'day', 'processing_day'])) {
                 abort(409, 'Le chat général n\'est disponible que pendant l\'élection du maire et le jour.');
             }
+        }
+
+        if ($channel === 'dead') {
+            if ($player->is_alive) {
+                abort(403, 'Seuls les joueurs éliminés peuvent écrire dans le canal des fantômes.');
+            }
+            if (! in_array($game->status, ['day', 'processing_day'])) {
+                abort(409, 'Le chat des fantômes n\'est disponible que pendant la phase jour.');
+            }
+
+            return ChatMessage::create([
+                'game_id'   => $game->id,
+                'player_id' => $player->id,
+                'message'   => $message,
+                'channel'   => 'dead',
+                'round'     => $game->round,
+                'phase'     => 'day',
+            ]);
         }
 
         return ChatMessage::create([
