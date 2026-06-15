@@ -83,7 +83,12 @@ class ProcessNightActions implements ShouldQueue
                 ->delay(now()->addSeconds($successionDelay));
         }
 
+        // Le délai doit couvrir le tour de la sorcière (witch_timer) en plus
+        // du buffer de succession, sinon ProcessNightEnd coupe son tour.
+        $witchTimer       = $witch ? $game->timer('witch') : 0;
+        $successionBuffer = $game->timer('mayor_succession') + 5;
+
         ProcessNightEnd::dispatch($game->id, $game->round)
-            ->delay(now()->addSeconds($game->timer('mayor_succession') + 5));
+            ->delay(now()->addSeconds($witchTimer + $successionBuffer));
     }
 }

@@ -1,5 +1,29 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-15 — Nuit entière skippée quand les loups sont en égalité
+
+- **Symptôme :** quand les loups ne désignaient aucune victime (égalité),
+  les tours voyante, loups et sorcière étaient silencieusement skippés.
+  La partie passait directement au jour suivant.
+- **Cause :** ProcessWitchTurn dispatchait ProcessNightEnd::delay(0) dans
+  ses guards "skip silencieux" (potions épuisées, ou pas de victime + pas
+  de poison disponible). Ce ProcessNightEnd anticipé s'exécutait
+  immédiatement, voyait status='processing_night', passait le guard et
+  appelait endNight() avant même que les timers voyante et loups (8s +
+  seer_timer + wolves_timer) ne soient écoulés.
+- **Fix :** suppression des dispatches ProcessNightEnd::delay(0) dans les
+  guards de skip de ProcessWitchTurn. Ces guards font maintenant un simple
+  return. Le ProcessNightEnd dispatché par ProcessNightActions (avec un
+  délai calculé dynamiquement = witch_timer + mayor_succession + 5s) gère
+  la fin de nuit dans tous les cas.
+- **Fix associé :** le délai du ProcessNightEnd dispatché par ProcessNightActions
+  était fixe (mayor_succession + 5s ≈ 20s) et ne couvrait pas witch_timer
+  (jusqu'à 60s configurable). Remplacé par witch_timer + mayor_succession + 5s.
+- **Fichiers modifiés :** app/Jobs/ProcessWitchTurn.php,
+  app/Jobs/ProcessNightActions.php, tests/Feature/Game/WitchTest.php.
+
+---
+
 ### [x] 2026-06-14 — Toasts dispatchés tôt dans le cycle de vie Alpine perdus
 
 - **Symptôme :** certains toasts (ex. déclenchés très tôt après le chargement de la page) n'apparaissaient jamais.
@@ -491,3 +515,78 @@
 - [ ] Double toast lors de MayorSuccessionDone : "👑 X est élu Maire" (via l'appel
       interne à handleMayorElected()) suivi de "👑 X est le nouveau Maire" —
       dédupliquer si jugé redondant côté UX (feat/narrative-toasts-client)
+
+## Refactoring architectural planifié
+
+### [ ] Refactor — Supprimer night_start_delay et les délais buffers artificiels
+
+**Problème actuel :**
+
+La séquence nocturne repose sur trois délais artificiels qui compensent
+une limitation architecturale :
+
+1. night_start_delay = 8s dans config/game.php : délai entre NightStarted
+   broadcasté et le premier dispatch (ProcessSeerTurn). Ajouté pour laisser
+   le temps aux clients de se rediriger vers /night et de s'abonner au
+   canal Echo avant que SeerTurnStarted parte. Sans ce délai, l'event
+   est émis dans le vide et la voyante ne voit jamais son tour.
+
+2. Le +2s dans ProcessSeerTurn (delay = seer_timer + 2) : buffer de
+   sécurité entre ProcessSeerAutoAction et ProcessWerewolvesTurn pour
+   éviter une race condition.
+
+3. mayor_succession + 5s dans ProcessNightActions pour ProcessNightEnd :
+   buffer pour couvrir le tour sorcière. Amélioré en witch_timer +
+   mayor_succession + 5s par le fix de ce jour, mais reste fragile car
+   calculé côté serveur sans confirmation que le client a bien reçu et
+   traité WitchTurnStarted.
+
+**Cause racine commune :**
+
+Le backend dispatche des events dans le vide et espère que les délais
+en dur suffisent. Il n'existe aucun mécanisme permettant au backend de
+savoir si les clients ont bien reçu et traité un event avant de passer
+à l'étape suivante.
+
+**Solution cible : pattern "ready acknowledgment"**
+
+Principe : le client signale sa présence au backend après chargement de
+la page et abonnement à Echo. Le backend ne commence les tours que quand
+tous les joueurs vivants ont signalé leur présence (ou après un timeout
+de sécurité).
+
+Implémentation envisagée :
+
+- Ajouter POST /game/{id}/night-ready : appelé par le client dans init()
+  de nightScreen() après initWebSocket(), signale que le joueur est
+  abonné et prêt.
+- Backend stocke les confirmations dans Redis/Cache avec une clé
+  "night_ready_{game_id}_{round}_{player_id}".
+- ProcessSeerTurn attend que tous les joueurs vivants aient confirmé,
+  ou démarre après un timeout (ex: 6s) si certains joueurs ne confirment
+  pas (déconnectés, lents).
+- Supprimer night_start_delay de config/game.php et de
+  PhaseManager::startNight().
+- Supprimer le +2s arbitraire dans ProcessSeerTurn.
+- Le délai de ProcessNightEnd peut redevenir majority_succession + 5s
+  car la sorcière, ayant elle aussi confirmé sa présence, a reçu
+  WitchTurnStarted à coup sûr. On peut conserver witch_timer +
+  majority_succession + 5s comme garde-fou.
+
+**Ce que ça règle :**
+- Suppression complète des race conditions dues à la vitesse de connexion.
+- Fin de partie correcte même sur connexion lente (mobile 3G, etc.).
+- Plus aucun délai arbitraire à ajuster quand les timers de jeu changent.
+- Robustesse face aux futurs rôles actifs (chaque nouveau tour ajoute
+  aujourd'hui un +Xs implicite à calibrer manuellement).
+
+**Risques et prérequis :**
+- Nécessite que tous les clients appellent /night-ready de façon fiable,
+  y compris après un refresh ou une reconnexion en cours de nuit.
+- Le timeout de sécurité doit couvrir les cas de reconnexion (actuellement
+  30s selon config reconnection). Valeur suggérée : max(night_start_delay,
+  reconnection_timeout / 2).
+- Tests d'intégration à écrire : test_night_starts_after_all_players_ready,
+  test_night_starts_after_timeout_if_player_disconnected.
+- Priorité : après stabilisation de v1.2. Ne pas faire avant d'avoir
+  tous les rôles stables.
