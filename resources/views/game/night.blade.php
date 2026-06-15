@@ -621,6 +621,12 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 if (this._initialized) return;
                 this._initialized = true;
 
+                // Nettoyer le flag si le joueur est vivant au chargement de la page
+                if (MY_IS_ALIVE) {
+                    sessionStorage.removeItem('dead_' + MY_PLAYER_ID);
+                    this.showDeathBanner = false;
+                }
+
                 this.$watch('nightPhase', (phase) => {
                     const messages = {
                         seer_turn:       { role: 'seer',     text: '🌙 Des forces mystérieuses agissent dans l\'ombre...' },
@@ -646,6 +652,10 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 window.addEventListener('i-was-eliminated', () => {
                     this.showDeathBanner = true;
                     sessionStorage.setItem('dead_' + MY_PLAYER_ID, '1');
+                });
+                window.addEventListener('i-was-saved', () => {
+                    this.showDeathBanner = false;
+                    sessionStorage.removeItem('dead_' + MY_PLAYER_ID);
                 });
 
                 // Succession du maire — via window (dispatchée par game-state.js)

@@ -442,6 +442,22 @@
 
 ---
 
+### [x] 2026-06-15 — Bannière "Tu as été éliminé" persistante après sauvegarde sorcière
+
+- **Symptôme :** un joueur sauvé par la sorcière voyait en permanence la bannière
+  "Tu as été éliminé" sur /day, même en étant vivant. Le même bug pouvait se produire
+  lors du rechargement de page si le flag sessionStorage subsistait d'un cycle précédent.
+- **Cause :** `sessionStorage.getItem('dead_' + MY_PLAYER_ID)` persistait entre les
+  phases et les rechargements. Aucun code ne supprimait ce flag quand un joueur vivant
+  chargeait /day ou /night, ni quand `day.started` indiquait qu'il avait été sauvé.
+- **Fix :** (1) Nettoyage du flag en tête d'`init()` si `MY_IS_ALIVE` est vrai.
+  (2) Écoute de `i-was-saved` (nouveau CustomEvent dispatché par `game-state.js`
+  dans `handleDayStarted` quand `saved_player_id === myId`) pour annuler la bannière
+  en temps réel. (3) Fallback de 600ms dans `toast.blade.php::remove()` pour garantir
+  la suppression même si l'animation GSAP échoue silencieusement.
+
+---
+
 # ROADMAP (idées / améliorations futures)
  
 - [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)
