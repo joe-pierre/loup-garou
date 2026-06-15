@@ -385,16 +385,18 @@
 
 ---
 
-### [x] 2026-06-15 — Messages WebSocket reçus en double : transport ws+wss simultané (Pusher-js)
+### [x] 2026-06-15 — [RÉGRESSIF] Messages WebSocket reçus en double : transport ws+wss simultané (Pusher-js)
 
 - **Symptôme :** tous les events WebSocket (chat, votes, etc.) arrivaient deux fois côté client, malgré les fixes précédents sur les doubles abonnements Echo.
 - **Cause :** `enabledTransports: ['ws', 'wss']` dans `resources/js/echo.js` permettait à Pusher-js d'établir deux connexions simultanées (ws ET wss) alors que `forceTLS: true` et un seul port (443) sont configurés — chaque event WebSocket était donc livré une fois par connexion.
 - **Fix :** `enabledTransports: ['wss']` — une seule connexion TLS.
+- **RÉGRESSION (branche fix/pusher-double-transport) :** ce fix a cassé le temps réel — obligation de recharger la page pour voir l'état du jeu, messages chat ne s'affichant plus. La cause racine des doublons chat n'est PAS le double transport Pusher — `['wss']` seul casse le temps réel car Reverb/Nginx ne répond pas correctement en wss seul dans cette configuration. Revert vers `['ws', 'wss']` (branche revert/wss-only-transport). La vraie cause des doublons reste à identifier.
 
 ---
 
 # ROADMAP (idées / améliorations futures)
  
+- [ ] Identifier la vraie cause des doublons chat (1 message = 2 affichages) — piste : window.addEventListener 'chat-message' enregistré 2x dans dayScreen.init()
 - [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)
 - [ ] Harmoniser les appels `config('game.timers.mayor_succession', 15)` restants avec `$game->timer()` (Étape 3)
 - [ ] NightStarted::broadcastWith() utilise encore `config('game.timers.seer', 30)` au lieu de `$game->timer('seer')` — même bug que celui corrigé pour Mayor*/SeerTurnStarted/WerewolvesTurnStarted
