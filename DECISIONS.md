@@ -604,3 +604,31 @@ SPEC.md §4 mis à jour pour refléter ce choix.
 **Fix / Décision :** `handleNightStarted()` vérifie `successionDepth > 0` : si oui, attend un event `mayor-succession-done` qui ramène le compteur à 0 avant d'appeler `_doNightRedirect()` (logique d'animation/redirection extraite en méthode dédiée). Garde-fou complémentaire côté `day.blade.php` : `openSuccessionModal()` arme un `setTimeout(20000)` qui force `closeSuccessionModal()` si `mayor-succession-done` n'arrive jamais (perte réseau, bug serveur).
 **Leçon :** Pour tout état "N opérations asynchrones en cours" qui peut se déclencher en cascade (le même event de fin peut re-déclencher l'event de début avant d'être traité), utiliser un compteur réentrant plutôt qu'un flag booléen. Par ailleurs, toute redirection de page (`window.location.href`) détruit immédiatement tous les `window.addEventListener` de la page courante — une modale/état "en cours" doit être résolu (ou avoir un timeout de secours) AVANT toute redirection déclenchée par un autre handler.
 **Statut :** ✅ Résolu
+
+---
+
+## [RÉSOLU] window.MY_ROLE absent du layout — canal loups jamais souscrit
+
+**Contexte :** fix/window-my-role-layout — resources/views/layouts/game.blade.php,
+resources/js/game-state.js.
+**Symptôme / Problème :** le canal privé game.{gameId}.werewolves n'était jamais
+souscrit pour certains joueurs loups (chat loups silencieux, votes non reçus).
+game-state.js loge deux fallbacks vers window.MY_ROLE avant initWebSocket() — mais
+window.MY_ROLE n'était défini nulle part dans le layout. Les vues night.blade.php
+et day.blade.php définissaient MY_ROLE comme const locale sans l'exposer sur window.
+**Cause / Alternatives :** (1) Ajouter window.MY_ROLE dans chaque vue Blade
+(night, day, elect-mayor) — solution fragmentée, risque d'oubli sur les vues futures.
+(2) Ajouter window.MY_ROLE dans le layout global, dans le @isset($player) existant —
+centralisé, garanti pour toutes les vues sans duplication.
+**Fix / Décision :** Option 2 retenue. Une ligne ajoutée dans layouts/game.blade.php :
+window.MY_ROLE = '{{ $player->role ?? '' }}'. L'ordre d'exécution est garanti :
+les scripts inline du layout s'exécutent avant les modules ES6 Vite (defer implicite),
+donc window.MY_ROLE est défini avant que game-state.js::init() soit appelé.
+**Leçon :** toute variable globale lue par game-state.js au moment de init() doit
+être exposée dans le layout principal, pas dans les vues individuelles. Les vues
+s'exécutent dans @push('scripts') qui est rendu après @stack('scripts') dans le layout,
+mais les modules Vite sont defer — l'ordre réel est : layout script → vues @push →
+bundle Vite. Pour les variables lues dès init() (avant le premier tick Alpine),
+seul le layout garantit une disponibilité synchrone. Ne pas exposer sur window depuis
+une const locale d'une vue Blade.
+**Statut :** ✅ Résolu

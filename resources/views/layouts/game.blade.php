@@ -161,6 +161,7 @@
         @isset($player)
         window.playerId     = {{ $player->id }};
         window.MY_PLAYER_ID = {{ $player->id }};
+        window.MY_ROLE      = '{{ $player->role ?? '' }}';
         @endisset
     </script>
     @stack('scripts')
