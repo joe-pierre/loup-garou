@@ -265,6 +265,11 @@
 - [x] Message nocturne générique ("Des forces mystérieuses agissent dans l'ombre...")
       via `$watch('nightPhase')` dans `nightScreen()` (night.blade.php), affiché
       uniquement aux joueurs non concernés par le tour actif (seer/werewolves/witch/hunter)
+- [x] Event `WitchActedPublic` broadcasté sur canal public si la sorcière a agi
+      (action !== 'pass'), toast "🧙 La sorcière a agi cette nuit." pour tous
+- [x] `DayStarted` enrichi (`witch_acted`, `saved_player_id`) — toast générique
+      "La sorcière a agi" + toast personnel "La sorcière t'a sauvé cette nuit."
+      pour le joueur sauvé
 
 ---
 

@@ -7,6 +7,7 @@ use App\Events\Game\MayorSuccessionDone;
 use App\Events\Game\PlayerEliminated;
 use App\Events\Game\SeerResult;
 use App\Events\Game\WitchActed;
+use App\Events\Game\WitchActedPublic;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\HunterShootRequest;
 use App\Http\Requests\MayorSuccessionRequest;
@@ -77,6 +78,11 @@ class ActionController extends Controller
 
         if ($result['action'] === 'kill' && $result['target']) {
             broadcast(new PlayerEliminated($witch->game, $result['target'], 'witch_kill'));
+        }
+
+        // Notification publique neutre — ne révèle ni la potion ni la cible
+        if ($result['action'] !== 'pass') {
+            broadcast(new WitchActedPublic($witch->game));
         }
 
         // L'action est résolue immédiatement -> ProcessWitchAutoAction termine le tour sans attendre le timer

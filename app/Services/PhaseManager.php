@@ -13,8 +13,12 @@ use Illuminate\Support\Facades\Log;
 
 class PhaseManager
 {
-    public function startDay(Game $game, ?GamePlayer $victim): void
-    {
+    public function startDay(
+        Game $game,
+        ?GamePlayer $victim,
+        bool $witchActed = false,
+        ?int $savedPlayerId = null,
+    ): void {
         $game->refresh();
         $locked = null;
         $timer  = $game->timer('day_vote');
@@ -46,7 +50,7 @@ class PhaseManager
             return;
         }
 
-        broadcast(new DayStarted($locked, $victim));
+        broadcast(new DayStarted($locked, $victim, $witchActed, $savedPlayerId));
         ProcessDayVote::dispatch($locked->id, $locked->round)
             ->delay(now()->addSeconds($timer));
     }
@@ -108,6 +112,22 @@ class PhaseManager
             $victim = null; // sauvé par la sorcière
         }
 
-        $this->startDay($game, $victim);
+        // Vérifier si la sorcière a agi (heal ou kill) ce round
+        $witchActed = $game->actions()
+            ->where('round', $game->round)
+            ->whereIn('type', ['witch_heal', 'witch_kill'])
+            ->exists();
+
+        // Récupérer l'id du joueur sauvé par la sorcière ce round (si applicable)
+        $savedPlayerId = null;
+        if ($witchActed) {
+            $healAction = $game->actions()
+                ->where('round', $game->round)
+                ->where('type', 'witch_heal')
+                ->first();
+            $savedPlayerId = $healAction?->target_player_id;
+        }
+
+        $this->startDay($game, $victim, $witchActed, $savedPlayerId);
     }
 }

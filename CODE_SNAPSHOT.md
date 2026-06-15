@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 14h00
+Generated at: 14h15
 
 ## PHP Analysis (Core Logic)
 
@@ -260,6 +260,18 @@ PlayerInactive.php
       - broadcastAs() → return 'player.inactive'
       - broadcastWith() → return ['pseudo' => $this->pseudo]
 
+// app/Events/Game/WitchActedPublic.php
+WitchActedPublic.php
+    attributes:
+      - Dispatchable
+      - InteractsWithSockets
+      - SerializesModels
+    functions:
+      - __construct(Game $game) {}
+      - broadcastOn() → return [new Channel("game.{$this->game->id}")]
+      - broadcastAs() → return 'witch.acted.public'
+      - broadcastWith() → return []
+
 // app/Events/Game/WitchActed.php
 WitchActed.php
     attributes:
@@ -451,10 +463,10 @@ DayStarted.php
       - InteractsWithSockets
       - SerializesModels
     functions:
-      - __construct(Game $game, ?GamePlayer $victim) {}
+      - __construct(Game $game, ?GamePlayer $victim, bool $witchActed, ?int $savedPlayerId) {}
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'day.started'
-      - broadcastWith() → return ['round' => $this->game->round, 'killed' => $this->victim ? ['player_id' => $this->victim->id, 'pseudo' => $this->victim->pseudo, 'role' => $this->victim->role] : null]
+      - broadcastWith() → return ['round' => $this->game->round, 'killed' => $this->victim ? ['player_id' => $this->victim->id, 'pseudo' => $this->victim->pseudo, 'role' => $this->victim->role] : null, 'witch_acted' => $this->witchActed, 'saved_player_id' => $this->savedPlayerId]
 
 // app/Events/Game/WerewolvesVoteCast.php
 WerewolvesVoteCast.php
@@ -864,7 +876,7 @@ VoteService.php
 // app/Services/PhaseManager.php
 PhaseManager.php
     functions:
-      - startDay(Game $game, ?GamePlayer $victim) → void
+      - startDay(Game $game, ?GamePlayer $victim, bool $witchActed, ?int $savedPlayerId) → void
       - startNight(Game $game) → void
       - endNight(Game $game) → void
 
