@@ -247,6 +247,9 @@
 - [x] **Fix timeline historique invisible** — opacity:0 retirée de .timeline-item,
       .player-row et #players-section ; animations GSAP déclenchées au clic sur
       les onglets Joueurs/Déroulé au lieu d'un MutationObserver (fix/history-timeline-animation)
+- [x] **Fix doublons chat — cause racine définitive** — guard `_initialized` dans
+      `dayScreen.init()`/`nightScreen.init()`, guard `_wsInitialized` dans
+      `game-state.js::initWebSocket()` (fix/chat-double-listeners)
 
 ---
 

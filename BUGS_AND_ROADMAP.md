@@ -394,9 +394,35 @@
 
 ---
 
+### [x] 2026-06-15 — Messages chat en doublon : double enregistrement window.addEventListener dans init()
+
+- **Symptôme :** 1 message envoyé = 2 affichages pour tous les joueurs sur /day.
+  Confirmé en prod avec vrais joueurs. Tous les window.addEventListener enregistrés
+  dans dayScreen.init() (chat-message, player-eliminated, hunter-turn-started, etc.)
+  étaient déclenchés deux fois.
+- **Diagnostic exhaustif :**
+  - ❌ Double abonnement Echo dans les vues Blade — écarté (corrigé précédemment)
+  - ❌ Double transport Pusher ['ws','wss'] — écarté via `ss -tnp` (une seule connexion
+    WebSocket active côté serveur). Test `['wss']` seul en prod : régression critique
+    (temps réel cassé, obligation de recharger). `enabledTransports: ['ws', 'wss']`
+    obligatoire dans cette config Nginx/Reverb et ne doit jamais être modifié.
+  - ✅ Cause confirmée via DevTools prod :
+    `getEventListeners(window)['chat-message']?.length === 2`
+- **Cause :** Alpine.js appelle `init()` deux fois sur le composant `dayScreen()`.
+  Chaque appel enregistre un nouveau `window.addEventListener('chat-message', ...)`
+  sans jamais retirer le précédent. Résultat : 2 listeners actifs sur window,
+  chaque CustomEvent capturé deux fois, chaque message affiché deux fois.
+- **Fix :** guard `_initialized` en tête de `init()` dans `dayScreen()` et `nightScreen()`.
+  Guard `_wsInitialized` en tête de `initWebSocket()` dans `game-state.js`.
+  ```js
+  if (this._initialized) return;
+  this._initialized = true;
+  ```
+
+---
+
 # ROADMAP (idées / améliorations futures)
  
-- [ ] Identifier la vraie cause des doublons chat (1 message = 2 affichages) — piste : window.addEventListener 'chat-message' enregistré 2x dans dayScreen.init()
 - [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)
 - [ ] Harmoniser les appels `config('game.timers.mayor_succession', 15)` restants avec `$game->timer()` (Étape 3)
 - [ ] NightStarted::broadcastWith() utilise encore `config('game.timers.seer', 30)` au lieu de `$game->timer('seer')` — même bug que celui corrigé pour Mayor*/SeerTurnStarted/WerewolvesTurnStarted

@@ -112,6 +112,9 @@ export function gameState(gameId, userId) {
         // WEBSOCKET
         // ════════════════════════════════════════════════════════════════════
         initWebSocket() {
+            if (this._wsInitialized) return;
+            this._wsInitialized = true;
+
             const echo = window.Echo;
             if (!echo) return;
 

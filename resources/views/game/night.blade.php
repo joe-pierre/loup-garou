@@ -618,6 +618,9 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             hunterActionDone:     false,
 
             init() {
+                if (this._initialized) return;
+                this._initialized = true;
+
                 // Les events du canal public (night.started, player.eliminated, day.started, etc.)
                 // sont gérés par game-state.js qui dispatch sur window.
                 // On écoute uniquement les events window — aucun abonnement Echo dupliqué ici.

@@ -1,3 +1,48 @@
+## [RÉSOLU] Double window.addEventListener dans init() — cause racine définitive des doublons chat
+
+**Contexte :** fix/chat-double-listeners — `resources/views/game/day.blade.php`,
+`resources/views/game/night.blade.php`, `resources/js/game-state.js`.
+
+**Symptôme / Problème :** messages chat affichés deux fois pour tous les joueurs
+sur /day. Persistait après tous les fixes précédents (suppression double abonnement
+Echo dans les vues, tentative `['wss']` seul).
+
+**Diagnostic exhaustif des pistes :**
+- Double abonnement Echo dans les vues Blade → écarté, déjà corrigé.
+- Double transport Pusher `['ws','wss']` → écarté définitivement. Test `['wss']` seul
+  en prod : régression critique (temps réel cassé). Confirmé via `ss -tnp` : une seule
+  connexion WebSocket active côté serveur. `enabledTransports: ['ws', 'wss']` est
+  obligatoire dans cette config Nginx/Reverb et ne doit plus jamais être modifié.
+- Cause racine confirmée via DevTools prod :
+  `getEventListeners(window)['chat-message']?.length === 2`
+
+**Cause :** Alpine.js appelle `init()` deux fois sur le composant `dayScreen()`.
+`window.addEventListener()` s'accumule sans `removeEventListener()` correspondant.
+Deux listeners actifs → chaque CustomEvent dispatché une fois est capturé deux fois.
+
+**Fix :** guard `_initialized` en tête de chaque `init()` qui enregistre des listeners
+sur `window`. Pattern à respecter sur tout futur composant Alpine qui utilise
+`window.addEventListener()` dans son `init()` :
+
+```js
+init() {
+    if (this._initialized) return;
+    this._initialized = true;
+    // window.addEventListener(...) ici
+},
+```
+
+**Leçon :** Ne jamais enregistrer `window.addEventListener()` dans un `init()` Alpine
+sans guard `_initialized`. Alpine peut appeler `init()` plusieurs fois sur le même
+composant selon le cycle de vie du DOM. `window.addEventListener()` est cumulatif —
+contrairement aux bindings Alpine (`@event`), il ne se remplace pas, il s'empile.
+Tout composant qui écoute des CustomEvents sur window doit se protéger contre
+les appels multiples de `init()`.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [RÉSOLU] Double transport Pusher (ws + wss) — cause racine définitive des doublons WebSocket
 
 **Contexte :** fix/pusher-double-transport — `resources/js/echo.js`.

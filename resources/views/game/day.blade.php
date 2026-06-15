@@ -455,6 +455,9 @@
             deadChatSending:  false,
 
             init() {
+                if (this._initialized) return;
+                this._initialized = true;
+
                 this.players = [...PLAYERS_DATA].sort((a, b) => b.is_alive - a.is_alive);
 
                 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
