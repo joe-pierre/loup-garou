@@ -150,6 +150,19 @@ Règles :
 - `window.dispatchEvent` pour les events cross-composants, jamais `$dispatch()`
 - `const GAME_ID = @json($game->id)` en haut de chaque partial avec script
 
+### Guard obligatoire dans init() Alpine
+
+Tout composant Alpine qui enregistre des listeners via `window.addEventListener()`
+dans son `init()` DOIT commencer par :
+
+```js
+if (this._initialized) return;
+this._initialized = true;
+```
+
+Sans ce guard, Alpine peut déclencher `init()` plusieurs fois et empiler les listeners
+— chaque event window sera capturé autant de fois que `init()` a été appelé.
+
 ## Règles métier critiques (ne jamais oublier)
 - Un joueur ne vote pas pour lui-même (sauf élection maire)
 - Les loups ne votent pas pour un autre loup
