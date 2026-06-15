@@ -385,6 +385,14 @@
 
 ---
 
+### [x] 2026-06-15 — Messages WebSocket reçus en double : transport ws+wss simultané (Pusher-js)
+
+- **Symptôme :** tous les events WebSocket (chat, votes, etc.) arrivaient deux fois côté client, malgré les fixes précédents sur les doubles abonnements Echo.
+- **Cause :** `enabledTransports: ['ws', 'wss']` dans `resources/js/echo.js` permettait à Pusher-js d'établir deux connexions simultanées (ws ET wss) alors que `forceTLS: true` et un seul port (443) sont configurés — chaque event WebSocket était donc livré une fois par connexion.
+- **Fix :** `enabledTransports: ['wss']` — une seule connexion TLS.
+
+---
+
 # ROADMAP (idées / améliorations futures)
  
 - [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)

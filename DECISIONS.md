@@ -1,3 +1,14 @@
+## [RÉSOLU] Double transport Pusher (ws + wss) — cause racine définitive des doublons WebSocket
+
+**Contexte :** fix/pusher-double-transport — `resources/js/echo.js`.
+**Symptôme / Problème :** tous les events WebSocket (chat général, chat loups, votes, etc.) étaient reçus deux fois côté client, malgré les fixes précédents qui avaient éliminé tous les doubles abonnements Echo applicatifs (cf. décisions "Double abonnement Echo game.{gameId}" et "Double abonnement Echo — modale succession fantôme").
+**Cause / Alternatives :** `enabledTransports: ['ws', 'wss']` dans la config Echo/Pusher autorisait Pusher-js à ouvrir DEUX connexions simultanées (une non-TLS sur ws, une TLS sur wss), alors que `forceTLS: (VITE_REVERB_SCHEME ?? 'https') === 'https'` vaut `true` et qu'un seul port (443, via `wssPort`) est configuré. Chaque connexion active reçoit indépendamment tous les events broadcastés sur les canaux souscrits → chaque listener Echo se déclenche une fois par connexion, soit deux fois au total. Les fixes précédents (suppression des abonnements Echo dupliqués dans les vues) ont réduit le nombre de listeners par event de 4 à 2, masquant partiellement le symptôme sans l'éliminer.
+**Fix / Décision :** `enabledTransports: ['wss']` — une seule connexion TLS, cohérente avec `forceTLS: true`.
+**Leçon :** Avec `forceTLS: true`, `enabledTransports` ne doit contenir que `['wss']`. Conserver `['ws', 'wss']` permet à Pusher-js d'ouvrir deux connexions en parallèle, chacune recevant tous les broadcasts — un doublon "au niveau transport", indépendant de tout double abonnement applicatif. Si un bug de "tous les events arrivent en double" persiste après avoir vérifié qu'aucune vue ne s'abonne deux fois au même canal (cf. règle "un seul composant par canal"), vérifier `enabledTransports` en premier.
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] Sorcière — tour maintenu si poison disponible même sans victime des loups
 
 **Contexte :** fix/witch-turn-no-victim — ProcessWitchTurn.php, WitchTurnStarted.php,
