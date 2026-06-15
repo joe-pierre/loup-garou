@@ -285,6 +285,7 @@ export function gameState(gameId, userId) {
             const myId = this.playerId || window.MY_PLAYER_ID || null;
             if (myId && e.saved_player_id === myId) {
                 this._dispatchToast('🧙 La sorcière t\'a sauvé cette nuit.', 'success');
+                window.dispatchEvent(new CustomEvent('i-was-saved'));
             }
 
             const redirect = () => {

@@ -29,6 +29,13 @@
                     x: 60, opacity: 0, duration: 0.3, ease: 'power2.in',
                     onComplete: () => { this.toasts = this.toasts.filter(t => t.id !== id); },
                 });
+                // Fallback si l'animation GSAP ne se termine jamais
+                // (ex. élément retiré du DOM par Alpine avant onComplete)
+                setTimeout(() => {
+                    if (this.toasts.some(t => t.id === id)) {
+                        this.toasts = this.toasts.filter(t => t.id !== id);
+                    }
+                }, 600);
             } else {
                 this.toasts = this.toasts.filter(t => t.id !== id);
             }
