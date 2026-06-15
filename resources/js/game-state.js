@@ -146,6 +146,9 @@ export function gameState(gameId, userId) {
                     this._dispatchToast(`🏹 ${e.hunter_pseudo} a tiré sur ${e.target_pseudo}`, 'info');
                     window.dispatchEvent(new CustomEvent('hunter-shot', { detail: e }));
                 })
+                .listen('.witch.acted.public',         () => {
+                    this._dispatchToast('🧙 La sorcière a agi cette nuit.', 'info');
+                })
                 .listen('.game.finished',              e => this.handleGameFinished(e));
 
             // Présence (détection leaving)
@@ -273,6 +276,15 @@ export function gameState(gameId, userId) {
 
             if (e.killed?.player_id) {
                 this._markPlayerDead(e.killed.player_id);
+            }
+
+            if (e.witch_acted) {
+                this._dispatchToast('🧙 La sorcière a agi cette nuit.', 'info');
+            }
+
+            const myId = this.playerId || window.MY_PLAYER_ID || null;
+            if (myId && e.saved_player_id === myId) {
+                this._dispatchToast('🧙 La sorcière t\'a sauvé cette nuit.', 'success');
             }
 
             const redirect = () => {

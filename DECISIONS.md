@@ -1,3 +1,14 @@
+## [CHOIX] Toasts narratifs serveur — WitchActedPublic conditionné à action !== 'pass', calcul witchActed/savedPlayerId hors transaction
+
+**Contexte :** feat/narrative-toasts-server — `app/Events/Game/WitchActedPublic.php` (nouveau), `app/Events/Game/DayStarted.php`, `app/Http/Controllers/Game/ActionController.php`, `app/Services/PhaseManager.php`, `resources/js/game-state.js`.
+**Symptôme / Problème :** Deux décisions à figer pour ces toasts narratifs : (1) faut-il broadcaster `WitchActedPublic` quand la sorcière passe son tour (`action === 'pass'`) ? (2) où calculer `witchActed`/`savedPlayerId` pour enrichir `DayStarted`, sachant que `PhaseManager::startDay()` exécute son `DB::transaction(lockForUpdate())` et que `endNight()` l'appelle juste après avoir résolu `resolveNightVote()`.
+**Cause / Alternatives :** (1) Broadcaster `WitchActedPublic` dans tous les cas (y compris `pass`) — rejeté, un "pass" n'est pas une action observable et révélerait indirectement que la sorcière a délibérément choisi de ne rien faire (information narrative inutile). (2) Calculer `witchActed`/`savedPlayerId` à l'intérieur du `DB::transaction(lockForUpdate())` de `startDay()` — rejeté, ce sont des lectures `game_actions` indépendantes du verrou sur `games`, et RISK_GUARDS Guard #5 interdit d'alourdir une transaction `lockForUpdate()` avec des requêtes non nécessaires à la cohérence du verrou.
+**Fix / Décision :** `WitchActedPublic` broadcasté uniquement si `$result['action'] !== 'pass'`, juste après les broadcasts existants `WitchActed`/`PlayerEliminated` dans `ActionController::witchAct()`. `witchActed` et `savedPlayerId` calculés dans `PhaseManager::endNight()` via `$game->actions()` (relation Eloquent, cohérent avec le reste du codebase — pas de `DB::table()`), AVANT l'appel à `startDay($game, $victim, $witchActed, $savedPlayerId)` — donc hors de toute transaction `lockForUpdate()`. `DayStarted` reçoit ces deux nouveaux paramètres avec valeurs par défaut (`false`/`null`), aucun appelant existant à modifier.
+**Leçon :** Quand une donnée à broadcaster nécessite une lecture `game_actions` supplémentaire pour enrichir un event existant (`DayStarted`), la calculer dans la méthode appelante (`endNight()`) avant le `DB::transaction(lockForUpdate())` de la méthode appelée (`startDay()`), jamais à l'intérieur — même si la lecture elle-même ne modifierait rien. Pour les events "narratifs publics" (qui ne révèlent aucune info de jeu), exclure explicitement les actions "neutres" (`pass`) du déclenchement du broadcast.
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [RÉSOLU] Double window.addEventListener dans init() — cause racine définitive des doublons chat
 
 **Contexte :** fix/chat-double-listeners — `resources/views/game/day.blade.php`,
