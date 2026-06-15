@@ -377,6 +377,14 @@
 
 ---
 
+### [x] 2026-06-15 — Timeline de l'onglet "Déroulé" invisible dans history.blade.php
+
+- **Symptôme :** l'onglet "Déroulé" s'affichait mais tous les `.timeline-item` restaient invisibles (opacity:0), de même que `#players-section`/`.player-row` si l'onglet "Joueurs" n'était pas actif au chargement.
+- **Cause :** le `MutationObserver` censé déclencher l'animation GSAP sur `#timeline-section` ne détecte pas toujours les changements de `style` inline posés par Alpine (`x-show`), et `observer.disconnect()` empêchait toute ré-animation lors d'un retour sur l'onglet.
+- **Fix :** suppression de l'`opacity:0` initiale sur `.timeline-item`, `.player-row` et `#players-section` (toujours visibles). Suppression du `MutationObserver` et des animations GSAP au chargement ; chaque bouton d'onglet ("Joueurs"/"Déroulé") déclenche désormais `gsap.fromTo(...)` au clic via `$nextTick`, avec garde `prefers-reduced-motion`.
+
+---
+
 # ROADMAP (idées / améliorations futures)
  
 - [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)
