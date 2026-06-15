@@ -256,6 +256,18 @@
 
 ---
 
+## Phase 19 — Toasts narratifs client (post-v1.2)
+
+- [x] Toast "👑 {pseudo} est élu Maire" dans `handleMayorElected()`
+- [x] Toast "👑 {pseudo} est le nouveau Maire" dans `handleMayorSuccessionDone()`
+- [x] Toast "☠️ La sorcière t'a empoisonné cette nuit." si `reason === 'witch_kill'`
+      dans `handlePlayerEliminated()` pour le joueur concerné
+- [x] Message nocturne générique ("Des forces mystérieuses agissent dans l'ombre...")
+      via `$watch('nightPhase')` dans `nightScreen()` (night.blade.php), affiché
+      uniquement aux joueurs non concernés par le tour actif (seer/werewolves/witch/hunter)
+
+---
+
 ## Phase v1.2 — Améliorations différées
 
 - [x] **Étape 1** — Réorganisation documentaire (`SPEC_TIMERS.md`, `SPEC_TRANSITIONS.md`)

@@ -299,6 +299,7 @@ export function gameState(gameId, userId) {
         },
 
         handleMayorElected(e) {
+            this._dispatchToast(`👑 ${e.pseudo} est élu Maire`, 'info');
             // Retirer couronne du précédent maire
             this.players = this.players.map(p => ({
                 ...p,
@@ -313,6 +314,7 @@ export function gameState(gameId, userId) {
         },
 
         handleMayorSuccessionDone(e) {
+            this._dispatchToast(`👑 ${e.new_mayor_pseudo} est le nouveau Maire`, 'info');
             this.successionDepth = Math.max(0, this.successionDepth - 1);
             this.handleMayorElected({ player_id: e.new_mayor_id });
             window.dispatchEvent(new CustomEvent('mayor-succession-done', { detail: e }));
@@ -344,6 +346,9 @@ export function gameState(gameId, userId) {
             // Si c'est le joueur courant
             if (myId && e.player_id === myId) {
                 this.isAlive = false;
+                if (e.reason === 'witch_kill') {
+                    this._dispatchToast('☠️ La sorcière t\'a empoisonné cette nuit.', 'error');
+                }
                 this.playerId = myId;
 
                 const screen = document.querySelector('.game-screen');

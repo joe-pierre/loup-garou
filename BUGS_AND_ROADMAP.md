@@ -456,3 +456,6 @@
       (nuit → jour, jour → nuit) non encore implémentés — prévu post-v1.2
 - [ ] Révision timers par défaut config/game.php (day_vote, seer, werewolves)
       et valeurs minimales — prompt séparé après validation prod
+- [ ] Double toast lors de MayorSuccessionDone : "👑 X est élu Maire" (via l'appel
+      interne à handleMayorElected()) suivi de "👑 X est le nouveau Maire" —
+      dédupliquer si jugé redondant côté UX (feat/narrative-toasts-client)
