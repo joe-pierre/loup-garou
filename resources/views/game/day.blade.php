@@ -464,6 +464,22 @@
                     this.showDeathBanner = false;
                 }
 
+                // Consommer un toast persisté en sessionStorage avant une redirection
+                // (ex: "La sorcière t'a sauvé" dispatché sur /night mais perdu lors
+                //  de la navigation vers /day).
+                // On pousse dans __toastBuffer : le composant toast.blade.php le vide
+                // dans son init(), sans setTimeout ni vérification __toastReady.
+                const pendingToastKey = 'pending_toast_' + MY_PLAYER_ID;
+                const pendingToast = sessionStorage.getItem(pendingToastKey);
+                if (pendingToast) {
+                    sessionStorage.removeItem(pendingToastKey);
+                    try {
+                        const toastData = JSON.parse(pendingToast);
+                        window.__toastBuffer = window.__toastBuffer ?? [];
+                        window.__toastBuffer.push(toastData);
+                    } catch {}
+                }
+
                 this.players = [...PLAYERS_DATA].sort((a, b) => b.is_alive - a.is_alive);
 
                 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {

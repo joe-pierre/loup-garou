@@ -458,6 +458,22 @@
 
 ---
 
+### [x] 2026-06-15 — Toast "La sorcière t'a sauvé" invisible lors de la transition /night → /day
+
+- **Symptôme :** le joueur sauvé par la sorcière ne voyait jamais le toast
+  "🧙 La sorcière t'a sauvé cette nuit." malgré que l'event DayStarted soit
+  bien reçu avec son `saved_player_id`.
+- **Cause :** le toast était dispatché dans `handleDayStarted()` qui déclenche
+  immédiatement une animation GSAP + redirection vers `/day`. La page `/night`
+  était détruite avant que le composant toast Alpine ait pu rendre le message.
+- **Fix :** persistance dans `sessionStorage` avant la redirection, consommation
+  via `window.__toastBuffer` dans `dayScreen.init()` après le chargement de
+  `/day`. Aucun `setTimeout` — le composant `toast.blade.php` vide le buffer
+  dans son propre `init()`, ce qui garantit l'affichage quelle que soit la
+  vitesse de la machine.
+
+---
+
 # ROADMAP (idées / améliorations futures)
  
 - [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)

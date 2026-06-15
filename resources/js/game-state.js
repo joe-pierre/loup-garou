@@ -284,7 +284,14 @@ export function gameState(gameId, userId) {
 
             const myId = this.playerId || window.MY_PLAYER_ID || null;
             if (myId && e.saved_player_id === myId) {
-                this._dispatchToast('🧙 La sorcière t\'a sauvé cette nuit.', 'success');
+                // Le toast ne peut pas être affiché ici : handleDayStarted déclenche
+                // immédiatement une redirection GSAP qui détruit la page /night avant
+                // que le composant toast Alpine ait pu rendre le message.
+                // On le pousse dans sessionStorage pour le consommer sur /day.
+                sessionStorage.setItem(
+                    'pending_toast_' + myId,
+                    JSON.stringify({ message: '🧙 La sorcière t\'a sauvé cette nuit.', type: 'success' })
+                );
                 window.dispatchEvent(new CustomEvent('i-was-saved'));
             }
 
