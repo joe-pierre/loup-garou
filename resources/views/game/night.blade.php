@@ -621,6 +621,24 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 if (this._initialized) return;
                 this._initialized = true;
 
+                this.$watch('nightPhase', (phase) => {
+                    const messages = {
+                        seer_turn:       { role: 'seer',     text: '🌙 Des forces mystérieuses agissent dans l\'ombre...' },
+                        werewolves_turn: { role: 'werewolf', text: '🌙 Des forces mystérieuses agissent dans l\'ombre...' },
+                        witch_turn:      { role: 'witch',    text: '🌙 Des forces mystérieuses agissent dans l\'ombre...' },
+                        hunter_turn:     { role: 'hunter',   text: '🌙 Des forces mystérieuses agissent dans l\'ombre...' },
+                    };
+                    const entry = messages[phase];
+                    if (!entry) return;
+                    // Ne pas afficher le toast si le joueur courant EST le rôle actif du tour
+                    if (MY_ROLE === entry.role) return;
+                    // Ne pas afficher si le joueur est loup et que c'est le tour des loups
+                    if (phase === 'werewolves_turn' && MY_ROLE === 'werewolf') return;
+                    window.dispatchEvent(new CustomEvent('show-toast', {
+                        detail: { message: entry.text, type: 'info' }
+                    }));
+                });
+
                 // Les events du canal public (night.started, player.eliminated, day.started, etc.)
                 // sont gérés par game-state.js qui dispatch sur window.
                 // On écoute uniquement les events window — aucun abonnement Echo dupliqué ici.
