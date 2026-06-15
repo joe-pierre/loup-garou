@@ -244,6 +244,9 @@
       window.addEventListener (fix/chat-double-messages-root-cause-final)
 - [x] **Fix toasts timing** — buffer pour les toasts dispatchés avant init Alpine
       du composant toast (fix/toast-timing)
+- [x] **Fix timeline historique invisible** — opacity:0 retirée de .timeline-item,
+      .player-row et #players-section ; animations GSAP déclenchées au clic sur
+      les onglets Joueurs/Déroulé au lieu d'un MutationObserver (fix/history-timeline-animation)
 
 ---
 

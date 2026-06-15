@@ -81,7 +81,7 @@
         .timeline-item {
             position: relative;
             margin-bottom: 1.5rem;
-            opacity: 0; /* GSAP animera l'entrée */
+            opacity: 1; /* toujours visible — animation GSAP optionnelle */
         }
         .timeline-item:last-child { margin-bottom: 0; }
 
@@ -98,7 +98,7 @@
             gap: 0.75rem;
             padding: 0.625rem 1rem;
             border-bottom: 1px solid rgba(201,168,76,0.07);
-            opacity: 0; /* GSAP */
+            opacity: 1; /* toujours visible — animation GSAP optionnelle */
         }
         .player-row:last-child { border-bottom: none; }
         .avatar {
@@ -111,7 +111,7 @@
             font-size: 0.8rem; color: #c9a84c; flex-shrink: 0;
         }
         .avatar.dead { opacity: 0.4; filter: grayscale(100%); }
-        #players-section { opacity: 0; }
+        #players-section { opacity: 1; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -184,12 +184,32 @@
         <button
             class="tab-btn"
             :class="{ 'active': tab === 'players' }"
-            @click="tab = 'players'"
+            @click="
+                tab = 'players';
+                $nextTick(() => {
+                    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                        gsap.fromTo('#players-section .player-row',
+                            { opacity: 0, y: 8 },
+                            { opacity: 1, y: 0, duration: 0.3, stagger: 0.05, ease: 'power2.out' }
+                        );
+                    }
+                });
+            "
         >Joueurs</button>
         <button
             class="tab-btn"
             :class="{ 'active': tab === 'timeline' }"
-            @click="tab = 'timeline'"
+            @click="
+                tab = 'timeline';
+                $nextTick(() => {
+                    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                        gsap.fromTo('#timeline-section .timeline-item',
+                            { opacity: 0, x: -15 },
+                            { opacity: 1, x: 0, duration: 0.35, stagger: 0.08, ease: 'power2.out' }
+                        );
+                    }
+                });
+            "
         >Déroulé</button>
     </div>
 
@@ -363,43 +383,6 @@ document.addEventListener('DOMContentLoaded', () => {
     tl.to('#history-header', { opacity: 1, y: 0, duration: 0.6, from: { y: -20 } })
       .to('#history-tabs',   { opacity: 1, duration: 0.4 }, '-=0.3')
       .to('#history-buttons',{ opacity: 1, duration: 0.4 }, '-=0.2');
-
-    // Joueurs (section active par défaut)
-    gsap.fromTo('#players-section',
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.5, delay: 0.4 }
-    );
-    gsap.to('.player-row', {
-        opacity: 1,
-        y: 0,
-        duration: 0.35,
-        stagger: 0.06,
-        delay: 0.5,
-        from: { y: 10 },
-    });
-
-    // Timeline : animée au changement d'onglet (via Alpine watch)
-    document.querySelectorAll('[x-data]')[0]?._x_dataStack?.[0];
-
-    // Observer les changements d'onglet via MutationObserver sur display
-    const timelineSection = document.getElementById('timeline-section');
-    if (timelineSection) {
-        const observer = new MutationObserver(() => {
-            const items = timelineSection.querySelectorAll('.timeline-item');
-            if (items.length && getComputedStyle(timelineSection).display !== 'none') {
-                gsap.to(items, {
-                    opacity: 1,
-                    x: 0,
-                    duration: 0.35,
-                    stagger: 0.08,
-                    ease: 'power2.out',
-                    from: { x: -15 },
-                });
-                observer.disconnect();
-            }
-        });
-        observer.observe(timelineSection, { attributes: true, attributeFilter: ['style', 'class'] });
-    }
 });
 </script>
 
