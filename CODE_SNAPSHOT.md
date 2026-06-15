@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 10h58
+Generated at: 11h09
 
 ## PHP Analysis (Core Logic)
 
