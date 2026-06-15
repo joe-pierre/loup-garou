@@ -51,18 +51,18 @@ class ProcessWitchTurn implements ShouldQueue
         $healUsed      = $witchSettings['witch_heal_used'] ?? false;
         $killUsed      = $witchSettings['witch_kill_used'] ?? false;
 
-        // Pas de victime ET les deux potions sont épuisées -> skip silencieux
+        // Pas de victime ET les deux potions sont épuisées -> skip silencieux.
+        // ProcessNightEnd est déjà dispatché par ProcessNightActions (délai
+        // couvrant le tour sorcière) — il gère la fin de nuit dans tous les cas.
         if (! $victim && $healUsed && $killUsed) {
-            ProcessNightEnd::dispatch($this->gameId, $this->round)->delay(0);
             return;
         }
 
         $healAvailable = ! $healUsed && $victim !== null && $victim->id !== $witch->id;
         $killAvailable = ! $killUsed;
 
-        // Pas de victime ET pas de poison disponible -> skip silencieux
+        // Pas de victime ET pas de poison disponible -> skip silencieux. Idem.
         if (! $victim && ! $killAvailable) {
-            ProcessNightEnd::dispatch($this->gameId, $this->round)->delay(0);
             return;
         }
 

@@ -194,9 +194,8 @@ class WitchTest extends TestCase
         (new ProcessWitchTurn($game->id, $game->round))->handle(app(VoteService::class));
 
         Event::assertNotDispatched(WitchTurnStarted::class);
-        Queue::assertPushed(ProcessNightEnd::class,
-            fn ($job) => $job->gameId === $game->id && $job->round === $game->round
-        );
+        // ProcessNightEnd est dispatché par ProcessNightActions, pas par ProcessWitchTurn.
+        Queue::assertNotPushed(ProcessNightEnd::class);
     }
 
     /**

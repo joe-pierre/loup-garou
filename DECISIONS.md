@@ -1,3 +1,52 @@
+## [RÉSOLU] ProcessWitchTurn guards skip — double ProcessNightEnd cassait la séquence nocturne
+
+**Contexte :** fix/night-sequence-timing — app/Jobs/ProcessWitchTurn.php,
+app/Jobs/ProcessNightActions.php, tests/Feature/Game/WitchTest.php.
+
+**Symptôme / Problème :** quand les loups étaient en égalité et la sorcière sans
+action disponible, la nuit entière était skippée. Voyante, loups et
+sorcière ne voyaient jamais leur tour.
+
+**Cause / Alternatives :** les guards "skip silencieux" de ProcessWitchTurn dispatchaient
+ProcessNightEnd::delay(0). Ce job arrivait immédiatement, voyait
+status='processing_night' (posé par ProcessNightActions), passait le
+guard de ProcessNightEnd et appelait endNight(). La voyante et les loups
+n'avaient pas encore joué car leurs timers n'étaient pas écoulés
+(8s + seer_timer + wolves_timer).
+
+Bug associé découvert : le délai du ProcessNightEnd dispatché par
+ProcessNightActions était mayor_succession + 5s ≈ 20s. Ce délai ne
+couvre pas witch_timer (jusqu'à 60s). Si witch_timer > 20s, ProcessNightEnd
+arrivait avant la fin du tour sorcière et le coupait. Calculé désormais
+dynamiquement : witch_timer + mayor_succession + 5s.
+
+Alternative rejetée : ajouter un guard dans ProcessNightEnd vérifiant
+qu'une action sorcière existe en base avant d'appeler endNight(). Rejeté
+car cela rendrait ProcessNightEnd dépendant de la présence de la sorcière
+— il ne passerait jamais si la sorcière est absente ou morte.
+
+**Fix / Décision :** suppression des ProcessNightEnd::delay(0) dans les
+guards de ProcessWitchTurn. Ces guards font un simple return. ProcessWitchAutoAction
+conserve son ProcessNightEnd::delay(0) car il n'est déclenché qu'après
+expiration complète du timer sorcière.
+
+**Leçon :** tout dispatch ProcessNightEnd depuis un job
+"skip" est dangereux si des jobs de phase antérieurs ont encore leurs
+timers en cours. Le seul dispatcher légitime de ProcessNightEnd dans le
+chemin principal est ProcessNightActions, avec un délai couvrant tous
+les tours restants. ProcessWitchAutoAction est l'unique exception car
+il est déclenché après son propre timer complet.
+
+Dette technique identifiée : night_start_delay et les buffers de
+timing arbitraires sont un symptôme d'une limitation architecturale plus
+profonde — le backend ne sait pas si les clients sont prêts. Voir
+BUGS_AND_ROADMAP.md section "Refactoring architectural planifié" pour
+le plan de refactor complet (pattern ready acknowledgment).
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] Toasts narratifs serveur — WitchActedPublic conditionné à action !== 'pass', calcul witchActed/savedPlayerId hors transaction
 
 **Contexte :** feat/narrative-toasts-server — `app/Events/Game/WitchActedPublic.php` (nouveau), `app/Events/Game/DayStarted.php`, `app/Http/Controllers/Game/ActionController.php`, `app/Services/PhaseManager.php`, `resources/js/game-state.js`.
