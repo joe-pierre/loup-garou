@@ -1,3 +1,7 @@
+# ⚠️ ARCHIVE — Tous les prompts de ce fichier ont été exécutés et mergés.
+# v1.2 est terminé. Ce fichier est conservé pour référence historique.
+# Pour les prochaines fonctionnalités (v1.3+), créer un nouveau fichier TASK_PROMPTS_V1_3.md.
+
 # TASK_PROMPTS_REMAINING.md — Tâches v1.2
 
 > Tâches v1.1 (1→40 + bugfixes E→K) terminées et taggées `v1.1.1`.

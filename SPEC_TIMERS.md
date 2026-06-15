@@ -52,12 +52,28 @@ La voyante agit via `POST /game/{id}/seer/done` :
 
 #### Cas d'inactivité
 
-`ProcessSeerAutoAction` s'exécute après `$game->timer('seer')` secondes :
+`ProcessSeerAutoAction` s'exécute après `ceil(seerTimer / 2)` secondes (mi-timer) :
 
 - Guard 1 : vérifie `game.status === 'night'` et `game.round === $this->round`.
-- Guard 2 : vérifie qu'aucun `seer_check` n'existe pour ce `(game_id, round)`. Si oui → return (la voyante a déjà agi via l'endpoint).
-- Si aucun `seer_check` : **ne crée rien en base**, dispatche directement `ProcessWerewolvesTurn`.
-- `SeerResult` n'est **jamais** broadcasté par le job auto (pas d'action, pas de résultat).
+- Guard 2 : vérifie qu'aucun `seer_check` n'existe pour ce `(game_id, round, player_id)`.
+  Si existant → return (la voyante a déjà agi via l'endpoint).
+- Si aucun `seer_check` : effectue une inspection aléatoire ("de consolation") —
+  crée un `seer_check` en base et broadcaste `SeerResult` sur le canal privé de la voyante.
+- `ProcessWerewolvesTurn` n'est **jamais** dispatché par ce job — c'est `ProcessSeerTurn`
+  qui le dispatche systématiquement avec `delay(seerTimer + 2)` (voir §3.3).
+
+---
+
+#### §3.3 Comportement réel de ProcessSeerTurn (v1.2)
+
+`ProcessSeerTurn` dispatche **deux jobs** :
+1. `ProcessSeerAutoAction` avec `delay(ceil(seerTimer / 2))` — inspection de consolation à mi-timer.
+2. `ProcessWerewolvesTurn` avec `delay(seerTimer + 2)` — passage aux loups, systématique.
+
+Le passage aux loups est donc toujours déclenché par `ProcessSeerTurn`, indépendamment
+de l'action de la voyante. Cette approche diffère de SPEC_TIMERS §2 (pattern générique)
+qui décrit `ProcessSeerAutoAction` comme seul déclencheur — la divergence est documentée
+dans DECISIONS.md (entrée "Étape 5 — AutoActionTest").
 
 ---
 

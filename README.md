@@ -154,7 +154,8 @@ app/
 php artisan test
 ```
 
-Couverture actuelle : Auth, Lobby (création, join, exclusion). Tests phases 5→9 en cours.
+Couverture : Auth, Lobby, Phases nuit/jour, Sorcière, Chasseur, Succession maire,
+Race conditions, Workflow, Timers configurables, Rôles v1.2.
 
 ---
 
@@ -162,9 +163,9 @@ Couverture actuelle : Auth, Lobby (création, join, exclusion). Tests phases 5�
 
 | Version | Contenu |
 |---|---|
-| v1.1 *(en cours)* | Villageois, Loup-Garou, Voyante, Maire électif |
-| v1.2 *(prévu)* | Sorcière, Chasseur — timers et rôles configurables par le host |
-| v1.3+ *(futur)* | Loup Blanc, Cupidon, Petite Fille |
+| v1.1 ✅ | Villageois, Loup-Garou, Voyante, Maire électif |
+| v1.2 ✅ | Sorcière, Chasseur — timers + composition rôles configurables — canal fantômes |
+| v1.3+ (futur) | Loup Blanc, Cupidon, Petite Fille |
 
 ---
 

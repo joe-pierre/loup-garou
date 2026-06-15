@@ -227,7 +227,7 @@
 - [x] **Prompt 2** — Rôles manquants partout (`fix/roles-completeness`)
 - [x] **Prompt 3** — Élection maire : carte avec rôle (`feat/mayor-election-role-card`)
 - [x] **Prompt 4** — Modale succession : flou + délai (`fix/succession-modal-ux`)
-- [ ] **Prompt 5** — Chat UX : textarea + bouton (`feat/chat-ux-improvements`)
+- [x] **Prompt 5** — Chat UX : textarea + bouton (`feat/chat-ux-improvements`)
 - [x] **Prompt 6** — Canal des fantômes phase jour (`feat/dead-chat-day`)
 - [x] **Fix chasseur jour** — modale chasseur dans day.blade.php déclenchée
       par hunter-turn-started (fix/hunter-day-panel-and-ux)
@@ -274,3 +274,11 @@
 ## BUGS CONNUS
 
 → Voir `BUGS_AND_ROADMAP.md` (source de vérité unique pour les bugs)
+
+---
+
+## État global
+
+- v1.1 ✅ Terminé et taggué `v1.1.1`
+- v1.2 ✅ Terminé — Étapes 2→5 + Phases 17→18 complètes
+- v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md

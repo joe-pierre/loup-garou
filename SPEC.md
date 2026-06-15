@@ -55,8 +55,8 @@ id | game_id (FK) | user_id (FK) | pseudo | role (enum, nullable)
    | is_alive (bool, default true) | is_host (bool) | is_mayor (bool)
    | is_inactive (bool) | is_ready (bool) | joined_at
 
-role: villager | werewolf | seer | null (null jusqu'à distribution)
-⚠️ witch et hunter absents en v1.1 — anticipation v1.2. white_wolf absent en v1.1 et v1.2 — anticipation v1.3+.
+role: villager | werewolf | seer | witch | hunter | null
+⚠️ white_wolf absent en v1.1 et v1.2 — anticipation v1.3+.
 ```
 
 ### Table `game_actions`
@@ -65,7 +65,8 @@ id | game_id (FK) | player_id (FK game_players) | type (enum)
    | weight (tinyint, default 1) | target_player_id (FK, nullable)
    | round | phase (enum) | created_at
 
-type: mayor_vote | night_vote | day_vote | seer_check | mayor_succession | werewolf_chat | ready
+type: mayor_vote | night_vote | day_vote | seer_check | mayor_succession |
+      werewolf_chat | ready | witch_heal | witch_kill | witch_pass | hunter_shot
 phase: election | night | day
 weight = 2 si maire (day_vote uniquement)
 ```
@@ -75,7 +76,7 @@ weight = 2 si maire (day_vote uniquement)
 id | game_id (FK) | player_id (FK) | message (text) | channel (enum)
    | round | phase (enum) | created_at
 
-channel: general | werewolves
+channel: general | werewolves | dead
 ```
 
 ### Table `exclusions`
@@ -310,6 +311,10 @@ game.{gameId}.player.{playerId}  → privé (joueur individuel)
 | POST | /game/{id}/mayor/succession | ActionController@mayorSuccession |
 | POST | /game/{id}/chat | ChatController@send |
 | POST | /game/{id}/exclude/{playerId} | LobbyController@exclude |
+| POST | /game/{id}/witch/act | ActionController@witchAct |
+| POST | /game/{id}/hunter/shoot | ActionController@hunterShoot |
+| POST | /game/{id}/settings/timers | LobbyController@updateTimers |
+| POST | /game/{id}/settings/roles | LobbyController@updateRoles |
 | GET | /game/{code}/state | GameController@state |
 | GET | /game/{code}/history | GameController@history |
 
