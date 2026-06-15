@@ -250,6 +250,9 @@
 - [x] **Fix doublons chat — cause racine définitive** — guard `_initialized` dans
       `dayScreen.init()`/`nightScreen.init()`, guard `_wsInitialized` dans
       `game-state.js::initWebSocket()` (fix/chat-double-listeners)
+- [x] **Fix window.MY_ROLE layout** — window.MY_ROLE exposé dans layouts/game.blade.php
+      pour garantir la souscription au canal loups dès init() de game-state.js
+      (fix/window-my-role-layout)
 
 ---
 

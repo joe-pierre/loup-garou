@@ -421,6 +421,27 @@
 
 ---
 
+### [x] 2026-06-15 — window.MY_ROLE absent du layout global (canal loups non souscrit)
+
+- **Symptôme :** certains joueurs loups ne recevaient pas les événements du canal
+  game.{id}.werewolves (chat loups silencieux, votes de la meute non affichés,
+  tour des loups sans interface), de façon non déterministe selon la vitesse
+  de chargement du navigateur.
+- **Cause :** game-state.js::init() lit window.MY_ROLE avant initWebSocket() pour
+  que isWerewolf soit correct au moment de la souscription Echo. Or window.MY_ROLE
+  n'était jamais défini dans layouts/game.blade.php — seules les vues night.blade.php
+  et day.blade.php définissaient une const MY_ROLE locale, sans l'exposer sur window.
+  Les modules Vite (type="module") étant defer implicite, ils s'exécutent après les
+  scripts inline — mais window.MY_ROLE étant absent du layout, la variable restait
+  undefined aux deux points de lecture dans init().
+- **Fix :** ajout de window.MY_ROLE = '{{ $player->role ?? '' }}' dans le bloc
+  @isset($player) du script global de layouts/game.blade.php. Centralisé dans le
+  layout → toutes les vues (night, day, elect-mayor, spectator) en bénéficient.
+  Le fallback ?? '' garantit qu'un rôle null retourne une chaîne vide, ce qui
+  évalue isWerewolf à false (comportement identique à null).
+
+---
+
 # ROADMAP (idées / améliorations futures)
  
 - [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)
