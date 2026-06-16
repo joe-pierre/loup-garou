@@ -554,6 +554,14 @@
 
 ---
 
+### [x] 2026-06-16 — Redirection /night bloquée si MayorSuccessionDone précède le listener
+
+- **Symptôme :** redirection vers /night jamais déclenchée si `MayorSuccessionDone` arrive côté client avant que `handleNightStarted()` pose son listener `mayor-succession-done` (réordonnancement WebSocket possible) — `successionDepth` reste > 0, la partie reste bloquée sur /day indéfiniment.
+- **Cause :** aucun timeout de sécurité dans le bloc d'attente de `handleNightStarted()`.
+- **Fix :** timeout 25 000 ms dans `handleNightStarted()` qui force `_doNightRedirect()` si `mayor-succession-done` n'arrive jamais.
+
+---
+
 # ROADMAP (idées / améliorations futures)
  
 - [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)
