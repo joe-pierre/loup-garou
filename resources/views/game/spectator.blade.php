@@ -189,6 +189,7 @@
 </div>
 @endsection
 
+{{-- Aucun window.addEventListener local : le guard _initialized est géré par gameState() dans game-state.js --}}
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', () => {
