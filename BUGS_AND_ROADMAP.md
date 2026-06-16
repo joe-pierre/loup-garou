@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-16 — redirectToCurrentPhase() ignorait processing_day et processing_wolves
+
+- **Symptôme :** un joueur rafraîchissant la page pendant la résolution d'un vote (statuts `processing_day` ou `processing_wolves`) était redirigé vers `game.role-reveal` au lieu de `game.day` / `game.night`.
+- **Cause :** le `match` de `redirectToCurrentPhase()` ne couvrait pas `processing_day` et `processing_wolves` ; ils tombaient dans le `default`.
+- **Fix :** regroupement de `['day', 'processing_day']` → `game.day` et `['night', 'wolves_turn', 'processing_night', 'processing_wolves']` → `game.night`.
+
+---
+
 ### [x] 2026-06-16 — Succession maire durait 5s au lieu de 15s (hosts sans timers custom)
 
 - **Symptôme :** succession du maire durait 5s au lieu de 15s pour les hosts sans timers personnalisés.
