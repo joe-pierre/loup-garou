@@ -239,8 +239,15 @@ export function gameState(gameId, userId) {
                     const waitForSuccession = () => {
                         if (this.successionDepth > 0) return; // cascade encore en cours
                         window.removeEventListener('mayor-succession-done', waitForSuccession);
+                        clearTimeout(safetyTimeout);
                         this._doNightRedirect(redirect);
                     };
+                    // Guard si MayorSuccessionDone arrive avant que le listener soit posé
+                    // (réordonnancement WebSocket) — force la redirection après 25s.
+                    const safetyTimeout = setTimeout(() => {
+                        window.removeEventListener('mayor-succession-done', waitForSuccession);
+                        this._doNightRedirect(redirect);
+                    }, 25000);
                     window.addEventListener('mayor-succession-done', waitForSuccession);
                     return;
                 }
