@@ -78,7 +78,7 @@ class CheckReconnectionTimeout implements ShouldQueue
             return;
         }
 
-        $aliveCount         = $game->alivePlayers()->count();
+        $aliveCount         = $game->aliveCount();
         $inactiveAliveCount = $game->alivePlayers()->where('is_inactive', true)->count();
 
         if ($aliveCount > 0 && $inactiveAliveCount > $aliveCount / 2) {

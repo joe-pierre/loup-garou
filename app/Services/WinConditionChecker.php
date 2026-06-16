@@ -33,9 +33,8 @@ class WinConditionChecker
     {
         $game->refresh();
 
-        $alivePlayers    = $game->alivePlayers()->get();
-        $aliveWerewolves = $alivePlayers->filter(fn ($p) => $p->isWerewolf())->count();
-        $aliveOthers     = $alivePlayers->filter(fn ($p) => ! $p->isWerewolf())->count();
+        $aliveWerewolves = $game->aliveWerewolvesCount();
+        $aliveOthers     = $game->aliveVillagersCount();
 
         if ($aliveWerewolves > 0 && $aliveWerewolves >= $aliveOthers) {
             $winnerTeam = 'werewolves';

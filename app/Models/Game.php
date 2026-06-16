@@ -104,4 +104,64 @@ class Game extends Model
         $registry->get($this)->apply($this, $transitionName);
         $this->save();
     }
+
+    /**
+     * Retourne true si la partie est en phase nuit ou dans un statut intermédiaire de nuit.
+     */
+    public function isNightPhase(): bool
+    {
+        return in_array($this->status, ['night', 'wolves_turn', 'processing_night']);
+    }
+
+    /**
+     * Retourne true si la partie est en phase jour ou dans un statut intermédiaire de jour.
+     */
+    public function isDayPhase(): bool
+    {
+        return in_array($this->status, ['day', 'processing_day']);
+    }
+
+    /**
+     * Retourne true si la partie est terminée.
+     */
+    public function isFinished(): bool
+    {
+        return $this->status === 'finished';
+    }
+
+    /**
+     * Retourne true si la partie est annulée (terminée sans vainqueur).
+     */
+    public function isCancelled(): bool
+    {
+        return $this->status === 'finished' && $this->winner_team === null;
+    }
+
+    /**
+     * Retourne le nombre de joueurs vivants.
+     */
+    public function aliveCount(): int
+    {
+        return $this->alivePlayers()->count();
+    }
+
+    /**
+     * Retourne le nombre de loups vivants.
+     */
+    public function aliveWerewolvesCount(): int
+    {
+        return $this->alivePlayers()
+            ->whereIn('role', ['werewolf', 'white_wolf'])
+            ->count();
+    }
+
+    /**
+     * Retourne le nombre de joueurs vivants hors loups.
+     */
+    public function aliveVillagersCount(): int
+    {
+        return $this->alivePlayers()
+            ->whereNotIn('role', ['werewolf', 'white_wolf'])
+            ->count();
+    }
 }
