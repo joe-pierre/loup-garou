@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 16h33
+Generated at: 16h36
 
 ## PHP Analysis (Core Logic)
 
@@ -294,7 +294,7 @@ NightStarted.php
       - __construct(Game $game) {}
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'night.started'
-      - broadcastWith() → return ['round' => $this->game->round, 'timer' => config('game.timers.seer', 30)]
+      - broadcastWith() → return ['round' => $this->game->round, 'timer' => $this->game->timer('seer')]
 
 // app/Events/Game/PlayerJoined.php
 PlayerJoined.php
