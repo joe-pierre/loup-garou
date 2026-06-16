@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-16 — Succession maire durait 5s au lieu de 15s (hosts sans timers custom)
+
+- **Symptôme :** succession du maire durait 5s au lieu de 15s pour les hosts sans timers personnalisés.
+- **Cause :** `config/game.php` avait `mayor_succession = 5` au lieu de 15 ; `TimerCalculator::FIXED` définissait bien 15 mais n'était plus la source de lecture depuis l'Étape 3 — le fallback `config()` s'appliquait donc avec la mauvaise valeur.
+- **Fix :** `config/game.php → mayor_succession = 15`.
+
+---
+
 ### [x] 2026-06-15 — Nuit entière skippée quand les loups sont en égalité
 
 - **Symptôme :** quand les loups ne désignaient aucune victime (égalité),
