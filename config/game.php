@@ -7,7 +7,7 @@ return [
         'werewolves'       => 30,
         'witch'            => 30,
         'hunter'           => 15,
-        'mayor_succession' => 5,
+        'mayor_succession' => 15,
         'day_vote'         => 90,
         'reconnection'     => 30,
         'ready_timeout'    => 60,
