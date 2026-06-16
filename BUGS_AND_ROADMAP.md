@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-16 — Double toast lors de la succession du maire
+
+- **Symptôme :** à chaque `MayorSuccessionDone`, deux toasts quasi identiques s'affichaient : "👑 X est élu Maire" (issu de l'appel interne à `handleMayorElected()`) puis "👑 X est le nouveau Maire".
+- **Cause :** `handleMayorSuccessionDone()` appelait `handleMayorElected()` pour réutiliser la mise à jour DOM, entraînant l'émission du premier toast par `handleMayorElected()`.
+- **Fix :** extraction de la logique de mise à jour DOM (players array + badges couronne) dans une méthode privée `_updateMayorBadges(playerId)`. `handleMayorElected()` et `handleMayorSuccessionDone()` appellent chacun directement `_updateMayorBadges()` — seul le toast propre à chaque cas est émis.
+
+---
+
 ### [x] 2026-06-16 — Guards double action sans index sur player_id et type
 
 - **Symptôme :** les guards de double action (seer_check, wolves_vote, witch_act, hunter_shot…) scannaient toutes les lignes du round sans index sur `player_id` et `type`.
@@ -559,9 +567,6 @@
       (nuit → jour, jour → nuit) non encore implémentés — prévu post-v1.2
 - [ ] Révision timers par défaut config/game.php (day_vote, seer, werewolves)
       et valeurs minimales — prompt séparé après validation prod
-- [ ] Double toast lors de MayorSuccessionDone : "👑 X est élu Maire" (via l'appel
-      interne à handleMayorElected()) suivi de "👑 X est le nouveau Maire" —
-      dédupliquer si jugé redondant côté UX (feat/narrative-toasts-client)
 
 ## Refactoring architectural planifié
 
