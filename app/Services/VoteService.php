@@ -116,7 +116,7 @@ class VoteService
             $locked->update([
                 'status'         => 'night',
                 'round'          => 1,
-                'phase_deadline' => now()->addSeconds(config('game.timers.seer', 30)),
+                'phase_deadline' => now()->addSeconds($locked->timer('seer')),
             ]);
 
             return ['player' => $winner, 'game' => $locked, 'was_random' => $wasRandom];
@@ -312,7 +312,7 @@ class VoteService
         if ($eliminated->is_mayor) {
             $successionDelay = $eliminated->is_inactive
                 ? 0
-                : config('game.timers.mayor_succession', 15);
+                : $game->timer('mayor_succession');
 
             broadcast(new MayorSuccessionStarted($game, $eliminated->pseudo));
             ProcessMayorSuccession::dispatch($game->id, $game->round)

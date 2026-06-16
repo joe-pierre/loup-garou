@@ -166,7 +166,7 @@ class GameService
             }
 
             WaitForReadyPlayers::dispatch($locked->id)->delay(
-                now()->addSeconds(config('game.timers.ready_timeout', 60))
+                now()->addSeconds($locked->timer('ready_timeout'))
             );
         });
     }
@@ -192,7 +192,7 @@ class GameService
 
             // Déclencher l'élection maire si tous prêts et pas encore déclenchée
             if ($readyCount === $total && $game->phase_deadline === null) {
-                $timer    = config('game.timers.mayor_election', 30);
+                $timer    = $game->timer('mayor_election');
                 $deadline = now()->addSeconds($timer);
                 $game->update(['phase_deadline' => $deadline]);
                 broadcast(new MayorElectionStarted($game));
@@ -329,7 +329,7 @@ class GameService
     public function handleDisconnection(GamePlayer $player): void
     {
         $cacheKey = "player_disconnected.{$player->id}";
-        $timer    = config('game.timers.reconnection', 30);
+        $timer    = $player->game->timer('reconnection');
 
         // Si un token existe déjà, un job est déjà en attente → ne pas re-dispatcher
         if (Cache::has($cacheKey)) {
