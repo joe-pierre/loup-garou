@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-16 — Appels config('game.timers.*') résiduels hors TimerCalculator
+
+- **Symptôme :** si un host configurait un timer (ex. `mayor_succession=20s`), certains chemins (VoteService, ProcessNightActions, GameService, WaitForReadyPlayers, ProcessMayorElection, PhaseManager) utilisaient toujours la valeur `config()` hardcodée au lieu de la valeur personnalisée.
+- **Cause :** 9 occurrences de `config('game.timers.*')` subsistaient en dehors de `TimerCalculator.php`, en violation de la règle CLAUDE.md.
+- **Fix :** remplacement par `$game->timer('...')` / `$locked->timer('...')` / `$player->game->timer('...')` dans tous les fichiers concernés. Seul `config('game.timers.limits')` dans `validateTimerSettings()` conservé (accès au tableau de validation, pas une valeur de timer).
+
+---
+
 ### [x] 2026-06-16 — redirectToCurrentPhase() ignorait processing_day et processing_wolves
 
 - **Symptôme :** un joueur rafraîchissant la page pendant la résolution d'un vote (statuts `processing_day` ou `processing_wolves`) était redirigé vers `game.role-reveal` au lieu de `game.day` / `game.night`.

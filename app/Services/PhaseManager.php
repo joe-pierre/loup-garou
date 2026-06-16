@@ -91,7 +91,7 @@ class PhaseManager
 
         broadcast(new NightStarted($locked));
         ProcessSeerTurn::dispatch($locked->id)
-            ->delay(now()->addSeconds(config('game.timers.night_start_delay', 4)));
+            ->delay(now()->addSeconds($locked->timer('night_start_delay')));
     }
 
     public function endNight(Game $game): void

@@ -76,7 +76,7 @@ class ProcessNightActions implements ShouldQueue
         if ($victim?->is_mayor) {
             $successionDelay = $victim->is_inactive
                 ? 0
-                : config('game.timers.mayor_succession', 15);
+                : $game->timer('mayor_succession');
 
             broadcast(new MayorSuccessionStarted($game, $victim->pseudo));
             ProcessMayorSuccession::dispatch($game->id, $game->round, shouldStartNight: true)

@@ -45,6 +45,6 @@ class ProcessMayorElection implements ShouldQueue
 
         // Délai avant le premier tour voyante : laisse le temps à l'UI d'afficher MayorElected.
         ProcessSeerTurn::dispatch($this->gameId)
-            ->delay(now()->addSeconds(config('game.timers.mayor_reveal')));
+            ->delay(now()->addSeconds($game->timer('mayor_reveal')));
     }
 }

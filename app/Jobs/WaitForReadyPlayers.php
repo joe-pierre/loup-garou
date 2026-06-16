@@ -32,7 +32,7 @@ class WaitForReadyPlayers implements ShouldQueue
             return;
         }
 
-        $timer    = config('game.timers.mayor_election', 30);
+        $timer    = $game->timer('mayor_election');
         $deadline = now()->addSeconds($timer);
 
         $game->update(['phase_deadline' => $deadline]);
