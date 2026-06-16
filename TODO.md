@@ -315,6 +315,11 @@
   - 6.2 : `ActionController` conforme — `$fromNight` acceptable (paramètre de dispatch uniquement)
   - 6.3 : Commentaire ajouté dans `UpdateTimersRequest` (délégation min/max vers `GameService`)
   - 6.4 : `GameController::history()` — type de retour corrigé `mixed` → `View|JsonResponse`
+- [x] **ROADMAP Étape 7** — Extraction des constantes inline dans les vues Blade et JS
+  - 7.1 : `config/game_ui.php` créé (`avatar_colors`, `role_labels`, `role_labels_emoji`)
+  - 7.2 : `PlayerEliminatedDayNotification` + `RoleAssignedNotification` — `const ROLE_LABELS` supprimés, remplacés par `config('game_ui.role_labels_emoji')`
+  - 7.3 : Blade Component `<x-role-label>` créé (`resources/views/components/role-label.blade.php`)
+  - 7.4 : Commentaire TODO ajouté sur `playerAvatarColor` dans `day.blade.php`, `waiting-room.blade.php`, `mayor-election.blade.php`
 
 ---
 
