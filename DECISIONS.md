@@ -1,3 +1,19 @@
+## [CHOIX] Enums créés sans migration immédiate du code existant — stratégie progressive
+
+**Contexte :** ROADMAP Étape 4 — `app/Enums/GameStatus.php`, `app/Enums/PlayerRole.php`, `app/Enums/ActionType.php`, `app/Enums/ChatChannel.php`, `app/Enums/WinnerTeam.php`
+
+**Symptôme / Problème :** Les magic strings (`'waiting'`, `'night'`, `'werewolf'`, `'day_vote'`, etc.) sont répétées dans les Services, Jobs et Models sans constante partagée — risque de typo silencieuse et manque de lisibilité.
+
+**Cause / Alternatives :** (1) Remplacer toutes les occurrences immédiatement (find/replace global) — risque de régression élevé : la surface de changement couvre ~20 fichiers (Services, Jobs, Models, FormRequests, Factories), et chaque remplacement devrait être testé. (2) Créer les Enums et les intégrer progressivement, fichier par fichier, à chaque prochaine tâche qui touche le fichier concerné — risque zéro de régression à ce stade, les Enums sont rétrocompatibles (backed string, même valeur).
+
+**Fix / Décision :** Option 2 retenue. Les 5 Enums sont créés dans `app/Enums/` avec leurs méthodes helper (`isNightPhase()`, `isDayPhase()`, `isWerewolfSide()`, `isVillagerSide()`). Aucune modification du code applicatif existant. Chaque Enum porte un commentaire `// TODO : intégration progressive dans les Services, Jobs et Models (Étape 5+)`.
+
+**Leçon :** Créer les Enums avant de les intégrer permet de vérifier leur exhaustivité (valeurs, helpers) sans risquer de régression. L'intégration progressive au fil des tâches suivantes est préférable à un big-bang de find/replace sur l'ensemble du codebase.
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] hunter_pending en GameAction au lieu de Cache volatile
 
 **Contexte :** fix/hunter-pending-action — ProcessNightActions, ProcessNightEnd, GameService::witchAct(), VoteService::resolveDayVote()

@@ -302,6 +302,9 @@
     WitchTurnStarted, HunterTurnStarted, GameStarted (double canal), DayVoteCast,
     MayorVoteCast (anonymisation)
   - Tous les autres events documentés (30 fichiers total)
+- [x] **ROADMAP Étape 4** — Extraction de constantes (app/Enums/)
+  - GameStatus, PlayerRole, ActionType, ChatChannel, WinnerTeam créés
+  - Intégration dans le code applicatif différée (Étape 5+)
 
 ---
 
