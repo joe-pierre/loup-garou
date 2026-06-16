@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 16h36
+Generated at: 16h39
 
 ## PHP Analysis (Core Logic)
 
@@ -761,7 +761,7 @@ GameController.php
       - spectator(Request $request, string $code) → return view('game.spectator', compact('game', 'player', 'allPlayers'))
       - day(Request $request, string $code) → return view('game.day', compact('game', 'player', 'players', 'nightVictim'))
       - night(Request $request, string $code) → return view('game.night', compact('game', 'player', 'players'))
-      - redirectToCurrentPhase(Game $game, string $code) → return match (true) { $game->status === 'day' => redirect()->route('game.day', ['code' => $code]), in_array($game->status, ['night', 'wolves_turn', 'processing_night']) => redirect()->route('game.night', ['code' => $code]), $game->status === 'electing_mayor' => redirect()->route('game.mayor-election', ['code' => $code]), $game->status === 'finished' && $game->winner_team !== null => redirect()->route('game.finished', ['code' => $code]), $game->status === 'finished' => redirect()->route('game.cancelled', ['code' => $code]), default => redirect()->route('game.role-reveal', ['code' => $code]), }
+      - redirectToCurrentPhase(Game $game, string $code) → return match (true) { in_array($game->status, ['day', 'processing_day']) => redirect()->route('game.day', ['code' => $code]), in_array($game->status, ['night', 'wolves_turn', 'processing_night', 'processing_wolves']) => redirect()->route('game.night', ['code' => $code]), $game->status === 'electing_mayor' => redirect()->route('game.mayor-election', ['code' => $code]), $game->status === 'finished' && $game->winner_team !== null => redirect()->route('game.finished', ['code' => $code]), $game->status === 'finished' => redirect()->route('game.cancelled', ['code' => $code]), default => redirect()->route('game.role-reveal', ['code' => $code]), }
       - history(Request $request, string $code) → return view('game.history', compact('game', 'players', 'timeline', 'duration', 'myPlayer'))
       - buildTimeline(Game $game, Collection $players, Collection $actions) → return $timeline
       - playerSnapshot(Collection $players, int $id) → return ['id' => $id, 'pseudo' => $p?->pseudo ?? '?', 'role' => $p?->role ?? null]
