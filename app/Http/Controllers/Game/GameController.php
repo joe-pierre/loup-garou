@@ -126,12 +126,18 @@ class GameController extends Controller
     private function redirectToCurrentPhase(Game $game, string $code): RedirectResponse
     {
         return match (true) {
-            $game->status === 'day'                                                    => redirect()->route('game.day', ['code' => $code]),
-            in_array($game->status, ['night', 'wolves_turn', 'processing_night'])      => redirect()->route('game.night', ['code' => $code]),
-            $game->status === 'electing_mayor'                                         => redirect()->route('game.mayor-election', ['code' => $code]),
-            $game->status === 'finished' && $game->winner_team !== null                => redirect()->route('game.finished', ['code' => $code]),
-            $game->status === 'finished'                                               => redirect()->route('game.cancelled', ['code' => $code]),
-            default                                                                    => redirect()->route('game.role-reveal', ['code' => $code]),
+            in_array($game->status, ['day', 'processing_day'])
+                => redirect()->route('game.day', ['code' => $code]),
+            in_array($game->status, ['night', 'wolves_turn', 'processing_night', 'processing_wolves'])
+                => redirect()->route('game.night', ['code' => $code]),
+            $game->status === 'electing_mayor'
+                => redirect()->route('game.mayor-election', ['code' => $code]),
+            $game->status === 'finished' && $game->winner_team !== null
+                => redirect()->route('game.finished', ['code' => $code]),
+            $game->status === 'finished'
+                => redirect()->route('game.cancelled', ['code' => $code]),
+            default
+                => redirect()->route('game.role-reveal', ['code' => $code]),
         };
     }
 
