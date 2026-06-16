@@ -320,23 +320,27 @@ export function gameState(gameId, userId) {
 
         handleMayorElected(e) {
             this._dispatchToast(`👑 ${e.pseudo} est élu Maire`, 'info');
-            // Retirer couronne du précédent maire
+            this._updateMayorBadges(e.player_id);
+        },
+
+        _updateMayorBadges(playerId) {
             this.players = this.players.map(p => ({
                 ...p,
-                is_mayor: p.id === e.player_id,
+                is_mayor: p.id === playerId,
             }));
-            // Mettre à jour le DOM
+
             document.querySelectorAll('[data-player-id]').forEach(el => {
-                const pid       = parseInt(el.dataset.playerId, 10);
-                const crownEl   = el.querySelector('[data-badge="mayor"]');
-                if (crownEl) crownEl.style.display = pid === e.player_id ? '' : 'none';
+                const pid   = parseInt(el.dataset.playerId, 10);
+                const crown = el.querySelector('[data-badge="mayor"]');
+
+                if (crown) crown.style.display = pid === playerId ? '' : 'none';
             });
         },
 
         handleMayorSuccessionDone(e) {
             this._dispatchToast(`👑 ${e.new_mayor_pseudo} est le nouveau Maire`, 'info');
             this.successionDepth = Math.max(0, this.successionDepth - 1);
-            this.handleMayorElected({ player_id: e.new_mayor_id });
+            this._updateMayorBadges(e.new_mayor_id);
             window.dispatchEvent(new CustomEvent('mayor-succession-done', { detail: e }));
         },
 
