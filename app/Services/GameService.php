@@ -533,13 +533,14 @@ class GameService
             return ['action' => $action, 'target' => $target];
         });
 
-        // Hors transaction : gestion du cache "le chasseur doit tirer" (Guard #2)
-        if ($action === 'heal' && $result['target']?->isHunter()) {
-            Cache::forget("hunter_must_shoot_{$game->id}");
-        }
-
         if ($action === 'kill' && $result['target']?->isHunter()) {
-            Cache::put("hunter_must_shoot_{$game->id}", $result['target']->id, now()->addMinutes(10));
+            GameAction::create([
+                'game_id'   => $game->id,
+                'player_id' => $result['target']->id,
+                'type'      => 'hunter_pending',
+                'round'     => $game->round,
+                'phase'     => 'night',
+            ]);
         }
 
         return $result;

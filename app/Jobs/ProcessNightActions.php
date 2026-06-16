@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Events\Game\MayorSuccessionStarted;
 use App\Events\Game\PlayerEliminated;
 use App\Models\Game;
+use App\Models\GameAction;
 use App\Notifications\PlayerKilledNightNotification;
 use App\Services\VoteService;
 use App\Services\WinConditionChecker;
@@ -13,7 +14,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class ProcessNightActions implements ShouldQueue
@@ -55,7 +55,13 @@ class ProcessNightActions implements ShouldQueue
             broadcast(new PlayerEliminated($game, $victim, 'night_kill'));
 
             if ($victim->isHunter()) {
-                Cache::put("hunter_must_shoot_{$game->id}", $victim->id, now()->addMinutes(10));
+                GameAction::create([
+                    'game_id'   => $game->id,
+                    'player_id' => $victim->id,
+                    'type'      => 'hunter_pending',
+                    'round'     => $game->round,
+                    'phase'     => 'night',
+                ]);
             }
 
             try {

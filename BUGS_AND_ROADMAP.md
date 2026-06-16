@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-16 — Cache volatile pour hunter_pending remplacé par GameAction
+
+- **Symptôme :** le chasseur perdait silencieusement son pouvoir si Redis redémarrait entre ProcessNightActions et ProcessNightEnd.
+- **Cause :** mécanisme reposant sur `Cache::put("hunter_must_shoot_...")` volatile au lieu de persistance DB.
+- **Fix :** remplacement de `Cache::put/pull` par `GameAction` de type `hunter_pending` dans ProcessNightActions, ProcessNightEnd, GameService::witchAct() et VoteService::resolveDayVote(). L'action est supprimée après consommation.
+
+---
+
 ### [x] 2026-06-16 — Double toast lors de la succession du maire
 
 - **Symptôme :** à chaque `MayorSuccessionDone`, deux toasts quasi identiques s'affichaient : "👑 X est élu Maire" (issu de l'appel interne à `handleMayorElected()`) puis "👑 X est le nouveau Maire".

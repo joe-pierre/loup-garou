@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 17h04
+Generated at: 17h11
 
 ## PHP Analysis (Core Logic)
 
@@ -1247,6 +1247,12 @@ TestCase.php
 
 // database/migrations/2026_06_10_000003_add_wolves_turn_to_games_status.php
 2026_06_10_000003_add_wolves_turn_to_games_status.php
+    functions:
+      - up() → void
+      - down() → void
+
+// database/migrations/2026_06_16_170710_add_hunter_pending_to_game_actions_type_enum.php
+2026_06_16_170710_add_hunter_pending_to_game_actions_type_enum.php
     functions:
       - up() → void
       - down() → void

@@ -3,13 +3,13 @@
 namespace App\Jobs;
 
 use App\Models\Game;
+use App\Models\GameAction;
 use App\Services\PhaseManager;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class ProcessNightEnd implements ShouldQueue
@@ -35,9 +35,14 @@ class ProcessNightEnd implements ShouldQueue
             return;
         }
 
-        $hunterId = Cache::pull("hunter_must_shoot_{$game->id}");
-        if ($hunterId) {
-            ProcessHunterTurn::dispatch($game->id, $game->round, $hunterId)->delay(0);
+        $hunterPending = GameAction::where('game_id', $game->id)
+            ->where('type', 'hunter_pending')
+            ->where('round', $game->round)
+            ->first();
+
+        if ($hunterPending) {
+            $hunterPending->delete();
+            ProcessHunterTurn::dispatch($game->id, $game->round, $hunterPending->player_id)->delay(0);
             return;
         }
 
