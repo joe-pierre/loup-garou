@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-16 — Guards double action sans index sur player_id et type
+
+- **Symptôme :** les guards de double action (seer_check, wolves_vote, witch_act, hunter_shot…) scannaient toutes les lignes du round sans index sur `player_id` et `type`.
+- **Cause :** l'index existant `(game_id, round, phase)` ne couvrait pas les colonnes `player_id` et `type` utilisées dans les requêtes de guard exécutées dans des transactions `lockForUpdate`.
+- **Fix :** ajout d'index composite `idx_game_actions_player_type_round` sur `(game_id, player_id, type, round)`.
+
+---
+
 ### [x] 2026-06-16 — Endpoints d'action sans rate limiting (saturation queue)
 
 - **Symptôme :** un joueur malveillant pouvait envoyer des centaines de requêtes par seconde sur les endpoints de vote, de rôle et de chat, saturant la queue Laravel avec des transactions DB et des broadcasts WebSocket.
