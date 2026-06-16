@@ -16,15 +16,47 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Résout le vote des loups et orchestre la suite de la séquence nocturne.
+ *
+ * Dispatché par ProcessWerewolvesTurn après expiration du timer loups.
+ *
+ * Ordre d'exécution dans handle() :
+ *   1. Résolution du vote loups (resolveNightVote) → élimination victime.
+ *   2. Broadcast PlayerEliminated + notification push si victime.
+ *   3. Création de GameAction hunter_pending en DB si la victime est le Chasseur.
+ *   4. Vérification condition de victoire (WinConditionChecker) → return si finie.
+ *   5. Dispatch ProcessWitchTurn::delay(0) si sorcière vivante.
+ *   6. Dispatch ProcessMayorSuccession(shouldStartNight:true) si le maire est tué.
+ *   7. Dispatch ProcessNightEnd::delay(witch_timer + mayor_succession + 5s) — toujours.
+ */
 class ProcessNightActions implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /**
+     * @param int $gameId Identifiant de la partie.
+     * @param int $round  Round de référence (double-fire guard).
+     */
     public function __construct(
         public readonly int $gameId,
         public readonly int $round,
     ) {}
 
+    /**
+     * Résout la nuit et dispatche les jobs de continuation.
+     *
+     * Guards d'entrée (dans la transaction lockForUpdate) :
+     *   - La partie existe avec status IN ('night', 'wolves_turn').
+     *   - round === $this->round.
+     *
+     * Le statut passe à 'processing_night' dans la transaction avant toute action.
+     *
+     * Dispatche :
+     *   - ProcessWitchTurn($gameId, $round)::delay(0) si sorcière vivante.
+     *   - ProcessMayorSuccession($gameId, $round, shouldStartNight:true) si maire tué.
+     *   - ProcessNightEnd($gameId, $round)::delay(witch_timer + mayor_succession + 5s) — toujours.
+     */
     public function handle(VoteService $voteService, WinConditionChecker $winChecker): void
     {
         $game = null;

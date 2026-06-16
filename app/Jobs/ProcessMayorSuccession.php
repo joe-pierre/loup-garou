@@ -13,16 +13,52 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Désigne un successeur aléatoire au maire éliminé.
+ *
+ * Dispatché par ProcessNightActions (mort la nuit, shouldStartNight=true)
+ * ou par VoteService::resolveDayVote() (mort le jour, shouldStartNight=false, défaut).
+ *
+ * ⚠️ Le flag shouldStartNight mémorise le contexte du dispatch : sans lui, une
+ * race condition entre ProcessMayorSuccession et ProcessNightEnd pourrait faire lire
+ * un statut 'day' (déjà transitionné par ProcessNightEnd) et appeler startNight() à tort.
+ * Voir DECISIONS.md "ProcessMayorSuccession — flag shouldStartNight".
+ *
+ * Quand shouldStartNight=true → return après broadcast MayorSuccessionDone :
+ * ProcessNightEnd (déjà dispatché avec délai buffer) termine la nuit.
+ * Quand shouldStartNight=false → appelle PhaseManager::startNight() après la succession.
+ */
 class ProcessMayorSuccession implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /**
+     * @param int  $gameId          Identifiant de la partie.
+     * @param int  $round           Round de référence (double-fire guard).
+     * @param bool $shouldStartNight true si la succession a lieu la nuit
+     *                               (ProcessNightEnd prend le relais),
+     *                               false si pendant le jour (ce job appelle startNight()).
+     */
     public function __construct(
         public readonly int $gameId,
         public readonly int $round,
         public readonly bool $shouldStartNight = false,
     ) {}
 
+    /**
+     * Désigne le successeur dans une transaction atomique, broadcast MayorSuccessionDone.
+     *
+     * Guards d'entrée :
+     *   - La partie existe.
+     *   - status IN ('night', 'processing_night', 'day', 'processing_day').
+     *   - round === $this->round.
+     *   - Aucun GameAction de type 'mayor_succession' pour ce round + phase (idempotence).
+     *
+     * Le broadcast MayorSuccessionDone est émis HORS transaction (après commit).
+     *
+     * Si shouldStartNight=true → return après broadcast (ProcessNightEnd gère la suite).
+     * Si shouldStartNight=false → appelle PhaseManager::startNight() après $game->refresh().
+     */
     public function handle(PhaseManager $phaseManager): void
     {
         $game = Game::find($this->gameId);

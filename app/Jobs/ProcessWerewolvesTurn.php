@@ -12,12 +12,38 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Démarre le tour des loups-garous.
+ *
+ * Dispatché par ProcessSeerTurn après expiration du timer voyante (delay=seer+2),
+ * ou immédiatement si la voyante est inactive.
+ *
+ * Change le statut night → wolves_turn dans une transaction DB avec lockForUpdate
+ * pour éviter les doubles déclenchements, puis dispatche ProcessNightActions
+ * avec un délai égal au timer loups.
+ */
 class ProcessWerewolvesTurn implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /**
+     * @param int $gameId Identifiant de la partie.
+     */
     public function __construct(public readonly int $gameId) {}
 
+    /**
+     * Transition atomique night → wolves_turn, broadcast WerewolvesTurnStarted,
+     * dispatche ProcessNightActions(delay=wolves_timer).
+     *
+     * Guards d'entrée (dans la transaction lockForUpdate) :
+     *   - La partie existe avec status === 'night'.
+     *
+     * La transition status → wolves_turn est effectuée dans DB::transaction
+     * avec lockForUpdate pour garantir l'idempotence.
+     *
+     * Dispatche :
+     *   - ProcessNightActions($gameId, $round)::delay(wolves_timer).
+     */
     public function handle(): void
     {
         $game = null;

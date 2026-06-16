@@ -11,12 +11,35 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Jobs\ProcessMayorElection;
 
+/**
+ * Déclenche l'élection du maire si tous les joueurs ne se sont pas déclarés prêts dans le délai.
+ *
+ * Dispatché par GameService::markReady() (ou startGame()) avec un délai ready_timeout.
+ *
+ * Si tous les joueurs se déclarent prêts avant expiration, markReady() appelle directement
+ * MayorElectionStarted et renseigne phase_deadline. Ce job détecte ce cas via le guard
+ * phase_deadline !== null → return sans rien faire (idempotent).
+ */
 class WaitForReadyPlayers implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /**
+     * @param int $gameId Identifiant de la partie.
+     */
     public function __construct(public readonly int $gameId) {}
 
+    /**
+     * Vérifie les guards et démarre l'élection du maire si nécessaire.
+     *
+     * Guards d'entrée :
+     *   - La partie existe.
+     *   - status === 'electing_mayor'.
+     *   - phase_deadline === null (sinon MayorElectionStarted déjà déclenché en avance).
+     *
+     * Dispatche :
+     *   - ProcessMayorElection($game->id)::delay(mayor_election).
+     */
     public function handle(): void
     {
         $game = Game::find($this->gameId);

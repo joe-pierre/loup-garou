@@ -11,15 +11,47 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Démarre le tour de la Sorcière après résolution du vote des loups.
+ *
+ * Seul dispatcher légitime : ProcessNightActions::handle() (Guard #4 RISK_GUARDS).
+ * Ne jamais dispatcher depuis ProcessWerewolvesTurn ni ProcessSeerAutoAction.
+ *
+ * Applique les 3 cas du Guard #3 révisé (fix/witch-turn-no-victim, RISK_GUARDS) :
+ *   (a) Deux potions épuisées → skip silencieux (return).
+ *   (b) Pas de victime + poison épuisé → skip silencieux (return).
+ *   (c) Tous les autres cas → broadcast WitchTurnStarted + dispatch ProcessWitchAutoAction.
+ *
+ * ProcessNightEnd est toujours dispatché par ProcessNightActions avec un délai buffer
+ * couvrant le tour sorcière — les skips silencieux ne dispatchent pas ProcessNightEnd.
+ */
 class ProcessWitchTurn implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /**
+     * @param int $gameId Identifiant de la partie.
+     * @param int $round  Round de référence (double-fire guard).
+     */
     public function __construct(
         public readonly int $gameId,
         public readonly int $round,
     ) {}
 
+    /**
+     * Applique les guards et broadcast WitchTurnStarted si la sorcière peut agir.
+     *
+     * Guards d'entrée :
+     *   - La partie existe.
+     *   - status IN ('night', 'processing_night').
+     *   - round === $this->round.
+     *   - La sorcière est vivante.
+     *   - Guard #6 : aucune action sorcière (witch_heal/witch_kill/witch_pass) ce round.
+     *   - Guard #3 révisé : skip si pas de victime et potions incompatibles (voir ci-dessus).
+     *
+     * Dispatche :
+     *   - ProcessWitchAutoAction($gameId, $round)::delay(witch_timer).
+     */
     public function handle(VoteService $voteService): void
     {
         $game = Game::find($this->gameId);
