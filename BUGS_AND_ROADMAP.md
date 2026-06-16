@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-16 — Endpoints d'action sans rate limiting (saturation queue)
+
+- **Symptôme :** un joueur malveillant pouvait envoyer des centaines de requêtes par seconde sur les endpoints de vote, de rôle et de chat, saturant la queue Laravel avec des transactions DB et des broadcasts WebSocket.
+- **Cause :** aucun middleware `throttle` sur les 8 routes d'action POST dans `routes/web.php`.
+- **Fix :** sous-groupe `Route::middleware('throttle:60,1')` regroupant les 8 endpoints concernés (vote/mayor, vote/day, vote/night, seer/check, witch/act, hunter/shoot, mayor/succession, chat). Les routes GET et les routes de navigation restent sans throttle additionnel.
+
+---
+
 ### [x] 2026-06-16 — Appels config('game.timers.*') résiduels hors TimerCalculator
 
 - **Symptôme :** si un host configurait un timer (ex. `mayor_succession=20s`), certains chemins (VoteService, ProcessNightActions, GameService, WaitForReadyPlayers, ProcessMayorElection, PhaseManager) utilisaient toujours la valeur `config()` hardcodée au lieu de la valeur personnalisée.
