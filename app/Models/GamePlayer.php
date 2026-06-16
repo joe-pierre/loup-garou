@@ -76,4 +76,36 @@ class GamePlayer extends Model
     {
         return $this->role === 'hunter';
     }
+
+    /**
+     * Retourne true si le joueur est vivant et actif (non inactif).
+     */
+    public function isActiveAndAlive(): bool
+    {
+        return $this->is_alive && !$this->is_inactive;
+    }
+
+    /**
+     * Retourne true si la potion de soin de la sorcière a été utilisée.
+     */
+    public function witchHealUsed(): bool
+    {
+        return (bool) ($this->settings['witch_heal_used'] ?? false);
+    }
+
+    /**
+     * Retourne true si la potion de poison de la sorcière a été utilisée.
+     */
+    public function witchKillUsed(): bool
+    {
+        return (bool) ($this->settings['witch_kill_used'] ?? false);
+    }
+
+    /**
+     * Retourne true si la sorcière a encore au moins une potion disponible.
+     */
+    public function witchHasPotion(): bool
+    {
+        return !$this->witchHealUsed() || !$this->witchKillUsed();
+    }
 }

@@ -305,6 +305,11 @@
 - [x] **ROADMAP Étape 4** — Extraction de constantes (app/Enums/)
   - GameStatus, PlayerRole, ActionType, ChatChannel, WinnerTeam créés
   - Intégration dans le code applicatif différée (Étape 5+)
+- [x] **ROADMAP Étape 5** — Extraction de helpers et méthodes utilitaires dans les Models
+  - Game : isNightPhase(), isDayPhase(), isFinished(), isCancelled(), aliveCount(), aliveWerewolvesCount(), aliveVillagersCount()
+  - GamePlayer : isActiveAndAlive(), witchHealUsed(), witchKillUsed(), witchHasPotion()
+  - WinConditionChecker : remplacé par aliveWerewolvesCount() / aliveVillagersCount()
+  - CheckReconnectionTimeout : remplacé par aliveCount()
 
 ---
 

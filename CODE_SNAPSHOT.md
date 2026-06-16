@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 17h19
+Generated at: 23h36
 
 ## PHP Analysis (Core Logic)
 
@@ -30,6 +30,13 @@ Game.php
       - setStatus(string $status, array $context) → void
       - canTransition(string $transitionName) → return $registry->get($this)->can($this, $transitionName)
       - applyTransition(string $transitionName) → void
+      - isNightPhase() → return in_array($this->status, ['night', 'wolves_turn', 'processing_night'])
+      - isDayPhase() → return in_array($this->status, ['day', 'processing_day'])
+      - isFinished() → return $this->status === 'finished'
+      - isCancelled() → return $this->status === 'finished' && $this->winner_team === null
+      - aliveCount() → return $this->alivePlayers()->count()
+      - aliveWerewolvesCount() → return $this->alivePlayers()->whereIn('role', ['werewolf', 'white_wolf'])->count()
+      - aliveVillagersCount() → return $this->alivePlayers()->whereNotIn('role', ['werewolf', 'white_wolf'])->count()
 
 // app/Models/GameAction.php
 GameAction.php
@@ -92,6 +99,31 @@ GamePlayer.php
       - isVillagerSide() → return in_array($this->role, ['villager', 'seer', 'witch', 'hunter'])
       - isWitch() → return $this->role === 'witch'
       - isHunter() → return $this->role === 'hunter'
+      - isActiveAndAlive() → return $this->is_alive && !$this->is_inactive
+      - witchHealUsed() → return (bool) ($this->settings['witch_heal_used'] ?? false)
+      - witchKillUsed() → return (bool) ($this->settings['witch_kill_used'] ?? false)
+      - witchHasPotion() → return !$this->witchHealUsed() || !$this->witchKillUsed()
+
+// app/Enums/PlayerRole.php
+PlayerRole.php
+    functions:
+      - isWerewolfSide() → return in_array($this, [self::WEREWOLF, self::WHITE_WOLF])
+      - isVillagerSide() → return in_array($this, [self::VILLAGER, self::SEER, self::WITCH, self::HUNTER])
+
+// app/Enums/ActionType.php
+ActionType.php
+
+// app/Enums/GameStatus.php
+GameStatus.php
+    functions:
+      - isNightPhase() → return in_array($this, [self::NIGHT, self::WOLVES_TURN, self::PROCESSING_NIGHT])
+      - isDayPhase() → return in_array($this, [self::DAY, self::PROCESSING_DAY])
+
+// app/Enums/ChatChannel.php
+ChatChannel.php
+
+// app/Enums/WinnerTeam.php
+WinnerTeam.php
 
 // app/Jobs/ProcessMayorSuccession.php
 ProcessMayorSuccession.php
