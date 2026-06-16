@@ -310,6 +310,11 @@
   - GamePlayer : isActiveAndAlive(), witchHealUsed(), witchKillUsed(), witchHasPotion()
   - WinConditionChecker : remplacé par aliveWerewolvesCount() / aliveVillagersCount()
   - CheckReconnectionTimeout : remplacé par aliveCount()
+- [x] **ROADMAP Étape 6** — Nettoyage et normalisation des Controllers
+  - 6.1 : `HistoryService` déjà extrait de `GameController` (branche `refactor/history-service`)
+  - 6.2 : `ActionController` conforme — `$fromNight` acceptable (paramètre de dispatch uniquement)
+  - 6.3 : Commentaire ajouté dans `UpdateTimersRequest` (délégation min/max vers `GameService`)
+  - 6.4 : `GameController::history()` — type de retour corrigé `mixed` → `View|JsonResponse`
 
 ---
 
