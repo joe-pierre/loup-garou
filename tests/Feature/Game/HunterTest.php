@@ -19,7 +19,6 @@ use App\Services\PhaseManager;
 use App\Services\VoteService;
 use App\Services\WinConditionChecker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -60,8 +59,6 @@ class HunterTest extends TestCase
         GamePlayer::factory()->werewolf()->create(['game_id' => $game->id]);
         GamePlayer::factory()->count(3)->villager()->create(['game_id' => $game->id]);
 
-        Cache::put("hunter_must_shoot_{$game->id}", $hunter->id, now()->addMinutes(10));
-
         (new ProcessHunterTurn($game->id, $game->round, $hunter->id))
             ->handle(app(PhaseManager::class), app(WinConditionChecker::class));
 
@@ -100,8 +97,6 @@ class HunterTest extends TestCase
         $target = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
         GamePlayer::factory()->werewolf()->create(['game_id' => $game->id]);
         GamePlayer::factory()->count(3)->villager()->create(['game_id' => $game->id]);
-
-        Cache::put("hunter_must_shoot_{$game->id}", $hunter->id, now()->addMinutes(10));
 
         (new ProcessHunterTurn($game->id, $game->round, $hunter->id))
             ->handle(app(PhaseManager::class), app(WinConditionChecker::class));
@@ -261,7 +256,12 @@ class HunterTest extends TestCase
         (new ProcessNightActions($game->id, 1))->handle(app(VoteService::class), app(WinConditionChecker::class));
 
         $this->assertFalse($hunter->fresh()->is_alive);
-        $this->assertSame($hunter->id, Cache::get("hunter_must_shoot_{$game->id}"));
+        $this->assertDatabaseHas('game_actions', [
+            'game_id'   => $game->id,
+            'player_id' => $hunter->id,
+            'type'      => 'hunter_pending',
+            'round'     => 1,
+        ]);
         Queue::assertPushed(ProcessNightEnd::class, fn ($job) => $job->gameId === $game->id && $job->round === $game->round);
     }
 
@@ -281,13 +281,19 @@ class HunterTest extends TestCase
         GamePlayer::factory()->count(4)->villager()->create(['game_id' => $game->id]);
 
         $game->update(['status' => 'processing_night']);
-        Cache::put("hunter_must_shoot_{$game->id}", $hunter->id, now()->addMinutes(10));
+        GameAction::create([
+            'game_id'   => $game->id,
+            'player_id' => $hunter->id,
+            'type'      => 'hunter_pending',
+            'round'     => $game->round,
+            'phase'     => 'night',
+        ]);
 
         (new ProcessNightEnd($game->id, $game->round))->handle(app(PhaseManager::class));
 
         Event::assertNotDispatched(DayStarted::class);
         $this->assertSame('processing_night', $game->fresh()->status);
-        $this->assertNull(Cache::get("hunter_must_shoot_{$game->id}"));
+        $this->assertDatabaseMissing('game_actions', ['game_id' => $game->id, 'type' => 'hunter_pending']);
         Queue::assertPushed(ProcessHunterTurn::class, fn ($job) => $job->gameId === $game->id
             && $job->round === $game->round
             && $job->hunterId === $hunter->id);

@@ -1,3 +1,19 @@
+## [CHOIX] hunter_pending en GameAction au lieu de Cache volatile
+
+**Contexte :** fix/hunter-pending-action — ProcessNightActions, ProcessNightEnd, GameService::witchAct(), VoteService::resolveDayVote()
+
+**Symptôme / Problème :** `Cache::put("hunter_must_shoot_...")` perdu si Redis redémarre entre ProcessNightActions et ProcessNightEnd — le chasseur perdait son pouvoir silencieusement.
+
+**Cause / Alternatives :** Cache volatile non persistant entre les redémarrages de workers. Alternative cache avec TTL plus long ne réglerait pas le problème de fond.
+
+**Fix / Décision :** `GameAction` de type `hunter_pending` — persiste en DB, résiste aux redémarrages. Supprimé atomiquement par ProcessNightEnd/VoteService après lecture. Suppression du bloc `Cache::forget` pour le cas `heal` (inutile : si la sorcière sauve le chasseur, `hunter_pending` n'a pas été créé).
+
+**Leçon :** Tout état intermédiaire qui doit survivre à un restart worker doit être en DB, jamais en cache volatile.
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [RÉSOLU] ProcessWitchTurn guards skip — double ProcessNightEnd cassait la séquence nocturne
 
 **Contexte :** fix/night-sequence-timing — app/Jobs/ProcessWitchTurn.php,
