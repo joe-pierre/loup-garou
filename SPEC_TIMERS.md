@@ -38,8 +38,8 @@ Chaque phase active suit le même pattern, applicable à tous les rôles (voyant
 
 - Vérifie que le jeu est bien en `night` et que le round correspond.
 - Broadcast `SeerTurnStarted` sur canal privé de la voyante.
-- Dispatche **un seul job** : `ProcessSeerAutoAction` avec délai = `$game->timer('seer')`.
-- **Ne dispatche pas** `ProcessWerewolvesTurn` directement — c'est le rôle exclusif de `ProcessSeerAutoAction` et de l'endpoint `/seer/done`.
+- Dispatche `ProcessSeerAutoAction` avec délai = `ceil(seerTimer / 2)` — inspection de consolation à mi-timer.
+- Dispatche `ProcessWerewolvesTurn` avec delay(seerTimer + 2) — le passage aux loups est systématique, indépendamment de l'action de la voyante.
 
 #### Cas normal (action volontaire)
 
@@ -64,16 +64,15 @@ La voyante agit via `POST /game/{id}/seer/done` :
 
 ---
 
-#### §3.3 Comportement réel de ProcessSeerTurn (v1.2)
+#### §3.3 Comportement de référence de ProcessSeerTurn (v1.2)
 
 `ProcessSeerTurn` dispatche **deux jobs** :
 1. `ProcessSeerAutoAction` avec `delay(ceil(seerTimer / 2))` — inspection de consolation à mi-timer.
 2. `ProcessWerewolvesTurn` avec `delay(seerTimer + 2)` — passage aux loups, systématique.
 
-Le passage aux loups est donc toujours déclenché par `ProcessSeerTurn`, indépendamment
-de l'action de la voyante. Cette approche diffère de SPEC_TIMERS §2 (pattern générique)
-qui décrit `ProcessSeerAutoAction` comme seul déclencheur — la divergence est documentée
-dans DECISIONS.md (entrée "Étape 5 — AutoActionTest").
+Le passage aux loups est toujours déclenché par `ProcessSeerTurn`, indépendamment
+de l'action de la voyante. C'est le comportement officiel en v1.2.
+Voir `DECISIONS.md` pour l'historique de la décision.
 
 ---
 
@@ -176,12 +175,13 @@ ProcessWerewolvesTurn::dispatch($game->id, $game->round)
     ->delay(now()->addSeconds($game->timer('seer')));
 ```
 
-**Après (v1.2) :**
+**Après (v1.2) — comportement réel :**
 ```php
-// ProcessWerewolvesTurn n'est plus dispatché ici.
-// ProcessSeerAutoAction en est le seul déclencheur côté timer.
-ProcessSeerAutoAction::dispatch($game->id, $game->round)
-    ->delay(now()->addSeconds($game->timer('seer')));
+ProcessSeerAutoAction::dispatch($game->id, $seer->id, $game->round)
+    ->delay(now()->addSeconds($halfTimer));
+
+ProcessWerewolvesTurn::dispatch($this->gameId)
+    ->delay(now()->addSeconds($seerTimer + 2));
 ```
 
 ---
@@ -290,7 +290,7 @@ Le guard `in_array($game->status, ['night', 'processing_night'])` reste suffisan
 
 ## 8. NOTES D'IMPLÉMENTATION POUR CLAUDE CODE
 
-1. **`ProcessSeerAutoAction` est le seul dispatcher de `ProcessWerewolvesTurn`** côté timer. Supprimer tout dispatch direct de `ProcessWerewolvesTurn` depuis `ProcessSeerTurn`.
+1. **`ProcessSeerTurn` dispatche systématiquement `ProcessWerewolvesTurn`** avec `delay(seerTimer + 2)`. `ProcessSeerAutoAction` n'est pas responsable de ce dispatch — il gère uniquement l'inspection de consolation à mi-timer.
 
 2. **Guard de round dans `ProcessSeerAutoAction`** : vérifier `$game->round !== $this->round` en premier — si le round a avancé, le job est obsolète.
 
