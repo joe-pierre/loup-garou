@@ -29,14 +29,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/game/{code}/role-reveal', [ActionController::class, 'roleReveal'])->name('game.role-reveal');
     Route::get('/game/{code}/mayor-election', [GameController::class, 'mayorElection'])->name('game.mayor-election');
     Route::post('/game/{id}/ready', [ActionController::class, 'ready'])->name('game.ready');
-    Route::post('/game/{id}/vote/mayor', [VoteController::class, 'mayor'])->name('game.vote.mayor');
-    Route::post('/game/{id}/vote/day', [VoteController::class, 'day'])->name('game.vote.day');
-    Route::post('/game/{id}/vote/night', [VoteController::class, 'night'])->name('game.vote.night');
-    Route::post('/game/{id}/chat', [ChatController::class, 'send'])->name('game.chat.send');
-    Route::post('/game/{id}/seer/check', [ActionController::class, 'seerCheck'])->name('game.seer.check');
-    Route::post('/game/{id}/witch/act', [ActionController::class, 'witchAct'])->name('game.witch.act');
-    Route::post('/game/{id}/hunter/shoot', [ActionController::class, 'hunterShoot'])->name('game.hunter.shoot');
-    Route::post('/game/{id}/mayor/succession', [ActionController::class, 'mayorSuccession'])->name('game.mayor.succession');
+
+    Route::middleware('throttle:60,1')->group(function () {
+        Route::post('/game/{id}/vote/mayor', [VoteController::class, 'mayor'])->name('game.vote.mayor');
+        Route::post('/game/{id}/vote/day', [VoteController::class, 'day'])->name('game.vote.day');
+        Route::post('/game/{id}/vote/night', [VoteController::class, 'night'])->name('game.vote.night');
+        Route::post('/game/{id}/seer/check', [ActionController::class, 'seerCheck'])->name('game.seer.check');
+        Route::post('/game/{id}/witch/act', [ActionController::class, 'witchAct'])->name('game.witch.act');
+        Route::post('/game/{id}/hunter/shoot', [ActionController::class, 'hunterShoot'])->name('game.hunter.shoot');
+        Route::post('/game/{id}/mayor/succession', [ActionController::class, 'mayorSuccession'])->name('game.mayor.succession');
+        Route::post('/game/{id}/chat', [ChatController::class, 'send'])->name('game.chat.send');
+    });
+
     Route::get('/game/{code}/state', [GameController::class, 'state'])->name('game.state');
     Route::get('/game/{code}/history', [GameController::class, 'history'])->name('game.history');
     Route::get('/game/{code}/finished', [GameController::class, 'finished'])->name('game.finished');
