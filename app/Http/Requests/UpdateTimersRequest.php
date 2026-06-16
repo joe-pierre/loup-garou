@@ -15,6 +15,9 @@ class UpdateTimersRequest extends FormRequest
     {
         return [
             'timers'   => ['required', 'array', 'min:1'],
+            // Note : la validation des plages min/max et de la configurabilité
+            // est déléguée à GameService::validateTimerSettings() pour centraliser
+            // la logique métier des timers.
             'timers.*' => ['required', 'integer'],
         ];
     }

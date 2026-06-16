@@ -143,7 +143,7 @@ class GameController extends Controller
         };
     }
 
-    public function history(Request $request, string $code): mixed
+    public function history(Request $request, string $code): View|JsonResponse
     {
         $game = Game::where('code', strtoupper($code))->first();
 
