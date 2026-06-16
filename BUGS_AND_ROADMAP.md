@@ -506,11 +506,18 @@
 
 ---
 
+### [x] 2026-06-16 — NightStarted::broadcastWith() utilisait config() au lieu de $game->timer()
+
+- **Symptôme :** le client animait la barre de progression de la nuit sur 30s (valeur par défaut config) même si le host configurait seer=45s — désynchronisation visible.
+- **Cause :** `broadcastWith()` appelait `config('game.timers.seer', 30)` au lieu de `$this->game->timer('seer')`, contournant les settings configurés par le host.
+- **Fix :** remplacement par `$this->game->timer('seer')` dans `NightStarted::broadcastWith()`.
+
+---
+
 # ROADMAP (idées / améliorations futures)
  
 - [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)
 - [ ] Harmoniser les appels `config('game.timers.mayor_succession', 15)` restants avec `$game->timer()` (Étape 3)
-- [ ] NightStarted::broadcastWith() utilise encore `config('game.timers.seer', 30)` au lieu de `$game->timer('seer')` — même bug que celui corrigé pour Mayor*/SeerTurnStarted/WerewolvesTurnStarted
 - [ ] Rôles v1.3+ : Loup Blanc, Cupidon, Petite Fille
 - [ ] State machine : étendre Symfony Workflow aux statuts intermédiaires (processing_night, wolves_turn) — post-Étape 4 si nécessaire
 - [ ] Audit performance post-v1.2 : N+1 queries, temps réponse < 200ms (Laravel Telescope)
