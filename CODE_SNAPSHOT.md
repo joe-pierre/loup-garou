@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 17h11
+Generated at: 17h19
 
 ## PHP Analysis (Core Logic)
 
@@ -968,6 +968,15 @@ HunterTest.php
       - test_hunter_auto_action_no_elimination_if_inactive() → void
       - test_chasseur_tire_apres_resolution_complete_de_nuit() → void
       - test_chasseur_ne_tire_pas_avant_day_started() → void
+
+// tests/Feature/Game/FullGameIntegrationTest.php
+FullGameIntegrationTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_partie_complete_victoire_loups() → void
+      - test_sequence_nocturne_voyante_puis_loups_puis_jour() → void
+      - test_cascade_deux_successions_ne_bloque_pas_la_partie() → void
 
 // tests/Feature/Game/ChatTest.php
 ChatTest.php
