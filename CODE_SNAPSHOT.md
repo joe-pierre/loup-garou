@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 16h58
+Generated at: 17h01
 
 ## PHP Analysis (Core Logic)
 
@@ -754,7 +754,7 @@ LobbyController.php
 // app/Http/Controllers/Game/GameController.php
 GameController.php
     functions:
-      - __construct(GameService $gameService, VoteService $voteService) {}
+      - __construct(GameService $gameService, VoteService $voteService, HistoryService $historyService) {}
       - mayorElection(Request $request, string $code) → return view('game.mayor-election', compact('game', 'player', 'players', 'myVote', 'currentVotes', 'phaseRemainingSeconds'))
       - finished(Request $request, string $code) → return view('game.finished', compact('game', 'player', 'players'))
       - cancelled(Request $request, string $code) → return view('game.cancelled', compact('game', 'player', 'allPlayers'))
@@ -763,8 +763,6 @@ GameController.php
       - night(Request $request, string $code) → return view('game.night', compact('game', 'player', 'players'))
       - redirectToCurrentPhase(Game $game, string $code) → return match (true) { in_array($game->status, ['day', 'processing_day']) => redirect()->route('game.day', ['code' => $code]), in_array($game->status, ['night', 'wolves_turn', 'processing_night', 'processing_wolves']) => redirect()->route('game.night', ['code' => $code]), $game->status === 'electing_mayor' => redirect()->route('game.mayor-election', ['code' => $code]), $game->status === 'finished' && $game->winner_team !== null => redirect()->route('game.finished', ['code' => $code]), $game->status === 'finished' => redirect()->route('game.cancelled', ['code' => $code]), default => redirect()->route('game.role-reveal', ['code' => $code]), }
       - history(Request $request, string $code) → return view('game.history', compact('game', 'players', 'timeline', 'duration', 'myPlayer'))
-      - buildTimeline(Game $game, Collection $players, Collection $actions) → return $timeline
-      - playerSnapshot(Collection $players, int $id) → return ['id' => $id, 'pseudo' => $p?->pseudo ?? '?', 'role' => $p?->role ?? null]
       - state(Request $request, string $code) → return response()->json(['success' => true, 'data' => ['phase' => $game->status, 'round' => $game->round, 'my_role' => $player->role, 'is_alive' => (bool) $player->is_alive, 'is_mayor' => (bool) $player->is_mayor, 'phase_remaining_seconds' => $game->phaseRemainingSeconds(), 'seer_turn_active' => $seerTurnActive, 'werewolves_turn_active' => $werewolvesTurnActive, 'allies' => $allies]])
       - quit(Request $request, int $id) → return response()->json(['success' => true])
       - disconnect(Request $request, int $id) → return response()->json(['success' => true])
@@ -872,6 +870,12 @@ VoteService.php
       - getDayVoteSummary(Game $game) → return GameAction::where('game_id', $game->id)->where('type', 'day_vote')->where('round', $game->round)->get()->groupBy('target_player_id')->map(fn($group) => $group->sum('weight'))->toArray()
       - getNightVoteState(Game $game) → return $aliveWolves->map(fn(GamePlayer $w) => ['player_id' => $w->id, 'pseudo' => $w->pseudo, 'has_voted' => $votes->has($w->id), 'target_player_id' => $votes->get($w->id)?->target_player_id, 'target_pseudo' => $votes->has($w->id) ? $targets[$votes[$w->id]->target_player_id] ?? null : null])->values()->toArray()
       - getMayorVoteTotals(Game $game) → return GameAction::where('game_actions.game_id', $game->id)->where('game_actions.type', 'mayor_vote')->where('game_actions.round', $game->round)->join('game_players', 'game_actions.target_player_id', '=', 'game_players.id')->selectRaw('game_actions.target_player_id, game_players.pseudo, COUNT(*) as vote_count')->groupBy('game_actions.target_player_id', 'game_players.pseudo')->get()->map(fn($row) => ['target_player_id' => $row->target_player_id, 'pseudo' => $row->pseudo, 'vote_count' => (int) $row->vote_count])->values()->toArray()
+
+// app/Services/HistoryService.php
+HistoryService.php
+    functions:
+      - buildTimeline(Game $game, Collection $players, Collection $actions) → return $timeline
+      - playerSnapshot(Collection $players, int $id) → return ['id' => $id, 'pseudo' => $p?->pseudo ?? '?', 'role' => $p?->role ?? null]
 
 // app/Services/PhaseManager.php
 PhaseManager.php
