@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 16h49
+Generated at: 16h51
 
 ## PHP Analysis (Core Logic)
 
@@ -1261,6 +1261,12 @@ TestCase.php
 
 // database/migrations/2026_06_10_000002_add_processing_wolves_to_games_status.php
 2026_06_10_000002_add_processing_wolves_to_games_status.php
+    functions:
+      - up() → void
+      - down() → void
+
+// database/migrations/2026_06_16_165013_add_player_type_round_index_to_game_actions_table.php
+2026_06_16_165013_add_player_type_round_index_to_game_actions_table.php
     functions:
       - up() → void
       - down() → void
