@@ -5,13 +5,25 @@ namespace App\Services;
 use App\Models\Game;
 use Illuminate\Support\Collection;
 
+/**
+ * Distribue les rôles aux joueurs d'une partie selon la configuration active.
+ *
+ * Priorité de configuration : $game->settings['roles'] > config/game.php
+ * Rôles spéciaux (seer, witch, hunter) : 0 ou 1 max chacun.
+ * Villageois ('villager') : toujours en mode 'fill', complète les slots restants — non configurable.
+ * Loups ('werewolf') : mode 'auto', calcul via werewolfCount() (table d'overrides ou formule floor(n×0.2)).
+ *
+ * v1.3+ uniquement : ne pas anticiper white_wolf, cupidon, petite_fille — absents de l'enum DB.
+ */
 class RoleDistributor
 {
     /**
-     * Distribue les rôles à une collection de GamePlayers.
+     * Distribue les rôles à une collection de joueurs de manière aléatoire.
+     * L'ordre d'attribution est déterminé par shuffle() sur la collection mélangée.
      *
-     * @param  Collection<int, \App\Models\GamePlayer> $players
-     * @return array<int, string>  [player_id => role]
+     * @param  Collection<int, \App\Models\GamePlayer> $players Collection des joueurs de la partie
+     * @param  Game                                    $game    La partie (pour lire settings['roles'])
+     * @return array<int, string>                               [player_id => role]
      */
     public function distribute(Collection $players, Game $game): array
     {
@@ -65,8 +77,12 @@ class RoleDistributor
 
     /**
      * Calcule le nombre de joueurs par rôle pour un effectif donné.
+     * Deux passes : d'abord les rôles à compte fixe ou 'auto', puis les rôles 'fill' (villager).
+     * Garantit que le nombre de villageois est toujours positif ou nul (max(0, slots restants)).
      *
-     * @return array<string, int>  [role => count]
+     * @param  int  $total Nombre total de joueurs
+     * @param  Game $game  La partie (pour lire la configuration des rôles)
+     * @return array<string, int> [role => nombre_de_joueurs]
      */
     private function computeCounts(int $total, Game $game): array
     {
@@ -95,7 +111,13 @@ class RoleDistributor
     }
 
     /**
-     * Résout le nombre de joueurs pour un rôle et un montant donnés.
+     * Résout le nombre de joueurs pour un rôle selon son mode de configuration.
+     * Modes : entier (count fixe), 'auto' (calcul par effectif via werewolfCount()), autre → 0.
+     *
+     * @param  string     $role   Nom du rôle
+     * @param  int|string $amount Valeur de configuration : entier fixe, 'auto' ou toute autre chaîne → 0
+     * @param  int        $total  Nombre total de joueurs (utilisé uniquement pour le mode 'auto')
+     * @return int                Nombre de joueurs à attribuer à ce rôle
      */
     private function resolveAmount(string $role, int|string $amount, int $total): int
     {

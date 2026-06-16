@@ -17,6 +17,17 @@ use App\Notifications\PlayerEliminatedDayNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Gère tous les votes de la partie : élection du maire, vote nuit (loups), vote jour, et leur résolution.
+ *
+ * Règles critiques :
+ * - Vote maire : weight = 1, phase = 'election'
+ * - Vote jour : weight = 2 si le votant est maire (lu via lockForUpdate au moment du vote)
+ * - Vote nuit : delete+insert atomique — permet le changement de cible jusqu'à expiration du timer
+ * - Égalité vote jour → NoElimination broadcasté, personne éliminé
+ * - 0 votes jour → élimination aléatoire parmi les joueurs vivants (cf. DECISIONS.md "0 votes jour")
+ * - Guard 'processing_day' dans resolveDayVote() : bloque tout double-fire concurrent
+ */
 class VoteService
 {
     public function __construct(
@@ -24,6 +35,15 @@ class VoteService
         private WinConditionChecker $winConditionChecker,
     ) {}
 
+    /**
+     * Enregistre le vote d'un joueur pour l'élection du maire.
+     * Guard atomique : impossible de voter deux fois dans le même round.
+     *
+     * @param  GamePlayer $voter    Le joueur qui vote (phase 'electing_mayor' requise)
+     * @param  int        $targetId ID du candidat visé (un joueur vivant de la partie)
+     * @return array<int, array{target_player_id: int, pseudo: string, vote_count: int}> Totaux de votes actuels
+     * @throws \Symfony\Component\HttpKernel\Exception\ConflictHttpException (409) si hors phase élection ou vote déjà exprimé
+     */
     public function castMayorVote(GamePlayer $voter, int $targetId): array
     {
         $game = $voter->game;
@@ -62,9 +82,11 @@ class VoteService
     /**
      * Résout l'élection du maire : élit le candidat avec le plus de votes,
      * aléatoire en cas d'égalité ou si aucun vote n'a été exprimé.
-     * Retourne null si la phase a déjà changé (double-fire guard).
+     * Guard atomique : retourne null si la phase a déjà changé (double-fire).
+     * Guard Symfony Workflow : vérifie canTransition('start_night') avant la mise à jour.
      *
-     * @return array{player: GamePlayer, game: Game, was_random: bool}|null
+     * @param  Game $game La partie en cours d'élection
+     * @return array{player: GamePlayer, game: Game, was_random: bool}|null Résultat, ou null si double-fire
      */
     public function resolveMayorElection(Game $game): ?array
     {
@@ -122,6 +144,14 @@ class VoteService
         });
     }
 
+    /**
+     * Calcule la victime du vote nocturne des loups pour le round courant.
+     * En cas d'égalité entre plusieurs cibles, la victime est choisie aléatoirement.
+     * Retourne null si aucun vote n'a été exprimé (les loups sont en égalité totale).
+     *
+     * @param  Game         $game La partie en phase nuit
+     * @return GamePlayer|null     Le joueur ciblé par les loups, ou null si aucun vote
+     */
     public function resolveNightVote(Game $game): ?GamePlayer
     {
         $votes = GameAction::where('game_id', $game->id)
@@ -146,6 +176,17 @@ class VoteService
         return GamePlayer::find($winnerId);
     }
 
+    /**
+     * Enregistre ou remplace le vote nocturne d'un loup (delete+insert atomique).
+     * Un loup peut changer de cible jusqu'à expiration du timer.
+     * Déclenche ProcessNightActions immédiatement si tous les loups vivants ont voté.
+     *
+     * @param  GamePlayer $wolf     Le loup votant (rôle 'werewolf'/'white_wolf', vivant, phases 'night'/'wolves_turn')
+     * @param  int        $targetId ID du joueur cible (validé par NightVoteRequest — pas un loup vivant)
+     * @return array<int, array{player_id: int, pseudo: string, has_voted: bool, target_player_id: int|null, target_pseudo: string|null}> État de vote de tous les loups
+     * @throws \Symfony\Component\HttpKernel\Exception\ConflictHttpException     (409) si hors phase nuit
+     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException (403) si $wolf n'est pas loup ou est mort
+     */
     public function castNightVote(GamePlayer $wolf, int $targetId): array
     {
         $game = $wolf->game;
@@ -208,6 +249,20 @@ class VoteService
         return $state;
     }
 
+    /**
+     * Résout le vote jour : élimine le joueur avec le plus de poids de votes.
+     * Guard atomique 'processing_day' : passe le statut de 'day' à 'processing_day' dès l'entrée
+     * en transaction pour bloquer tout double-fire concurrent.
+     *
+     * Cas d'égalité → NoElimination broadcasté, personne éliminé, la nuit commence.
+     * Cas 0 votes → élimination aléatoire parmi les vivants.
+     * Si le maire est éliminé → ProcessMayorSuccession dispatché.
+     * Si le chasseur est éliminé → ProcessHunterTurn dispatché via hunter_pending en DB.
+     * WinConditionChecker appelé après chaque élimination.
+     *
+     * @param  Game $game La partie en phase jour
+     * @return void
+     */
     public function resolveDayVote(Game $game): void
     {
         $eliminated   = null;
@@ -341,6 +396,18 @@ class VoteService
         }
     }
 
+    /**
+     * Enregistre le vote jour d'un joueur.
+     * Le maire vote avec un poids de 2 (lu via lockForUpdate au moment du vote).
+     * Déclenche ProcessDayVote immédiatement si tous les joueurs vivants ont voté.
+     *
+     * @param  GamePlayer $voter    Le joueur qui vote (vivant, phase 'day' requise)
+     * @param  int        $targetId ID du joueur cible (vivant, différent du votant, validé par DayVoteRequest)
+     * @return array<int, float|int> Résumé courant [target_player_id => poids_total]
+     * @throws \Symfony\Component\HttpKernel\Exception\ConflictHttpException                 (409) si hors phase jour ou vote déjà exprimé
+     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException             (403) si le joueur est mort
+     * @throws \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException (422) si vote contre soi-même
+     */
     public function castDayVote(GamePlayer $voter, int $targetId): array
     {
         if ($voter->game->status !== 'day') {
@@ -411,6 +478,12 @@ class VoteService
         return $this->getDayVoteSummary($voter->game);
     }
 
+    /**
+     * Retourne le récapitulatif des votes jour du round courant (poids total par cible).
+     *
+     * @param  Game $game La partie concernée
+     * @return array<int, float|int> [target_player_id => poids_total_votes]
+     */
     private function getDayVoteSummary(Game $game): array
     {
         return GameAction::where('game_id', $game->id)
@@ -422,6 +495,12 @@ class VoteService
             ->toArray();
     }
 
+    /**
+     * Retourne l'état des votes nocturnes de tous les loups vivants.
+     *
+     * @param  Game $game La partie concernée
+     * @return array<int, array{player_id: int, pseudo: string, has_voted: bool, target_player_id: int|null, target_pseudo: string|null}>
+     */
     private function getNightVoteState(Game $game): array
     {
         $aliveWolves = $game->alivePlayers()
@@ -449,6 +528,12 @@ class VoteService
         ])->values()->toArray();
     }
 
+    /**
+     * Retourne les totaux de votes pour l'élection du maire (round courant), avec pseudo des candidats.
+     *
+     * @param  Game $game La partie en cours d'élection
+     * @return array<int, array{target_player_id: int, pseudo: string, vote_count: int}>
+     */
     public function getMayorVoteTotals(Game $game): array
     {
         return GameAction::where('game_actions.game_id', $game->id)

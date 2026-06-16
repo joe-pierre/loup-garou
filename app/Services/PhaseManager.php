@@ -11,8 +11,33 @@ use App\Models\GamePlayer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Gère les transitions de phases d'une partie : début de jour, début de nuit, fin de nuit.
+ *
+ * Règles architecturales critiques :
+ * - Broadcasts et dispatches de jobs TOUJOURS hors des transactions lockForUpdate
+ *   (cf. DECISIONS.md "Phase nuit bloquée — broadcast synchrone dans DB::transaction").
+ * - startDay() est appelé par endNight(), jamais directement depuis un lockForUpdate().
+ * - Chaque méthode garde son propre guard transactionnel (lockForUpdate + canTransition)
+ *   pour être appelable depuis un Job isolé ou depuis une transaction parent (savepoints MySQL).
+ * - canTransition() ne couvre que les statuts canoniques du Workflow : 'processing_night'
+ *   et 'processing_day' bypassent le guard et passent directement à whereIn().
+ */
 class PhaseManager
 {
+    /**
+     * Passe la partie en phase jour : transition 'night'/'processing_night' → 'day'.
+     * Broadcaste DayStarted et dispatche ProcessDayVote avec le délai du timer 'day_vote'.
+     * Guard atomique : no-op si la partie n'est plus en statut nuit.
+     *
+     * Appel hors lockForUpdate uniquement — jamais depuis l'intérieur d'une transaction verrouillée.
+     *
+     * @param  Game            $game          La partie à transitionner
+     * @param  GamePlayer|null $victim        Victime nocturne (null si égalité des loups ou sauvée par sorcière)
+     * @param  bool            $witchActed    Vrai si la sorcière a utilisé soin ou poison ce round
+     * @param  int|null        $savedPlayerId ID du joueur sauvé par la sorcière (null si pas de soin)
+     * @return void
+     */
     public function startDay(
         Game $game,
         ?GamePlayer $victim,
@@ -55,6 +80,16 @@ class PhaseManager
             ->delay(now()->addSeconds($timer));
     }
 
+    /**
+     * Passe la partie en phase nuit : transition 'day'/'processing_day' → 'night', incrémente le round.
+     * Broadcaste NightStarted et dispatche ProcessSeerTurn avec le délai 'night_start_delay'.
+     * Guard atomique : no-op si la partie n'est plus en statut jour.
+     *
+     * Appel hors lockForUpdate uniquement — jamais depuis l'intérieur d'une transaction verrouillée.
+     *
+     * @param  Game $game La partie à transitionner
+     * @return void
+     */
     public function startNight(Game $game): void
     {
         $game->refresh();
@@ -94,6 +129,15 @@ class PhaseManager
             ->delay(now()->addSeconds($locked->timer('night_start_delay')));
     }
 
+    /**
+     * Résout la fin de nuit : détermine la victime du vote des loups, vérifie si elle a été
+     * sauvée par la sorcière, collecte les données de sorcière pour DayStarted, puis appelle startDay().
+     * Vérifie les conditions de victoire avant la transition — no-op si la partie est déjà terminée.
+     * Guard de statut : no-op si le statut n'est pas 'night' ou 'processing_night'.
+     *
+     * @param  Game $game La partie dont la nuit se termine
+     * @return void
+     */
     public function endNight(Game $game): void
     {
         $game->refresh();

@@ -27,6 +27,14 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
+/**
+ * Service d'orchestration principal : création, démarrage, gestion des joueurs,
+ * actions spéciales (voyante, sorcière, chasseur) et gestion du cycle de vie d'une partie.
+ *
+ * Tous les guards métier (phase, rôle, vivant) sont vérifiés dans ce service.
+ * Les broadcasts et dispatches de jobs se font hors des transactions lockForUpdate,
+ * sauf dans startGame() où les broadcasts sont intégrés à la transaction de distribution de rôles.
+ */
 class GameService
 {
     public function __construct(
@@ -34,6 +42,14 @@ class GameService
         private PhaseManager $phaseManager,
     ) {}
 
+    /**
+     * Crée une nouvelle partie et y inscrit le créateur comme host.
+     *
+     * @param  User   $user       Utilisateur créateur, devient host
+     * @param  string $pseudo     Pseudo affiché en partie
+     * @param  int    $maxPlayers Nombre maximum de joueurs (déclencheur du démarrage automatique)
+     * @return Game               La partie créée avec statut 'waiting'
+     */
     public function createGame(User $user, string $pseudo, int $maxPlayers): Game
     {
         $code = $this->generateUniqueCode();
@@ -57,6 +73,19 @@ class GameService
         });
     }
 
+    /**
+     * Inscrit un utilisateur dans une partie existante par son code.
+     * Déclenche automatiquement startGame() si la partie atteint max_players.
+     * Si l'utilisateur est déjà inscrit, retourne son GamePlayer existant.
+     *
+     * @param  User   $user   Utilisateur qui rejoint
+     * @param  string $code   Code de la partie (6 caractères majuscules)
+     * @param  string $pseudo Pseudo affiché en partie
+     * @return GamePlayer      Le GamePlayer créé ou existant
+     * @throws \Symfony\Component\HttpKernel\Exception\NotFoundHttpException     (404) si la partie n'existe pas
+     * @throws \Symfony\Component\HttpKernel\Exception\ConflictHttpException     (409) si la partie a déjà commencé ou est pleine
+     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException (403) si l'utilisateur est exclu
+     */
     public function joinGame(User $user, string $code, string $pseudo): GamePlayer
     {
         return DB::transaction(function () use ($user, $code, $pseudo) {
@@ -109,6 +138,13 @@ class GameService
         });
     }
 
+    /**
+     * Démarre la partie : distribue les rôles, notifie chaque joueur via canal privé, lance WaitForReadyPlayers.
+     * Guard atomique (lockForUpdate + canTransition) : no-op si la partie n'est plus en 'waiting'.
+     *
+     * @param  Game $game La partie à démarrer (statut attendu : 'waiting')
+     * @return void
+     */
     public function startGame(Game $game): void
     {
         DB::transaction(function () use ($game) {
@@ -171,6 +207,13 @@ class GameService
         });
     }
 
+    /**
+     * Marque un joueur comme prêt et lance l'élection du maire si tous les joueurs le sont.
+     * Guard atomique : no-op si la partie n'est plus en 'electing_mayor' ou si le joueur est déjà prêt.
+     *
+     * @param  GamePlayer $player Le joueur qui se déclare prêt
+     * @return void
+     */
     public function markReady(GamePlayer $player): void
     {
         DB::transaction(function () use ($player) {
@@ -201,6 +244,17 @@ class GameService
         });
     }
 
+    /**
+     * Exclut un joueur de la salle d'attente (phase 'waiting' uniquement).
+     * Crée un enregistrement Exclusion permanent pour bloquer toute ré-inscription.
+     *
+     * @param  GamePlayer $host   Le host qui exclut (is_host = true requis)
+     * @param  GamePlayer $target Le joueur à exclure (doit être différent du host)
+     * @param  string     $reason Motif affiché au joueur exclu via notification
+     * @return void
+     * @throws \Symfony\Component\HttpKernel\Exception\ConflictHttpException     (409) si la partie n'est plus en 'waiting'
+     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException (403) si $host n'est pas host, ou tente de s'exclure lui-même
+     */
     public function excludePlayer(GamePlayer $host, GamePlayer $target, string $reason): void
     {
         $game = $host->game;
@@ -241,6 +295,17 @@ class GameService
         });
     }
 
+    /**
+     * Enregistre l'inspection de la voyante sur une cible et retourne le joueur inspecté.
+     * Guard atomique : impossible d'agir deux fois dans le même round.
+     * Le rôle du joueur inspecté est lu par le contrôleur pour broadcaster SeerResult.
+     *
+     * @param  GamePlayer $seer     La voyante (rôle 'seer' requis)
+     * @param  int        $targetId ID du joueur à inspecter (ne peut pas être la voyante elle-même)
+     * @return GamePlayer            Le joueur inspecté
+     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException (403) si $seer n'est pas voyante
+     * @throws \Symfony\Component\HttpKernel\Exception\ConflictHttpException     (409) si la phase n'est pas 'night' ou si l'action a déjà été posée ce round
+     */
     public function seerCheck(GamePlayer $seer, int $targetId): GamePlayer
     {
         if ($seer->role !== 'seer') {
@@ -278,6 +343,17 @@ class GameService
         });
     }
 
+    /**
+     * Le maire mort désigne manuellement son successeur (phase jour uniquement).
+     * Déclenche startNight() après la succession (transition nuit → round suivant).
+     * Guard atomique : impossible si la succession a déjà été effectuée ce round.
+     *
+     * @param  GamePlayer $mayor    Le maire éliminé (is_mayor = true, is_alive = false)
+     * @param  int        $targetId ID du joueur vivant désigné successeur
+     * @return GamePlayer            Le nouveau maire
+     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException (403) si $mayor n'est pas le maire éliminé
+     * @throws \Symfony\Component\HttpKernel\Exception\ConflictHttpException     (409) si la phase n'est pas 'day' ou si la succession a déjà été effectuée
+     */
     public function mayorSuccessionByPlayer(GamePlayer $mayor, int $targetId): GamePlayer
     {
         $game = $mayor->game;
@@ -326,6 +402,14 @@ class GameService
         return $target;
     }
 
+    /**
+     * Gère la déconnexion d'un joueur : génère un token, broadcaste PlayerDisconnected
+     * et dispatche CheckReconnectionTimeout avec le délai du timer 'reconnection'.
+     * No-op si un token de déconnexion existe déjà en cache (job déjà en attente).
+     *
+     * @param  GamePlayer $player Le joueur qui vient de se déconnecter
+     * @return void
+     */
     public function handleDisconnection(GamePlayer $player): void
     {
         $cacheKey = "player_disconnected.{$player->id}";
@@ -347,6 +431,14 @@ class GameService
             ->delay(now()->addSeconds($timer));
     }
 
+    /**
+     * Gère la reconnexion d'un joueur : invalide le token de déconnexion en cache
+     * (CheckReconnectionTimeout détecte la divergence et s'arrête), remet is_inactive à false
+     * et broadcaste PlayerReconnected.
+     *
+     * @param  GamePlayer $player Le joueur qui vient de se reconnecter
+     * @return void
+     */
     public function handleReconnection(GamePlayer $player): void
     {
         // Invalider le token → le Job en attente détectera la reconnexion et s'arrêtera
@@ -357,6 +449,14 @@ class GameService
         broadcast(PlayerReconnected::fromPlayer($player));
     }
 
+    /**
+     * Marque un joueur comme mort et inactif suite à un départ volontaire en cours de partie.
+     * À distinguer du départ depuis la salle d'attente (DELETE game_players, jamais via cette méthode).
+     *
+     * @param  Game       $game   La partie en cours
+     * @param  GamePlayer $player Le joueur qui quitte
+     * @return void
+     */
     public function quitGame(Game $game, GamePlayer $player): void
     {
         DB::transaction(function () use ($player) {
@@ -365,6 +465,14 @@ class GameService
         broadcast(new PlayerEliminated($game, $player, 'quit'));
     }
 
+    /**
+     * Valide un tableau de timers contre les limites configurées dans config/game.php (timers.limits).
+     * Vérifie que chaque clé est configurable (host_configurable = true) et dans la plage min/max.
+     *
+     * @param  array<string, int> $timers Tableau [nom_timer => secondes] à valider
+     * @return void
+     * @throws \Symfony\Component\HttpKernel\Exception\HttpException (422) si un timer est non configurable ou hors plage
+     */
     public function validateTimerSettings(array $timers): void
     {
         $limits = config('game.timers.limits');
@@ -380,6 +488,15 @@ class GameService
         }
     }
 
+    /**
+     * Fusionne les nouveaux timers dans game->settings['timers'] et persiste.
+     * TimerCalculator::get() lit settings['timers'] en priorité sur config() pour toutes les clés configurables.
+     *
+     * @param  Game               $game   La partie concernée (statut 'waiting' requis)
+     * @param  array<string, int> $timers Tableau [nom_timer => secondes] déjà validé
+     * @return Game                        La partie avec settings mis à jour
+     * @throws \Symfony\Component\HttpKernel\Exception\ConflictHttpException (409) si la partie n'est plus en 'waiting'
+     */
     public function updateTimerSettings(Game $game, array $timers): Game
     {
         if ($game->status !== 'waiting') {
@@ -396,6 +513,13 @@ class GameService
         return $game;
     }
 
+    /**
+     * Valide un tableau de rôles : seuls 'witch' et 'hunter' sont configurables, chacun valant 0 ou 1.
+     *
+     * @param  array<string, int> $roles Tableau [nom_role => 0|1] à valider
+     * @return void
+     * @throws \Symfony\Component\HttpKernel\Exception\HttpException (422) si un rôle est inconnu ou a une valeur invalide
+     */
     public function validateRoleSettings(array $roles): void
     {
         foreach (['witch', 'hunter'] as $key) {
@@ -411,6 +535,15 @@ class GameService
         }
     }
 
+    /**
+     * Fusionne la composition de rôles dans game->settings['roles'] et persiste.
+     * RoleDistributor lit settings['roles'] en priorité sur config/game.php au démarrage.
+     *
+     * @param  Game               $game  La partie concernée (statut 'waiting' requis)
+     * @param  array<string, int> $roles Tableau [nom_role => 0|1] déjà validé
+     * @return Game                       La partie avec settings mis à jour
+     * @throws \Symfony\Component\HttpKernel\Exception\ConflictHttpException (409) si la partie n'est plus en 'waiting'
+     */
     public function updateRoleSettings(Game $game, array $roles): Game
     {
         if ($game->status !== 'waiting') {
@@ -428,9 +561,17 @@ class GameService
     }
 
     /**
-     * Action de la Sorcière : sauver la victime des loups, empoisonner un joueur, ou ne rien faire.
+     * Action de la Sorcière : sauver la victime des loups, empoisonner un joueur, ou passer son tour.
+     * Guard atomique : impossible d'agir deux fois dans le même round (witch_heal/witch_kill/witch_pass).
+     * La sorcière ne peut pas s'auto-sauver (action 'heal' refusée si la victime est la sorcière elle-même).
+     * Si la cible d'un 'kill' est le chasseur, un enregistrement 'hunter_pending' est créé en DB.
      *
-     * @return array{action: string, target: ?GamePlayer}
+     * @param  GamePlayer  $witch    La sorcière (rôle 'witch' requis, doit être vivante)
+     * @param  string      $action   Action choisie : 'heal', 'kill' ou 'pass'
+     * @param  int|null    $targetId ID du joueur cible (requis pour 'heal' et 'kill', null pour 'pass')
+     * @return array{action: string, target: ?GamePlayer} Action effectuée et joueur cible le cas échéant
+     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException (403) si $witch n'est pas la sorcière, est morte, ou s'auto-sauve
+     * @throws \Symfony\Component\HttpKernel\Exception\ConflictHttpException     (409) si hors phase nuit, ou action déjà posée ce round
      */
     public function witchAct(GamePlayer $witch, string $action, ?int $targetId): array
     {
@@ -547,7 +688,16 @@ class GameService
     }
 
     /**
-     * Tir du Chasseur, après sa mort (nuit ou jour).
+     * Tir du Chasseur : élimine une cible après la mort du chasseur (nuit ou jour).
+     * Guard atomique : impossible de tirer deux fois dans le même round.
+     * La phase du GameAction est déterminée selon le statut courant (night/processing_night → 'night', sinon 'day').
+     *
+     * @param  GamePlayer $hunter   Le chasseur éliminé (rôle 'hunter' requis, doit être mort)
+     * @param  int        $targetId ID du joueur vivant à éliminer (ne peut pas être le chasseur lui-même)
+     * @return GamePlayer            Le joueur éliminé par le tir
+     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException (403) si $hunter n'est pas le chasseur ou est encore vivant
+     * @throws \Symfony\Component\HttpKernel\Exception\ConflictHttpException     (409) si phase invalide ou tir déjà effectué ce round
+     * @throws \Symfony\Component\HttpKernel\Exception\NotFoundHttpException     (404) si la cible est invalide ou déjà morte
      */
     public function hunterShoot(GamePlayer $hunter, int $targetId): GamePlayer
     {
@@ -606,6 +756,14 @@ class GameService
         });
     }
 
+    /**
+     * Annule une partie en cours : passe le statut à 'finished' avec winner_team = null.
+     * Guard atomique : no-op si la partie est déjà terminée ou encore en 'waiting'.
+     * Déclenché quand plus de 50% des joueurs sont inactifs (winner_team = null → rôles non révélés).
+     *
+     * @param  Game $game La partie à annuler
+     * @return void
+     */
     public function cancelGame(Game $game): void
     {
         DB::transaction(function () use ($game) {
@@ -630,6 +788,12 @@ class GameService
         });
     }
 
+    /**
+     * Génère un code de partie unique sur 6 caractères alphanumériques majuscules.
+     * Réessaie jusqu'à trouver un code absent de la table games.
+     *
+     * @return string Code unique en majuscules (ex. 'XKZP9A')
+     */
     private function generateUniqueCode(): string
     {
         do {
