@@ -10,6 +10,14 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Fin de la succession du maire — nouveau maire désigné.
+ *
+ * Canal : PUBLIC — game.{gameId}
+ *
+ * Déclencheur : ProcessMayorSuccession::handle() après que le maire sortant
+ *   a choisi son successeur ou après expiration du timer (désignation aléatoire).
+ */
 class MayorSuccessionDone implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -30,6 +38,13 @@ class MayorSuccessionDone implements ShouldBroadcastNow
         return 'mayor.succession.done';
     }
 
+    /**
+     * @return array{
+     *   new_mayor_id: int,     // identifiant du nouveau maire
+     *   new_mayor_pseudo: string, // pseudo du nouveau maire
+     *   was_random: bool,      // true si le successeur a été désigné aléatoirement (inactivité ou timer)
+     * }
+     */
     public function broadcastWith(): array
     {
         return [

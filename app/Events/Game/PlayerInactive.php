@@ -9,6 +9,18 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Un joueur a été déclaré inactif après expiration du délai de reconnexion.
+ *
+ * Canal : PUBLIC — game.{gameId}
+ *
+ * Déclencheur : CheckReconnectionTimeout::handle() via GameService après expiration
+ *   du timer de reconnexion (timer fixe, non configurable).
+ *   Cet event est immédiat (pas différé par overlay).
+ *
+ * Note : implémente ShouldBroadcast (avec queue) et non ShouldBroadcastNow,
+ *   car il est dispatché depuis un Job qui tourne en arrière-plan.
+ */
 class PlayerInactive implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -33,6 +45,11 @@ class PlayerInactive implements ShouldBroadcast
         return 'player.inactive';
     }
 
+    /**
+     * @return array{
+     *   pseudo: string,  // pseudo du joueur déclaré inactif
+     * }
+     */
     public function broadcastWith(): array
     {
         return ['pseudo' => $this->pseudo];

@@ -11,6 +11,19 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
 
+/**
+ * Fin de partie — victoire d'une équipe ou annulation.
+ *
+ * Canal : PUBLIC — game.{gameId}
+ *
+ * Déclencheur : WinConditionChecker::check() après chaque élimination,
+ *   ou GameService::cancelGame() si plus de 50% des joueurs sont inactifs.
+ *   Cet event est immédiat (pas différé par overlay).
+ *
+ * Données sensibles : les rôles ne sont révélés que si winnerTeam !== null.
+ *   En cas d'annulation (winnerTeam = null), tous les rôles restent null
+ *   pour préserver la confidentialité.
+ */
 class GameFinished implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -48,6 +61,17 @@ class GameFinished implements ShouldBroadcastNow
         return 'game.finished';
     }
 
+    /**
+     * @return array{
+     *   winner_team: string|null,  // 'villagers', 'werewolves', ou null si partie annulée
+     *   players: array<int, array{
+     *     id: int,
+     *     pseudo: string,
+     *     role: string|null,   // null si partie annulée (winnerTeam === null)
+     *     is_alive: bool,
+     *   }>,
+     * }
+     */
     public function broadcastWith(): array
     {
         return [

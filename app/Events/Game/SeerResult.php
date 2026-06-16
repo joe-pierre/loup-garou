@@ -10,6 +10,17 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Résultat de l'inspection nocturne de la voyante.
+ *
+ * Canal : PRIVÉ — game.{gameId}.player.{seerPlayerId}
+ * ⚠️ Cet event ne doit JAMAIS être broadcasté sur un canal public.
+ *    Le rôle de la cible est une information secrète réservée à la voyante.
+ *
+ * Déclencheur : GameService::seerCheck() après enregistrement de seer_check en base.
+ *
+ * Données sensibles : contient le rôle réel de la cible — canal privé obligatoire.
+ */
 class SeerResult implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -30,6 +41,13 @@ class SeerResult implements ShouldBroadcastNow
         return 'seer.result';
     }
 
+    /**
+     * @return array{
+     *   target_player_id: int,    // identifiant de la cible inspectée
+     *   pseudo: string,           // pseudo de la cible
+     *   role: string,             // rôle réel de la cible (villager, werewolf, seer, etc.)
+     * }
+     */
     public function broadcastWith(): array
     {
         return [

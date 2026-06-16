@@ -10,6 +10,16 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Début du tour de la voyante.
+ *
+ * Canal : PRIVÉ — game.{gameId}.player.{seerPlayerId}
+ * Seule la voyante reçoit cet event. Les autres joueurs ne savent pas
+ * que la voyante est en train d'inspecter (cf. SPEC : seer_turn jamais public).
+ *
+ * Déclencheur : ProcessSeerTurn::handle() au début de chaque nuit,
+ *   après NightStarted sur le canal public.
+ */
 class SeerTurnStarted implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -29,6 +39,11 @@ class SeerTurnStarted implements ShouldBroadcastNow
         return 'seer.turn.started';
     }
 
+    /**
+     * @return array{
+     *   timer: int,  // durée du tour de la voyante en secondes
+     * }
+     */
     public function broadcastWith(): array
     {
         return [

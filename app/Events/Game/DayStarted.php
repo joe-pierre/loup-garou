@@ -10,6 +10,17 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Début de la phase de jour — révèle le bilan de la nuit.
+ *
+ * Canal : PUBLIC — game.{gameId}
+ *
+ * Déclencheur : PhaseManager::startDay() après résolution complète de la nuit
+ *   (loups + éventuellement sorcière + éventuellement chasseur).
+ *
+ * Note : cet event est différé pendant l'overlay d'annonce (PhaseAnnouncement).
+ *   Il ne doit pas être dispatché avant que l'overlay soit consommé côté client.
+ */
 class DayStarted implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -31,6 +42,18 @@ class DayStarted implements ShouldBroadcastNow
         return 'day.started';
     }
 
+    /**
+     * @return array{
+     *   round: int,                              // numéro du round courant
+     *   killed: array{
+     *     player_id: int,                        // identifiant du joueur tué cette nuit
+     *     pseudo: string,                        // pseudo du joueur tué
+     *     role: string,                          // rôle révélé à l'élimination
+     *   }|null,                                  // null si personne n'a été tué (sorcière a sauvé, ou égalité loups)
+     *   witch_acted: bool,                       // true si la sorcière a utilisé une potion cette nuit
+     *   saved_player_id: int|null,               // identifiant du joueur sauvé par la sorcière, null sinon
+     * }
+     */
     public function broadcastWith(): array
     {
         return [

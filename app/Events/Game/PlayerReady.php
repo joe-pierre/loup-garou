@@ -9,6 +9,13 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Un joueur a confirmé avoir pris connaissance de son rôle (écran de révélation).
+ *
+ * Canal : PUBLIC — game.{gameId}
+ *
+ * Déclencheur : GameService::markReady() depuis ActionController::ready().
+ */
 class PlayerReady implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -29,6 +36,12 @@ class PlayerReady implements ShouldBroadcastNow
         return 'player.ready';
     }
 
+    /**
+     * @return array{
+     *   nb_ready: int,  // nombre de joueurs ayant confirmé leur rôle
+     *   total: int,     // nombre total de joueurs dans la partie
+     * }
+     */
     public function broadcastWith(): array
     {
         return [

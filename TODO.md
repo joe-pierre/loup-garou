@@ -294,6 +294,17 @@
 
 ---
 
+## Phase 20 — Audit & Documentation post-v1.2
+
+- [x] **ROADMAP Étape 3** — PHPDoc sur tous les Events WebSocket (app/Events/Game/)
+  - Canaux, déclencheurs, données sensibles, payload `broadcastWith()`
+  - Events prioritaires sécurité documentés : SeerResult, WerewolvesTurnStarted,
+    WitchTurnStarted, HunterTurnStarted, GameStarted (double canal), DayVoteCast,
+    MayorVoteCast (anonymisation)
+  - Tous les autres events documentés (30 fichiers total)
+
+---
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`

@@ -9,6 +9,14 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Un joueur s'est déconnecté pendant une partie en cours.
+ *
+ * Canal : PUBLIC — game.{gameId}
+ *
+ * Déclencheur : GameService::handleDisconnection() depuis GameController::disconnect().
+ *   Cet event est immédiat (pas différé par overlay).
+ */
 class PlayerDisconnected implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -34,6 +42,12 @@ class PlayerDisconnected implements ShouldBroadcastNow
         return 'player.disconnected';
     }
 
+    /**
+     * @return array{
+     *   pseudo: string,               // pseudo du joueur déconnecté
+     *   reconnection_timeout: int,    // délai en secondes avant que le joueur soit déclaré inactif
+     * }
+     */
     public function broadcastWith(): array
     {
         return [

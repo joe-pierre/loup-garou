@@ -9,6 +9,14 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Début de la phase de succession du maire — le maire en place vient d'être éliminé.
+ *
+ * Canal : PUBLIC — game.{gameId}
+ *
+ * Déclencheur : PhaseManager — appelé lors de l'élimination d'un joueur portant
+ *   is_mayor = true (nuit ou jour), avant de continuer la séquence normale.
+ */
 class MayorSuccessionStarted implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -28,6 +36,12 @@ class MayorSuccessionStarted implements ShouldBroadcastNow
         return 'mayor.succession.started';
     }
 
+    /**
+     * @return array{
+     *   timer: int,               // durée accordée au maire pour désigner son successeur en secondes
+     *   dying_mayor_pseudo: string, // pseudo du maire éliminé qui doit désigner un successeur
+     * }
+     */
     public function broadcastWith(): array
     {
         return [

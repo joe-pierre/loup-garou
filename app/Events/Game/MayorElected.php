@@ -10,6 +10,16 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Résultat de l'élection du maire.
+ *
+ * Canal : PUBLIC — game.{gameId}
+ *
+ * Déclencheur : ProcessMayorElection::handle() via VoteService::resolveMayorElection()
+ *   après expiration du timer ou dès que tous les joueurs ont voté.
+ *
+ * Note : cet event est différé pendant l'overlay d'annonce (PhaseAnnouncement).
+ */
 class MayorElected implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -30,6 +40,13 @@ class MayorElected implements ShouldBroadcastNow
         return 'mayor.elected';
     }
 
+    /**
+     * @return array{
+     *   player_id: int,   // identifiant du nouveau maire
+     *   pseudo: string,   // pseudo du nouveau maire
+     *   was_random: bool, // true si le maire a été désigné aléatoirement (égalité ou aucun vote)
+     * }
+     */
     public function broadcastWith(): array
     {
         return [

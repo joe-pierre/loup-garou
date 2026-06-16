@@ -10,6 +10,17 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Message envoyé dans le chat général ou le chat des morts.
+ *
+ * Canal : PUBLIC — game.{gameId}
+ *
+ * Déclencheur : ChatService::sendMessage() depuis ChatController::send().
+ *   Cet event est immédiat (pas différé par overlay).
+ *
+ * Note : les messages du canal 'werewolves' utilisent WerewolfChatMessage
+ *   (canal privé loups) et ne passent pas par cet event.
+ */
 class ChatMessageSent implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -32,6 +43,14 @@ class ChatMessageSent implements ShouldBroadcastNow
         return 'chat.message.sent';
     }
 
+    /**
+     * @return array{
+     *   pseudo: string,     // pseudo de l'expéditeur
+     *   message: string,    // contenu du message (max 200 caractères)
+     *   channel: string,    // canal du message : 'general' ou 'dead'
+     *   timestamp: string,  // horodatage ISO 8601 de l'envoi
+     * }
+     */
     public function broadcastWith(): array
     {
         return [

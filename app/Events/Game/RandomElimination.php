@@ -10,6 +10,14 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Un joueur a été éliminé aléatoirement (aucun vote reçu lors du vote de jour).
+ *
+ * Canal : PUBLIC — game.{gameId}
+ *
+ * Déclencheur : VoteService::resolveDayVote() quand aucun vote valide n'a été
+ *   enregistré avant la fin du timer (tous inactifs ou votes annulés).
+ */
 class RandomElimination implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -29,6 +37,13 @@ class RandomElimination implements ShouldBroadcastNow
         return 'random.elimination';
     }
 
+    /**
+     * @return array{
+     *   player_id: int,    // identifiant du joueur éliminé aléatoirement
+     *   pseudo: string,    // pseudo du joueur éliminé
+     *   reason: 'no_votes', // raison fixe : aucun vote valide reçu
+     * }
+     */
     public function broadcastWith(): array
     {
         return [

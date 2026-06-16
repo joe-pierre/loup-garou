@@ -9,6 +9,14 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Un joueur s'est reconnecté après une déconnexion.
+ *
+ * Canal : PUBLIC — game.{gameId}
+ *
+ * Déclencheur : GameService::handleReconnection() depuis GameController::reconnect().
+ *   Cet event est immédiat (pas différé par overlay).
+ */
 class PlayerReconnected implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -33,6 +41,11 @@ class PlayerReconnected implements ShouldBroadcastNow
         return 'player.reconnected';
     }
 
+    /**
+     * @return array{
+     *   pseudo: string,  // pseudo du joueur qui vient de se reconnecter
+     * }
+     */
     public function broadcastWith(): array
     {
         return ['pseudo' => $this->pseudo];

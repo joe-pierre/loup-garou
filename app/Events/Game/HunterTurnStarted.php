@@ -10,6 +10,16 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Début du tour du chasseur après son élimination.
+ *
+ * Canal : PRIVÉ — game.{gameId}.player.{hunterPlayerId}
+ * Seul le chasseur reçoit cet event. Les autres joueurs ne doivent pas
+ * savoir que le chasseur est en train de choisir sa cible.
+ *
+ * Déclencheur : ProcessHunterTurn::handle() dès qu'un joueur avec le rôle
+ *   hunter est éliminé (nuit ou jour).
+ */
 class HunterTurnStarted implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -29,6 +39,11 @@ class HunterTurnStarted implements ShouldBroadcastNow
         return 'hunter.turn.started';
     }
 
+    /**
+     * @return array{
+     *   timer: int,  // durée accordée au chasseur pour choisir sa cible en secondes
+     * }
+     */
     public function broadcastWith(): array
     {
         return [

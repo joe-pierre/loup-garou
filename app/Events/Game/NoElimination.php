@@ -9,6 +9,14 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Aucun joueur n'a été éliminé lors du vote de jour (égalité).
+ *
+ * Canal : PUBLIC — game.{gameId}
+ *
+ * Déclencheur : VoteService::resolveDayVote() en cas d'égalité parfaite des votes.
+ *   La règle métier stipule qu'en cas d'égalité, personne n'est éliminé.
+ */
 class NoElimination implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -28,6 +36,11 @@ class NoElimination implements ShouldBroadcastNow
         return 'no.elimination';
     }
 
+    /**
+     * @return array{
+     *   reason: string,  // raison de l'absence d'élimination (ex: 'equality')
+     * }
+     */
     public function broadcastWith(): array
     {
         return ['reason' => $this->reason];

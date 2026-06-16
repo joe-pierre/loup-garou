@@ -9,6 +9,14 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Début de l'élection du maire en début de partie.
+ *
+ * Canal : PUBLIC — game.{gameId}
+ *
+ * Déclencheur : GameService::startGame() après distribution des rôles,
+ *   via la transition Workflow waiting → electing_mayor.
+ */
 class MayorElectionStarted implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -25,6 +33,11 @@ class MayorElectionStarted implements ShouldBroadcastNow
         return 'mayor.election.started';
     }
 
+    /**
+     * @return array{
+     *   timer: int,  // durée de la phase d'élection du maire en secondes
+     * }
+     */
     public function broadcastWith(): array
     {
         return [

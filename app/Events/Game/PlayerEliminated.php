@@ -10,6 +10,16 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Élimination d'un joueur pendant la phase de jour (vote du village).
+ *
+ * Canal : PUBLIC — game.{gameId}
+ *
+ * Déclencheur : VoteService::resolveDayVote() après comptage final des votes de jour.
+ *
+ * Note : le rôle est révélé ici car l'élimination de jour est publique.
+ *   Pour les éliminations nocturnes, le rôle est révélé dans DayStarted.
+ */
 class PlayerEliminated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -30,6 +40,14 @@ class PlayerEliminated implements ShouldBroadcastNow
         return 'player.eliminated';
     }
 
+    /**
+     * @return array{
+     *   player_id: int,   // identifiant du joueur éliminé
+     *   pseudo: string,   // pseudo du joueur éliminé
+     *   role: string,     // rôle révélé à l'élimination
+     *   reason: string,   // raison de l'élimination (ex: 'day_vote')
+     * }
+     */
     public function broadcastWith(): array
     {
         return [
