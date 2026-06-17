@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 00h31
+Generated at: 10h41
 
 ## PHP Analysis (Core Logic)
 
@@ -807,9 +807,6 @@ VoteController.php
       - mayor(MayorVoteRequest $request, int $id) → return response()->json(['success' => true, 'data' => ['votes' => $votes]])
       - day(DayVoteRequest $request, int $id) → return response()->json(['success' => true, 'data' => ['votes' => $summary]])
       - night(NightVoteRequest $request, int $id) → return response()->json(['success' => true, 'data' => ['wolves' => $voteState]])
-      - _checkAllMayorVotesCast(Game $game) → void
-      - _checkAllDayVotesCast(Game $game) → void
-      - _checkAllNightVotesCast(Game $game) → void
 
 // app/Http/Controllers/Game/ActionController.php
 ActionController.php
@@ -891,7 +888,7 @@ RoleDistributor.php
 VoteService.php
     functions:
       - __construct(PhaseManager $phaseManager, WinConditionChecker $winConditionChecker) {}
-      - castMayorVote(GamePlayer $voter, int $targetId) → return DB::transaction(function () use ($voter, $targetId, $game) { // lockForUpdate sur les votes existants du joueur : anti-double-vote concurrent $alreadyVoted = GameAction::where('game_id', $game->id)->where('player_id', $voter->id)->where('type', 'mayor_vote')->where('round', $game->round)->lockForUpdate()->exists(); if ($alreadyVoted) { abort(409, 'Vous avez déjà voté pour l\'élection du maire.'); } GameAction::create(['game_id' => $game->id, 'player_id' => $voter->id, 'type' => 'mayor_vote', 'weight' => 1, 'target_player_id' => $targetId, 'round' => $game->round, 'phase' => 'election']); return $this->getMayorVoteTotals($game); })
+      - castMayorVote(GamePlayer $voter, int $targetId) → return $totals
       - resolveMayorElection(Game $game) → return DB::transaction(function () use ($game) { $locked = Game::where('id', $game->id)->where('status', 'electing_mayor')->lockForUpdate()->first(); if (!$locked) { return null; } if (!$locked->canTransition('start_night')) { Log::warning("Transition 'start_night' refusée depuis status={$locked->status}"); return null; } $votes = GameAction::where('game_id', $locked->id)->where('type', 'mayor_vote')->where('round', $locked->round)->selectRaw('target_player_id, COUNT(*) as vote_count')->groupBy('target_player_id')->orderByDesc('vote_count')->get(); $wasRandom = false; if ($votes->isEmpty()) { $winner = $locked->alivePlayers()->inRandomOrder()->first(); $wasRandom = true; } else { $maxVotes = $votes->first()->vote_count; $topCandidates = $votes->where('vote_count', $maxVotes); if ($topCandidates->count() > 1) { $wasRandom = true; $winnerId = $topCandidates->random()->target_player_id; } else { $winnerId = $topCandidates->first()->target_player_id; } $winner = GamePlayer::find($winnerId); } $winner->update(['is_mayor' => true]); $locked->update(['status' => 'night', 'round' => 1, 'phase_deadline' => now()->addSeconds($locked->timer('seer'))]); return ['player' => $winner, 'game' => $locked, 'was_random' => $wasRandom]; })
       - resolveNightVote(Game $game) → return GamePlayer::find($winnerId)
       - castNightVote(GamePlayer $wolf, int $targetId) → return $state
