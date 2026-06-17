@@ -189,8 +189,33 @@
 
     {{-- ── CHAT GÉNÉRAL ── --}}
     <div>
-        <p class="font-medieval text-sm tracking-widest mb-2" style="color:#c9a84c;">💬 PLACE DU VILLAGE</p>
-        <div class="rounded-xl overflow-hidden" style="border:1px solid rgba(201,168,76,0.12);background:#0d1117;">
+        <div class="flex items-center justify-between mb-2">
+            <p class="font-medieval text-sm tracking-widest" style="color:#c9a84c;">💬 PLACE DU VILLAGE</p>
+            <button
+                @click="toggleChat()"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medieval"
+                style="background-color:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;"
+            >
+                <span x-text="chatVisible ? 'Masquer le chat' : 'Chat village'"></span>
+                <span
+                    x-show="!chatVisible && unreadMessages > 0"
+                    class="text-xs px-1.5 py-0.5 rounded-full"
+                    style="background-color:rgba(201,168,76,0.2);color:#c9a84c;"
+                    x-text="unreadMessages"
+                ></span>
+            </button>
+        </div>
+        <div
+            x-show="chatVisible"
+            x-cloak
+            x-ref="chatPanel"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 translate-y-4"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            class="rounded-xl overflow-hidden" style="border:1px solid rgba(201,168,76,0.12);background:#0d1117;">
             <div class="p-3 overflow-y-auto flex flex-col gap-2 h-48 sm:h-80" x-ref="chatMessages"
                  role="log" aria-label="Messages du village" aria-live="polite">
                 <template x-for="(msg, i) in chatMessages" :key="i">
@@ -449,9 +474,15 @@
             dayVoteSubmitting:    false,
             noEliminationMessage: '',
 
-            chatMessages: [],
-            chatInput:    '',
-            chatSending:  false,
+            chatMessages:   [],
+            chatInput:      '',
+            chatSending:    false,
+
+            chatVisible:    false,
+            manualOverride: false,
+            autoOpened:     false,
+            autoClosed:     false,
+            unreadMessages: 0,
 
             deadChatMessages: [],
             deadChatInput:    '',
@@ -503,6 +534,7 @@
                 window.addEventListener('chat-message', (e) => {
                     if (e.detail?.channel === 'general') {
                         this.chatMessages.push(e.detail);
+                        if (!this.chatVisible) this.unreadMessages++;
                         this.$nextTick(() => {
                             const el = this.$refs.chatMessages;
                             if (el) el.scrollTop = el.scrollHeight;
@@ -592,6 +624,8 @@
                     const pct = Math.round((this.dayTimerSeconds / totalSeconds) * 100);
                     if (el) el.style.width = pct + '%';
 
+                    this._checkChatAuto();
+
                     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                         if (this.dayTimerSeconds <= 5 && el) {
                             gsap.to(el, { backgroundColor: '#ef4444', duration: 0.3, overwrite: true });
@@ -605,6 +639,28 @@
                         if (el) el.style.width = '0%';
                     }
                 }, 1000);
+            },
+
+            toggleChat() {
+                this.chatVisible = !this.chatVisible;
+                this.manualOverride = true;
+                if (this.chatVisible) this.unreadMessages = 0;
+            },
+
+            _checkChatAuto() {
+                if (this.dayTimerSeconds <= 75 && !this.chatVisible && !this.manualOverride && !this.autoOpened) {
+                    this.chatVisible = true;
+                    this.autoOpened  = true;
+                    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                        this.$nextTick(() => {
+                            gsap.from(this.$refs.chatPanel, { opacity: 0, y: 20, duration: 0.4, ease: 'power2.out' });
+                        });
+                    }
+                }
+                if (this.dayTimerSeconds <= 15 && this.chatVisible && !this.manualOverride && !this.autoClosed) {
+                    this.chatVisible = false;
+                    this.autoClosed  = true;
+                }
             },
 
             _updateVoteBars(votes) {
