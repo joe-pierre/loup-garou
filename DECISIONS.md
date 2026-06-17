@@ -1,3 +1,19 @@
+## [CHOIX] Roadmap Code Propre v1.2 — stratégie de refactoring sans régression
+
+**Contexte :** Étapes 1→10 — refactoring progressif post-v1.2 de l'ensemble des fichiers PHP, JS, Blade. Audit final Étape 10 — `app/Http/Controllers/Game/VoteController.php`, `app/Services/VoteService.php`.
+
+**Symptôme / Problème :** Code fonctionnel mais avec documentation insuffisante, magic strings, logique dupliquée. En particulier, `VoteController` contenait trois méthodes privées `_checkAllMayorVotesCast()`, `_checkAllDayVotesCast()`, `_checkAllNightVotesCast()` qui sont de la logique métier (requêtes DB + dispatch de jobs) au lieu de rester dans les Services.
+
+**Cause / Alternatives :** (1) Refactoring global en un seul commit → risque élevé de régression sur ~40 fichiers. (2) Refactoring nul → dette technique croissante. (3) Pour les `_checkAll*` : `_checkAllDayVotesCast` et `_checkAllNightVotesCast` étaient de la logique dupliquée (déjà implémentée dans `VoteService::castDayVote()` et `VoteService::castNightVote()`). `_checkAllMayorVotesCast` était de la logique métier orpheline dans le Controller (non couverte par le Service).
+
+**Fix / Décision :** 10 étapes progressives, uniquement additives dans les 8 premières (doc, Enums, helpers, extraction de service) — aucune modification de logique métier. Étape 9 = documentation routes/README. Étape 10 = audit final de conformité CLAUDE.md + correction des non-conformités résiduelles. VoteController nettoyé : logique "tous les joueurs ont voté → dispatch ProcessMayorElection" déplacée dans `VoteService::castMayorVote()` (pattern identique à `castDayVote()`/`castNightVote()`), méthodes dupliquées supprimées.
+
+**Leçon :** Un refactoring sans tests à 100% vert à chaque étape est un refactoring risqué. La règle "php artisan test après chaque modification de fichier existant" a été respectée tout au long. Les méthodes privées d'un Controller ne doivent pas contenir de requêtes DB ou de dispatch de jobs — même "cachées" dans des méthodes privées, elles violent CLAUDE.md "Controllers : valider request + appeler Service, rien d'autre".
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] Centralisation des guards de phase dans PhaseGuard.php
 
 **Contexte :** Refactor `refactor/phase-guard` — `app/Services/PhaseGuard.php`, 6+ fichiers Services/Jobs/Controllers

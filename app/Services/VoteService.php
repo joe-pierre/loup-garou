@@ -8,6 +8,7 @@ use App\Events\Game\PlayerEliminated;
 use App\Events\Game\RandomElimination;
 use App\Jobs\ProcessDayVote;
 use App\Jobs\ProcessHunterTurn;
+use App\Jobs\ProcessMayorElection;
 use App\Jobs\ProcessMayorSuccession;
 use App\Jobs\ProcessNightActions;
 use App\Models\Game;
@@ -52,7 +53,9 @@ class VoteService
             abort(409, 'La partie n\'est pas en phase d\'élection du maire.');
         }
 
-        return DB::transaction(function () use ($voter, $targetId, $game) {
+        $allVoted = false;
+
+        $totals = DB::transaction(function () use ($voter, $targetId, $game, &$allVoted) {
             // lockForUpdate sur les votes existants du joueur : anti-double-vote concurrent
             $alreadyVoted = GameAction::where('game_id', $game->id)
                 ->where('player_id', $voter->id)
@@ -75,8 +78,23 @@ class VoteService
                 'phase'            => 'election',
             ]);
 
+            $alivePlayers = $game->alivePlayers()->count();
+            $voterCount   = GameAction::where('game_id', $game->id)
+                ->where('type', 'mayor_vote')
+                ->where('round', $game->round)
+                ->distinct('player_id')
+                ->count('player_id');
+            $allVoted = $voterCount >= $alivePlayers;
+
             return $this->getMayorVoteTotals($game);
         });
+
+        // Résolution anticipée : tous les joueurs vivants ont voté → déclencher ProcessMayorElection
+        if ($allVoted) {
+            ProcessMayorElection::dispatch($game->id);
+        }
+
+        return $totals;
     }
 
     /**

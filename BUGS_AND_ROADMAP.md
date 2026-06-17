@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-17 — Logique métier dupliquée dans VoteController (_checkAll*)
+
+- **Symptôme :** `VoteController` contenait trois méthodes privées (`_checkAllMayorVotesCast`, `_checkAllDayVotesCast`, `_checkAllNightVotesCast`) contenant des requêtes DB et des dispatches de jobs — violation de la règle CLAUDE.md "Controllers : valider request + appeler Service, rien d'autre". Les méthodes day et night étaient redondantes avec `VoteService::castDayVote()` / `castNightVote()` qui gèrent déjà ce cas.
+- **Cause :** extraction partielle lors des tâches précédentes : la logique de résolution anticipée (tous votants détectés) avait été déplacée dans VoteService pour night et day, mais pas pour mayor. La méthode Controller n'avait jamais été nettoyée.
+- **Fix :** logique "tous joueurs vivants ont voté → dispatch ProcessMayorElection" déplacée dans `VoteService::castMayorVote()` (même pattern que `castDayVote()`/`castNightVote()`). Trois méthodes privées et trois imports inutiles (`ProcessDayVote`, `ProcessMayorElection`, `ProcessNightActions`, `GameAction`) supprimés de VoteController.
+
+---
+
 ### [x] 2026-06-16 — Cache volatile pour hunter_pending remplacé par GameAction
 
 - **Symptôme :** le chasseur perdait silencieusement son pouvoir si Redis redémarrait entre ProcessNightActions et ProcessNightEnd.

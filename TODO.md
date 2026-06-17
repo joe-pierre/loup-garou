@@ -337,9 +337,22 @@
 
 ---
 
+## Phase 22 — Audit final de conformité (Étape 10)
+
+- [x] **Étape 10.1** — Audit des règles CLAUDE.md (logique métier, Gates/Policies, timers, Alpine guard, broadcastAs)
+- [x] **Étape 10.2** — Grep config('game.timers.*') hors TimerCalculator — une seule occurrence autorisée (`limits`)
+- [x] **Étape 10.3** — Tests : 154/154 verts ✅
+- [x] **Étape 10.4** — DECISIONS.md : entrée récapitulative Roadmap Code Propre v1.2
+- [x] **Étape 10.5** — Rapport de bilan produit (voir réponse finale)
+- [x] **Fix** — VoteController : trois méthodes privées `_checkAll*` (logique métier) déplacées dans VoteService
+
+---
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
 - v1.2 ✅ Terminé — Étapes 2→5 + Phases 17→18 complètes
 - Étape 9 ✅ Terminée — Documentation routes + README technique
+- Étape 10 ✅ Terminée — Audit final de conformité CLAUDE.md
+- Roadmap Code Propre ✅ Complète (Étapes 1→10)
 - v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md
