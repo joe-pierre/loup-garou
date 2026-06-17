@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-17 — Sorcière et chasseur jamais distribués sans settings hôte explicites
+
+- **Symptôme :** dans une partie créée sans ouvrir la modale paramètres, sorcière et chasseur n'étaient jamais inclus dans la distribution, quelles que soient les valeurs de `config/game.php`.
+- **Cause :** `RoleDistributor::getRoleConfig()` ne lisait `config('game.roles.witch/hunter')` comme fallback que pour `seer` et `werewolf`. Pour witch/hunter, le code ne lisait que `$overrides['witch']` — si `$game->settings` est `null` (aucun paramètre hôte), `$overrides = []` et la condition `($overrides['witch'] ?? 0) > 0` est toujours false.
+- **Fix :** `$witchAmount = $overrides['witch'] ?? config('game.roles.witch', 0)` — même pattern que seer/werewolf, override prioritaire sinon fallback config.
+
+---
+
 ### [x] 2026-06-17 — Chat loups muet pendant wolves_turn (PhaseGuard trop restrictif)
 
 - **Symptôme :** un loup envoyait un message pendant son tour (phase nuit), l'input se vidait mais le message n'apparaissait jamais dans le fil des autres loups. Le message était bien enregistré en base.
