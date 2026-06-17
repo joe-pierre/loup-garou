@@ -66,6 +66,22 @@ class PhaseGuardTest extends TestCase
         $this->assertFalse(PhaseGuard::canWitchAct($game));
     }
 
+    public function test_can_chat_wolves_retourne_true_pour_night_et_wolves_turn(): void
+    {
+        foreach (['night', 'wolves_turn'] as $status) {
+            $game = Game::factory()->create(['status' => $status]);
+            $this->assertTrue(PhaseGuard::canChatWolves($game), "Échec pour status={$status}");
+        }
+    }
+
+    public function test_can_chat_wolves_retourne_false_hors_phase_loups(): void
+    {
+        foreach (['day', 'processing_day', 'electing_mayor', 'processing_night', 'finished'] as $status) {
+            $game = Game::factory()->create(['status' => $status]);
+            $this->assertFalse(PhaseGuard::canChatWolves($game), "Doit être false pour status={$status}");
+        }
+    }
+
     public function test_can_hunter_shoot_couvre_nuit_et_jour(): void
     {
         foreach (['night', 'processing_night', 'wolves_turn', 'day', 'processing_day'] as $status) {

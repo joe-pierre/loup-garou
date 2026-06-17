@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-17 — Chat loups muet pendant wolves_turn (PhaseGuard trop restrictif)
+
+- **Symptôme :** un loup envoyait un message pendant son tour (phase nuit), l'input se vidait mais le message n'apparaissait jamais dans le fil des autres loups. Le message était bien enregistré en base.
+- **Cause :** `PhaseGuard::canChatWolves()` ne retournait `true` que pour `status === 'night'`. Or `ProcessWerewolvesTurn` transite le statut de `night` vers `wolves_turn` avant d'émettre `WerewolvesTurnStarted`. Pendant tout le tour des loups, le statut est `wolves_turn` — `canChatWolves` retournait `false` → abort 409. Le client (`sendWolfChat`) ne vérifiait pas le code HTTP de la réponse fetch : l'input était déjà vidé avant l'appel, rendant l'échec invisible.
+- **Fix :** `PhaseGuard::canChatWolves()` étendu à `in_array($game->status, ['night', 'wolves_turn'])`. Tests ajoutés : `test_message_loup_broadcasté_pendant_wolves_turn` (ChatTest) et `test_can_chat_wolves_retourne_true_pour_night_et_wolves_turn` / `test_can_chat_wolves_retourne_false_hors_phase_loups` (PhaseGuardTest).
+
+---
+
 ### [x] 2026-06-17 — Logique métier dupliquée dans VoteController (_checkAll*)
 
 - **Symptôme :** `VoteController` contenait trois méthodes privées (`_checkAllMayorVotesCast`, `_checkAllDayVotesCast`, `_checkAllNightVotesCast`) contenant des requêtes DB et des dispatches de jobs — violation de la règle CLAUDE.md "Controllers : valider request + appeler Service, rien d'autre". Les méthodes day et night étaient redondantes avec `VoteService::castDayVote()` / `castNightVote()` qui gèrent déjà ce cas.
