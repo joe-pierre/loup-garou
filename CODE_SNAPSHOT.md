@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 10h41
+Generated at: 12h52
 
 ## PHP Analysis (Core Logic)
 
@@ -907,7 +907,7 @@ PhaseGuard.php
       - canWitchAct(Game $game) → return self::isNightOrProcessing($game)
       - canHunterShoot(Game $game) → return self::isNight($game) || self::isDay($game)
       - canChatGeneral(Game $game) → return in_array($game->status, ['electing_mayor', 'day', 'processing_day'])
-      - canChatWolves(Game $game) → return $game->status === 'night'
+      - canChatWolves(Game $game) → return in_array($game->status, ['night', 'wolves_turn'])
       - canChatDead(Game $game) → return self::isDay($game)
 
 // app/Services/HistoryService.php
@@ -1030,6 +1030,7 @@ ChatTest.php
       - RefreshDatabase
     functions:
       - test_message_loup_broadcasté_sur_channel_werewolves_uniquement() → void
+      - test_message_loup_broadcasté_pendant_wolves_turn() → void
       - test_villageois_ne_peut_pas_écrire_sur_channel_werewolves_retourne_403() → void
       - test_message_après_mort_retourne_403() → void
 
@@ -1290,6 +1291,8 @@ PhaseGuardTest.php
       - test_is_night_retourne_false_pour_statuts_non_nocturnes(string $status) → void
       - nonNightStatusProvider() → return [['waiting'], ['electing_mayor'], ['day'], ['processing_day'], ['finished']]
       - test_can_witch_act_retourne_false_pour_wolves_turn() → void
+      - test_can_chat_wolves_retourne_true_pour_night_et_wolves_turn() → void
+      - test_can_chat_wolves_retourne_false_hors_phase_loups() → void
       - test_can_hunter_shoot_couvre_nuit_et_jour() → void
 
 // tests/TestCase.php
