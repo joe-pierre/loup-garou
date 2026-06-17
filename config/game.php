@@ -39,6 +39,8 @@ return [
     'roles' => [
         'seer'     => 1,
         'werewolf' => 'auto',
+        'witch'    => 1,
+        'hunter'   => 1,
         'villager' => 'fill',
     ],
 
