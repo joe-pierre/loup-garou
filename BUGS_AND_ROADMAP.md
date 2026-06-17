@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-17 — Chat loups absent dès la nuit 2 (gsap.from conflit x-transition dans _checkWolfChatAuto)
+
+- **Symptôme :** chat loups visible nuit 1, absent nuit 2 et suivantes, même manuellement.
+- **Cause :** `gsap.from(this.$refs.wolfChatPanel, ...)` dans `_checkWolfChatAuto()` conflictuait avec `x-transition` du div — le panneau s'affichait comme un espace vide. Le `clearInterval` avant recréation de `_wolfTimerInterval` était déjà en place et ne causait pas de régression.
+- **Fix :** suppression du bloc `gsap.from()` dans `_checkWolfChatAuto()` ; `x-transition` sur le div gère seul l'animation d'entrée.
+
+---
+
 ### [x] 2026-06-17 — Chat loups auto-ouverture basée sur timer résiduel au lieu du temps écoulé
 
 - **Symptôme :** le chat loups s'ouvrait trop tôt (dès que `wolfTimerSeconds <= 75`) au lieu d'attendre 10s après le début du tour.
