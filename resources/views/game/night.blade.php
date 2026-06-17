@@ -654,6 +654,11 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 if (this._initialized) return;
                 this._initialized = true;
 
+                // Afficher immédiatement le bandeau si mort au rechargement (sessionStorage vidé)
+                if (!MY_IS_ALIVE) {
+                    this.showDeathBanner = true;
+                }
+
                 // Nettoyer le flag si le joueur est vivant au chargement de la page
                 if (MY_IS_ALIVE) {
                     sessionStorage.removeItem('dead_' + MY_PLAYER_ID);

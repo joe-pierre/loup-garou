@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-17 — Bandeau "Tu as été éliminé" absent au rechargement de page
+
+- **Symptôme :** un joueur mort qui recharge `/day` ou `/night` ne voit pas le bandeau d'élimination.
+- **Cause :** `showDeathBanner` initialisé depuis `sessionStorage`, vidé lors de la navigation précédente. `MY_IS_ALIVE` est `false` côté Blade mais `init()` ne le vérifiait pas directement.
+- **Fix :** ajout de `if (!MY_IS_ALIVE) { this.showDeathBanner = true; }` au début de `init()` dans `day.blade.php` et `night.blade.php`.
+
+---
+
 ### [x] 2026-06-17 — Chat loups absent dès la nuit 2 (gsap.from conflit x-transition dans _checkWolfChatAuto)
 
 - **Symptôme :** chat loups visible nuit 1, absent nuit 2 et suivantes, même manuellement.

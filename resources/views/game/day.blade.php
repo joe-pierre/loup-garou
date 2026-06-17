@@ -492,6 +492,11 @@
                 if (this._initialized) return;
                 this._initialized = true;
 
+                // Afficher immédiatement le bandeau si mort au rechargement (sessionStorage vidé)
+                if (!MY_IS_ALIVE) {
+                    this.showDeathBanner = true;
+                }
+
                 this._resetChatState();
 
                 // Réinitialiser le chat à chaque nouveau round (navigation serveur via DayStarted)

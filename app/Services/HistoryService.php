@@ -34,53 +34,59 @@ class HistoryService
 
         for ($round = 1; $round <= $maxRound; $round++) {
             // ── Nuit ────────────────────────────────────────────────────────
-            $nightVotes  = $actions->where('type', 'night_vote')->where('round', $round);
-            $witchHeal   = $actions->where('type', 'witch_heal')->where('round', $round)->first();
-            $witchKill   = $actions->where('type', 'witch_kill')->where('round', $round)->first();
-            $hunterNight = $actions->where('type', 'hunter_shot')->where('round', $round)->where('phase', 'night')->first();
+            $nightVotes      = $actions->where('type', 'night_vote')->where('round', $round);
+            $witchHeal       = $actions->where('type', 'witch_heal')->where('round', $round)->first();
+            $witchKill       = $actions->where('type', 'witch_kill')->where('round', $round)->first();
+            $hunterNight     = $actions->where('type', 'hunter_shot')->where('round', $round)->where('phase', 'night')->first();
+            $successionNight = $actions->where('type', 'mayor_succession')->where('round', $round)->where('phase', 'night')->first();
 
-            if ($nightVotes->isNotEmpty() || $witchHeal || $witchKill || $hunterNight) {
-                $nightEntry = [
-                    'type'              => 'night',
-                    'round'             => $round,
-                    'label'             => "Nuit {$round}",
-                    'killed'            => null,
-                    'wolf_no_agreement' => false,
-                    'witch_heal'        => null,
-                    'witch_kill'        => null,
-                    'hunter_shot'       => null,
-                ];
+            $nightEntry = [
+                'type'              => 'night',
+                'round'             => $round,
+                'label'             => "Nuit {$round}",
+                'killed'            => null,
+                'wolf_no_agreement' => false,
+                'witch_heal'        => null,
+                'witch_kill'        => null,
+                'hunter_shot'       => null,
+                'succession'        => null,
+            ];
 
-                if ($nightVotes->isEmpty()) {
+            if ($nightVotes->isEmpty()) {
+                $nightEntry['wolf_no_agreement'] = true;
+            } else {
+                $totals = $nightVotes->groupBy('target_player_id')->map(fn ($g) => $g->count())->sortDesc();
+                $maxV   = $totals->first();
+                $topIds = $totals->filter(fn ($c) => $c === $maxV)->keys()->toArray();
+
+                if (count($topIds) > 1) {
                     $nightEntry['wolf_no_agreement'] = true;
                 } else {
-                    $totals   = $nightVotes->groupBy('target_player_id')->map(fn ($g) => $g->count())->sortDesc();
-                    $maxV     = $totals->first();
-                    $topIds   = $totals->filter(fn ($c) => $c === $maxV)->keys()->toArray();
-
-                    if (count($topIds) > 1) {
-                        $nightEntry['wolf_no_agreement'] = true;
-                    } else {
-                        $nightEntry['killed'] = $this->playerSnapshot($players, (int) $topIds[0]);
-                    }
+                    $nightEntry['killed'] = $this->playerSnapshot($players, (int) $topIds[0]);
                 }
-
-                if ($witchHeal?->target_player_id) {
-                    $nightEntry['witch_heal'] = $this->playerSnapshot($players, $witchHeal->target_player_id);
-                }
-                if ($witchKill?->target_player_id) {
-                    $nightEntry['witch_kill'] = $this->playerSnapshot($players, $witchKill->target_player_id);
-                }
-                if ($hunterNight?->target_player_id) {
-                    $hunter = $players->firstWhere('role', 'hunter');
-                    $nightEntry['hunter_shot'] = [
-                        'hunter_pseudo' => $hunter?->pseudo ?? '?',
-                        'target'        => $this->playerSnapshot($players, $hunterNight->target_player_id),
-                    ];
-                }
-
-                $timeline[] = $nightEntry;
             }
+
+            if ($witchHeal?->target_player_id) {
+                $nightEntry['witch_heal'] = $this->playerSnapshot($players, $witchHeal->target_player_id);
+            }
+            if ($witchKill?->target_player_id) {
+                $nightEntry['witch_kill'] = $this->playerSnapshot($players, $witchKill->target_player_id);
+            }
+            if ($hunterNight?->target_player_id) {
+                $hunter = $players->firstWhere('role', 'hunter');
+                $nightEntry['hunter_shot'] = [
+                    'hunter_pseudo' => $hunter?->pseudo ?? '?',
+                    'target'        => $this->playerSnapshot($players, $hunterNight->target_player_id),
+                ];
+            }
+            if ($successionNight?->target_player_id) {
+                $nightEntry['succession'] = [
+                    'former_mayor' => $successionNight->player_id ? $this->playerSnapshot($players, $successionNight->player_id) : null,
+                    'new_mayor'    => $this->playerSnapshot($players, $successionNight->target_player_id),
+                ];
+            }
+
+            $timeline[] = $nightEntry;
 
             // ── Jour ─────────────────────────────────────────────────────────
             $dayVotes  = $actions->where('type', 'day_vote')->where('round', $round);
@@ -116,10 +122,13 @@ class HistoryService
                 $dayEntry['eliminated'] = null;
             }
 
-            // Succession maire (même round)
-            $succession = $actions->where('type', 'mayor_succession')->where('round', $round)->first();
-            if ($succession?->target_player_id) {
-                $dayEntry['succession'] = $this->playerSnapshot($players, $succession->target_player_id);
+            // Succession maire (phase jour uniquement — la nuit est dans nightEntry)
+            $successionDay = $actions->where('type', 'mayor_succession')->where('round', $round)->where('phase', 'day')->first();
+            if ($successionDay?->target_player_id) {
+                $dayEntry['succession'] = [
+                    'former_mayor' => $successionDay->player_id ? $this->playerSnapshot($players, $successionDay->player_id) : null,
+                    'new_mayor'    => $this->playerSnapshot($players, $successionDay->target_player_id),
+                ];
             }
 
             if ($hunterDay?->target_player_id) {

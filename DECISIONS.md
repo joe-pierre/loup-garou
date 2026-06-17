@@ -1,3 +1,19 @@
+## [RÉSOLU] Nuits sans action absentes de la timeline + succession maire sans filtre de phase
+
+**Contexte :** fix/history-and-death-banner — `app/Services/HistoryService.php`, `resources/views/game/history.blade.php`
+
+**Symptôme / Problème :** (B) Les nuits sans victime (loups sans consensus) n'apparaissaient pas dans la timeline historique. (C) Un joueur mort par poison sorcière lors d'une nuit "silencieuse" n'avait aucune entrée dans l'historique. (D) La succession de maire n'indiquait pas l'ancien maire, et une succession nocturne se retrouvait dans le bloc jour du même round.
+
+**Cause / Alternatives :** (B+C) `buildTimeline()` n'entrait dans le bloc `nightEntry` que si `$nightVotes->isNotEmpty() || $witchHeal || $witchKill || $hunterNight`. Une nuit où seul le poison sorcière agit mais où les loups n'ont pas voté tombait hors condition si `$witchKill` ne déclenchait pas l'entrée (cas de variable null vs collection vide). Les nuits sans aucune action étaient silencieusement omises. (D) La recherche `mayor_succession` ne filtrait pas par `phase`, donc une succession nocturne (`phase = 'night'`) était placée dans `$dayEntry['succession']`.
+
+**Fix / Décision :** (B+C) Supprimer la condition `if (...)` qui enveloppait la création du `$nightEntry` — l'entrée est désormais créée et ajoutée pour **chaque round**, avec `wolf_no_agreement = true` si `$nightVotes->isEmpty()`. (D) Deux variables distinctes : `$successionDay` (`->where('phase','day')`) dans le bloc jour, `$successionNight` (`->where('phase','night')`) dans le bloc nuit. Le format de succession est enrichi avec `former_mayor` + `new_mayor` (deux snapshots) pour afficher "X a désigné Y comme successeur."
+
+**Leçon :** Toute entrée de timeline représentant une phase de jeu doit être créée inconditionnellement pour chaque round — l'absence d'actions est une information métier valide ("les loups ne se sont pas mis d'accord"). Les actions liées à une phase doivent toujours être filtrées par `phase` pour éviter les placements incorrects dans la timeline.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] setInterval parallèle à GSAP pour wolfTimerSeconds dans nightScreen()
 
 **Contexte :** feat/chat-toggle-ux — `resources/views/game/night.blade.php`
