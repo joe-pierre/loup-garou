@@ -8,6 +8,7 @@ use App\Jobs\ProcessDayVote;
 use App\Jobs\ProcessSeerTurn;
 use App\Models\Game;
 use App\Models\GamePlayer;
+use App\Services\PhaseGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -142,7 +143,7 @@ class PhaseManager
     {
         $game->refresh();
 
-        if (! in_array($game->status, ['night', 'processing_night'])) {
+        if (! PhaseGuard::isNightOrProcessing($game)) {
             return;
         }
 

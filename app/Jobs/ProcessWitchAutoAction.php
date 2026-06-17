@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Game;
 use App\Models\GameAction;
+use App\Services\PhaseGuard;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -52,7 +53,7 @@ class ProcessWitchAutoAction implements ShouldQueue
     {
         $game = Game::find($this->gameId);
 
-        if (! $game || $game->round !== $this->round || ! in_array($game->status, ['night', 'processing_night'])) {
+        if (! $game || $game->round !== $this->round || ! PhaseGuard::isNightOrProcessing($game)) {
             return; // idempotent : déjà transitionné
         }
 

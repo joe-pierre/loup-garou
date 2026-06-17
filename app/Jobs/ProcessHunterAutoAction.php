@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Game;
+use App\Services\PhaseGuard;
 use App\Services\PhaseManager;
 use App\Services\WinConditionChecker;
 use Illuminate\Bus\Queueable;
@@ -63,9 +64,11 @@ class ProcessHunterAutoAction implements ShouldQueue
 
         // Idempotent : si la transition a déjà eu lieu (tir volontaire traité avant ce job),
         // le statut n'est plus celui d'où ce tour de chasseur a été déclenché.
-        $expectedStatuses = $this->fromNight ? ['night', 'processing_night'] : ['day', 'processing_day'];
+        $isExpected = $this->fromNight
+            ? PhaseGuard::isNightOrProcessing($game)
+            : PhaseGuard::isDay($game);
 
-        if (! in_array($game->status, $expectedStatuses)) {
+        if (! $isExpected) {
             return;
         }
 

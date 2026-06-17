@@ -46,6 +46,7 @@ class WinConditionChecker
 
         // canTransition() ne connaît que les statuts canoniques du Workflow :
         // 'processing_night'/'processing_day' (Tâches E-H) restent hors de son périmètre et bypassent le guard.
+        // PhaseGuard ne couvre pas ce cas : canTransition('finish') n'existe que pour les statuts canoniques Workflow (hors processing)
         if (in_array($game->status, ['night', 'day']) && ! $game->canTransition('finish')) {
             Log::warning("Transition 'finish' refusée depuis status={$game->status}");
             return false;

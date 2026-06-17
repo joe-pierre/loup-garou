@@ -127,6 +127,7 @@ class VoteController extends Controller
     {
         $game->refresh();
 
+        // PhaseGuard ne couvre pas ce cas : 'processing_night' exclu volontairement (vote clos)
         if (! in_array($game->status, ['night', 'wolves_turn'])) {
             return;
         }

@@ -1,3 +1,19 @@
+## [CHOIX] Centralisation des guards de phase dans PhaseGuard.php
+
+**Contexte :** Refactor `refactor/phase-guard` — `app/Services/PhaseGuard.php`, 6+ fichiers Services/Jobs/Controllers
+
+**Symptôme / Problème :** Le pattern `in_array($game->status, ['night', 'wolves_turn', 'processing_night'])` et ses variantes apparaissaient dans 10+ fichiers. Tout ajout d'un statut intermédiaire (ex: `hunter_turn` en v1.3) nécessitait une chasse manuelle garantie d'être incomplète.
+
+**Cause / Alternatives :** (1) Continuer les magic strings — risque d'oubli lors de l'ajout de v1.3. (2) Centraliser dans une classe statique `PhaseGuard` avec méthodes nommées par sémantique métier — un seul point de modification. (3) Utiliser les Enums déjà créés en Étape 4 — prématuré, les Enums sont encore en intégration progressive.
+
+**Fix / Décision :** `PhaseGuard` créé avec 7 méthodes statiques : `isNight()`, `isNightOrProcessing()`, `isDay()`, `canWitchAct()`, `canHunterShoot()`, `canChatGeneral()`, `canChatWolves()`, `canChatDead()`. Les occurrences directement substituables remplacées dans 10 fichiers. Les 8 occurrences restantes (ensembles custom ou contraintes Workflow) documentées avec `// PhaseGuard ne couvre pas ce cas : [raison]`.
+
+**Leçon :** Pour v1.3+, ajouter les nouveaux statuts intermédiaires uniquement dans `PhaseGuard.php`. Les méthodes `Game::isNightPhase()` et `Game::isDayPhase()` sont intentionnellement conservées (méthodes d'instance, évitent dépendance service → modèle).
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] Enums créés sans migration immédiate du code existant — stratégie progressive
 
 **Contexte :** ROADMAP Étape 4 — `app/Enums/GameStatus.php`, `app/Enums/PlayerRole.php`, `app/Enums/ActionType.php`, `app/Enums/ChatChannel.php`, `app/Enums/WinnerTeam.php`
