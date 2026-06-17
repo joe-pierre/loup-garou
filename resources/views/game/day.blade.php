@@ -492,6 +492,13 @@
                 if (this._initialized) return;
                 this._initialized = true;
 
+                this._resetChatState();
+
+                // Réinitialiser le chat à chaque nouveau round (navigation serveur via DayStarted)
+                window.addEventListener('day-started', () => {
+                    this._resetChatState();
+                });
+
                 // Nettoyer le flag si le joueur est vivant au chargement de la page
                 if (MY_IS_ALIVE) {
                     sessionStorage.removeItem('dead_' + MY_PLAYER_ID);
@@ -648,7 +655,11 @@
             },
 
             _checkChatAuto() {
-                if (this.dayTimerSeconds <= 75 && !this.chatVisible && !this.manualOverride && !this.autoOpened) {
+                const totalSeconds = {{ $game->timer('day_vote') }};
+                const elapsed = totalSeconds - this.dayTimerSeconds;
+
+                // Auto-ouverture après 10s écoulées
+                if (elapsed >= 10 && !this.chatVisible && !this.manualOverride && !this.autoOpened) {
                     this.chatVisible = true;
                     this.autoOpened  = true;
                     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -657,10 +668,20 @@
                         });
                     }
                 }
+
+                // Auto-fermeture à 15s restantes
                 if (this.dayTimerSeconds <= 15 && this.chatVisible && !this.manualOverride && !this.autoClosed) {
                     this.chatVisible = false;
                     this.autoClosed  = true;
                 }
+            },
+
+            _resetChatState() {
+                this.chatVisible    = false;
+                this.manualOverride = false;
+                this.autoOpened     = false;
+                this.autoClosed     = false;
+                this.unreadMessages = 0;
             },
 
             _updateVoteBars(votes) {
