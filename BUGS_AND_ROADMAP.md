@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-17 — Chat loups auto-ouverture basée sur timer résiduel au lieu du temps écoulé
+
+- **Symptôme :** le chat loups s'ouvrait trop tôt (dès que `wolfTimerSeconds <= 75`) au lieu d'attendre 10s après le début du tour.
+- **Cause :** `_checkWolfChatAuto()` comparait le temps restant au lieu du temps écoulé depuis le début du tour ; l'ouverture dépendait donc de la valeur de `WOLVES_TIMER` et non d'une durée fixe de 10s.
+- **Fix :** remplacement de `wolfTimerSeconds <= 75` par `elapsed >= 10` (avec `elapsed = WOLVES_TIMER - wolfTimerSeconds`). Ajout de la garde `wolfTimerSeconds > 15` pour éviter le chevauchement avec l'auto-fermeture quand le timer est court.
+
+---
+
 ### [x] 2026-06-17 — Canal loups jamais souscrit si myRole null au moment de initWebSocket
 
 - **Symptôme :** les messages envoyés par les loups n'étaient jamais reçus par les autres loups (canal `game.{id}.werewolves` non souscrit côté client).
