@@ -662,11 +662,7 @@
                 if (elapsed >= 10 && !this.chatVisible && !this.manualOverride && !this.autoOpened) {
                     this.chatVisible = true;
                     this.autoOpened  = true;
-                    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-                        this.$nextTick(() => {
-                            gsap.from(this.$refs.chatPanel, { opacity: 0, y: 20, duration: 0.4, ease: 'power2.out' });
-                        });
-                    }
+                    // Animation gérée par x-transition sur le div — pas de GSAP ici
                 }
 
                 // Auto-fermeture à 15s restantes
