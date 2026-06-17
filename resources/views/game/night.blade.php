@@ -910,7 +910,10 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             },
 
             _checkWolfChatAuto() {
-                if (this.wolfTimerSeconds <= 75 && !this.wolfChatVisible && !this.wolfManualOverride && !this.wolfAutoOpened) {
+                const elapsed = WOLVES_TIMER - this.wolfTimerSeconds;
+
+                // Auto-ouverture après 10s écoulées (seulement si assez de temps restant)
+                if (elapsed >= 10 && this.wolfTimerSeconds > 15 && !this.wolfChatVisible && !this.wolfManualOverride && !this.wolfAutoOpened) {
                     this.wolfChatVisible = true;
                     this.wolfAutoOpened  = true;
                     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -919,6 +922,8 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                         });
                     }
                 }
+
+                // Auto-fermeture à 15s restantes
                 if (this.wolfTimerSeconds <= 15 && this.wolfChatVisible && !this.wolfManualOverride && !this.wolfAutoClosed) {
                     this.wolfChatVisible = false;
                     this.wolfAutoClosed  = true;
