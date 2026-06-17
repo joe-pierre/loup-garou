@@ -47,6 +47,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/game/{code}/mayor-election', [GameController::class, 'mayorElection'])->name('game.mayor-election');
     Route::get('/game/{code}/day', [GameController::class, 'day'])->name('game.day');
     Route::get('/game/{code}/night', [GameController::class, 'night'])->name('game.night');
+    Route::get('/game/{code}/summary', [GameController::class, 'summary'])->name('game.summary');
     Route::get('/game/{code}/finished', [GameController::class, 'finished'])->name('game.finished');
     Route::get('/game/{code}/cancelled', [GameController::class, 'cancelled'])->name('game.cancelled');
     Route::get('/game/{code}/spectator', [GameController::class, 'spectator'])->name('game.spectator');

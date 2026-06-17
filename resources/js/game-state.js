@@ -403,9 +403,12 @@ export function gameState(gameId, userId) {
 
             const redirect = () => {
                 if (!this.gameCode) return;
-                window.location.href = e.winner_team !== null
-                    ? `/game/${this.gameCode}/finished`
-                    : `/game/${this.gameCode}/cancelled`;
+                if (e.winner_team !== null) {
+                    sessionStorage.setItem('last_action', JSON.stringify(e.last_action ?? null));
+                    window.location.href = `/game/${this.gameCode}/summary`;
+                } else {
+                    window.location.href = `/game/${this.gameCode}/cancelled`;
+                }
             };
 
             if (this._motion) {

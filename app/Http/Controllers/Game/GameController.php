@@ -53,6 +53,17 @@ class GameController extends Controller
         ));
     }
 
+    public function summary(Request $request, string $code): View
+    {
+        $game = Game::where('code', strtoupper($code))->firstOrFail();
+
+        abort_unless($game->status === 'finished' && $game->winner_team !== null, 404);
+
+        $player = $game->players()->where('user_id', $request->user()->id)->firstOrFail();
+
+        return view('game.summary', compact('game', 'player'));
+    }
+
     public function finished(Request $request, string $code): View
     {
         $game = Game::where('code', strtoupper($code))->firstOrFail();

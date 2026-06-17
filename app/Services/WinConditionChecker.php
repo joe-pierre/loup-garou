@@ -59,7 +59,8 @@ class WinConditionChecker
         ]);
 
         $allPlayers = $game->players()->with('user')->get();
-        broadcast(new GameFinished($game, $allPlayers, $winnerTeam));
+        $lastAction = $this->buildLastAction($game);
+        broadcast(new GameFinished($game, $allPlayers, $winnerTeam, $lastAction));
 
         try {
             Notification::send(
@@ -69,5 +70,64 @@ class WinConditionChecker
         } catch (\Throwable) {}
 
         return true;
+    }
+
+    /** @return array<string, mixed> */
+    private function buildLastAction(Game $game): array
+    {
+        $round = $game->round;
+
+        if ($game->isNightPhase()) {
+            $recentKill = $game->players()
+                ->where('is_alive', false)
+                ->latest('updated_at')
+                ->first();
+
+            $witchActed = $game->actions()
+                ->whereIn('type', ['witch_kill', 'witch_heal'])
+                ->where('round', $round)
+                ->exists();
+
+            $hunterFired = $game->actions()
+                ->where('type', 'hunter_shot')
+                ->where('round', $round)
+                ->exists();
+
+            return [
+                'phase'        => 'night',
+                'round'        => $round,
+                'killed'       => $recentKill
+                    ? ['pseudo' => $recentKill->pseudo, 'role' => $recentKill->role]
+                    : null,
+                'witch_acted'  => $witchActed,
+                'hunter_fired' => $hunterFired,
+            ];
+        }
+
+        // Contexte jour : trouver le joueur le plus voté ce round
+        $dayVotes = $game->actions()
+            ->where('type', 'day_vote')
+            ->where('round', $round)
+            ->get();
+
+        $topVotedId = null;
+        $topWeight  = 0;
+        if ($dayVotes->isNotEmpty()) {
+            $totals     = $dayVotes->groupBy('target_player_id')
+                ->map(fn ($g) => $g->sum('weight'));
+            $topVotedId = $totals->sortDesc()->keys()->first();
+            $topWeight  = (int) $totals[$topVotedId];
+        }
+
+        $eliminated = $topVotedId ? $game->players()->find($topVotedId) : null;
+
+        return [
+            'phase'      => 'day',
+            'round'      => $round,
+            'eliminated' => $eliminated
+                ? ['pseudo' => $eliminated->pseudo, 'role' => $eliminated->role]
+                : null,
+            'vote_count' => $topWeight,
+        ];
     }
 }

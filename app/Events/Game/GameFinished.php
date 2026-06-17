@@ -32,15 +32,19 @@ class GameFinished implements ShouldBroadcastNow
     public readonly ?string $winnerTeam;
     /** @var array<int, array{id:int,pseudo:string,role:string|null}> */
     public readonly array   $players;
+    /** @var array<string, mixed> */
+    public readonly array   $lastAction;
 
     /**
      * @param  Collection<int, GamePlayer> $players
      * @param  string|null                 $winnerTeam  null = partie annulée (rôles non révélés)
+     * @param  array<string, mixed>        $lastAction  résumé de la dernière action décisive
      */
-    public function __construct(Game $game, Collection $players, ?string $winnerTeam)
+    public function __construct(Game $game, Collection $players, ?string $winnerTeam, array $lastAction = [])
     {
         $this->gameId     = $game->id;
         $this->winnerTeam = $winnerTeam;
+        $this->lastAction = $lastAction;
         $revealRoles      = $winnerTeam !== null;
 
         $this->players = $players->map(fn (GamePlayer $p) => [
@@ -61,22 +65,12 @@ class GameFinished implements ShouldBroadcastNow
         return 'game.finished';
     }
 
-    /**
-     * @return array{
-     *   winner_team: string|null,  // 'villagers', 'werewolves', ou null si partie annulée
-     *   players: array<int, array{
-     *     id: int,
-     *     pseudo: string,
-     *     role: string|null,   // null si partie annulée (winnerTeam === null)
-     *     is_alive: bool,
-     *   }>,
-     * }
-     */
     public function broadcastWith(): array
     {
         return [
             'winner_team' => $this->winnerTeam,
             'players'     => $this->players,
+            'last_action' => $this->lastAction,
         ];
     }
 }
