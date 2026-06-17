@@ -489,8 +489,8 @@
     function roleSettings() {
         return {
             roles: {
-                witch:  @json($game->settings['roles']['witch'] ?? 0),
-                hunter: @json($game->settings['roles']['hunter'] ?? 0),
+                witch:  @json($game->settings['roles']['witch'] ?? 1),
+                hunter: @json($game->settings['roles']['hunter'] ?? 1),
             },
             labels: {
                 witch:  'Sorcière',
