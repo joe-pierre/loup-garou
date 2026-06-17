@@ -62,12 +62,15 @@ class RoleDistributor
             'werewolf' => config('game.roles.werewolf', 'auto'),
         ];
 
-        if (($overrides['witch'] ?? 0) > 0) {
-            $config['witch'] = $overrides['witch'];
+        $witchAmount  = $overrides['witch']  ?? config('game.roles.witch', 0);
+        $hunterAmount = $overrides['hunter'] ?? config('game.roles.hunter', 0);
+
+        if ($witchAmount > 0) {
+            $config['witch'] = $witchAmount;
         }
 
-        if (($overrides['hunter'] ?? 0) > 0) {
-            $config['hunter'] = $overrides['hunter'];
+        if ($hunterAmount > 0) {
+            $config['hunter'] = $hunterAmount;
         }
 
         $config['villager'] = 'fill';
