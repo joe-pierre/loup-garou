@@ -1,3 +1,19 @@
+## [RÉSOLU] canChatWolves excluait wolves_turn — chat loups muet pendant le tour actif
+
+**Contexte :** fix/wolf-chat-reception — `app/Services/PhaseGuard.php`, `tests/Feature/Game/ChatTest.php`, `tests/Unit/Services/PhaseGuardTest.php`.
+
+**Symptôme / Problème :** Les messages envoyés par les loups pendant leur tour disparaissaient silencieusement côté client et n'étaient jamais broadcastés. `ChatService::sendMessage()` retournait 409 ; `sendWolfChat()` dans `night.blade.php` ne vérifiait pas le code HTTP (`fetch` sans `res.ok`) et vidait l'input avant l'appel, rendant l'échec invisible.
+
+**Cause / Alternatives :** `PhaseGuard::canChatWolves()` retournait `$game->status === 'night'`. Mais `ProcessWerewolvesTurn` transite le statut `night → wolves_turn` en début de tour (pour garantir l'idempotence du job). Pendant tout le tour actif des loups, le statut est `wolves_turn` — le guard rejetait donc tous les messages loups exactement quand ils étaient censés être autorisés. `PhaseGuard::isNight()` couvrait déjà `wolves_turn` mais `canChatWolves` avait un périmètre plus restrictif sans raison documentée.
+
+**Fix / Décision :** `canChatWolves` étendu à `in_array($game->status, ['night', 'wolves_turn'])`. `'night'` conservé pour couvrir le bref intervalle entre la transition seer→wolves avant que `ProcessWerewolvesTurn` démarre. Tests ajoutés pour couvrir les deux statuts autorisés et les statuts refusés.
+
+**Leçon :** Toute méthode `canXxx()` de `PhaseGuard` doit couvrir TOUS les statuts où l'action est sémantiquement autorisée, pas seulement le statut « canonique ». Quand un job transite le statut avant d'émettre l'event déclencheur (pattern atomique), le statut intermédiaire doit être inclus dans le guard correspondant. Ajouter un test Feature avec `status = wolves_turn` en plus de `status = night` pour chaque action liée à la phase nuit.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] Roadmap Code Propre v1.2 — stratégie de refactoring sans régression
 
 **Contexte :** Étapes 1→10 — refactoring progressif post-v1.2 de l'ensemble des fichiers PHP, JS, Blade. Audit final Étape 10 — `app/Http/Controllers/Game/VoteController.php`, `app/Services/VoteService.php`.

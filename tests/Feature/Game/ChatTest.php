@@ -32,6 +32,23 @@ class ChatTest extends TestCase
         Event::assertNotDispatched(ChatMessageSent::class);
     }
 
+    public function test_message_loup_broadcasté_pendant_wolves_turn(): void
+    {
+        Event::fake();
+
+        $game = Game::factory()->create(['status' => 'wolves_turn', 'max_players' => 6, 'round' => 1]);
+        $user = User::factory()->create();
+        GamePlayer::factory()->werewolf()->create(['game_id' => $game->id, 'user_id' => $user->id]);
+
+        $this->actingAs($user)->postJson("/game/{$game->id}/chat", [
+            'message' => 'on attaque pendant notre tour',
+            'channel' => 'werewolves',
+        ])->assertStatus(200);
+
+        Event::assertDispatched(WerewolfChatMessage::class);
+        Event::assertNotDispatched(ChatMessageSent::class);
+    }
+
     public function test_villageois_ne_peut_pas_écrire_sur_channel_werewolves_retourne_403(): void
     {
         Event::fake();

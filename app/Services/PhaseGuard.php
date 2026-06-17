@@ -62,11 +62,12 @@ class PhaseGuard
     }
 
     /**
-     * Le chat loups est autorisé.
+     * Le chat loups est autorisé (night et wolves_turn).
+     * wolves_turn est le statut actif pendant le tour des loups-garous.
      */
     public static function canChatWolves(Game $game): bool
     {
-        return $game->status === 'night';
+        return in_array($game->status, ['night', 'wolves_turn']);
     }
 
     /**
