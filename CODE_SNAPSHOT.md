@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 23h44
+Generated at: 23h59
 
 ## PHP Analysis (Core Logic)
 
@@ -855,7 +855,6 @@ GameFinishedNotification.php
 RoleAssignedNotification.php
     attributes:
       - Queueable
-      - ROLE_LABELS
     functions:
       - __construct(string $role) {}
       - via($notifiable) → return [WebPushChannel::class]
@@ -874,7 +873,6 @@ PlayerExcludedNotification.php
 PlayerEliminatedDayNotification.php
     attributes:
       - Queueable
-      - ROLE_LABELS
     functions:
       - __construct(string $role) {}
       - via($notifiable) → return [WebPushChannel::class]

@@ -12,14 +12,6 @@ class RoleAssignedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    private const ROLE_LABELS = [
-        'villager' => '🧑‍🌾 Villageois',
-        'werewolf' => '🐺 Loup-Garou',
-        'seer'     => '🔮 Voyante',
-        'witch'    => '🧙‍♀️ Sorcière',
-        'hunter'   => '🏹 Chasseur',
-    ];
-
     public function __construct(public readonly string $role) {}
 
     public function via($notifiable): array
@@ -29,7 +21,7 @@ class RoleAssignedNotification extends Notification implements ShouldQueue
 
     public function toWebPush($notifiable, $notification): WebPushMessage
     {
-        $label = self::ROLE_LABELS[$this->role] ?? $this->role;
+        $label = config('game_ui.role_labels_emoji')[$this->role] ?? $this->role;
 
         return (new WebPushMessage)
             ->title('La partie commence !')
