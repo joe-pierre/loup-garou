@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 12h55
+Generated at: 13h12
 
 ## PHP Analysis (Core Logic)
 
@@ -533,11 +533,12 @@ GameFinished.php
       - gameId
       - winnerTeam
       - players
+      - lastAction
     functions:
-      - __construct(Game $game, Collection $players, ?string $winnerTeam) {}
+      - __construct(Game $game, Collection $players, ?string $winnerTeam, array $lastAction) {}
       - broadcastOn() → return [new Channel("game.{$this->gameId}")]
       - broadcastAs() → return 'game.finished'
-      - broadcastWith() → return ['winner_team' => $this->winnerTeam, 'players' => $this->players]
+      - broadcastWith() → return ['winner_team' => $this->winnerTeam, 'players' => $this->players, 'last_action' => $this->lastAction]
 
 // app/Events/Game/ChatMessageSent.php
 ChatMessageSent.php
@@ -788,6 +789,7 @@ GameController.php
     functions:
       - __construct(GameService $gameService, VoteService $voteService, HistoryService $historyService) {}
       - mayorElection(Request $request, string $code) → return view('game.mayor-election', compact('game', 'player', 'players', 'myVote', 'currentVotes', 'phaseRemainingSeconds'))
+      - summary(Request $request, string $code) → return view('game.summary', compact('game', 'player'))
       - finished(Request $request, string $code) → return view('game.finished', compact('game', 'player', 'players'))
       - cancelled(Request $request, string $code) → return view('game.cancelled', compact('game', 'player', 'allPlayers'))
       - spectator(Request $request, string $code) → return view('game.spectator', compact('game', 'player', 'allPlayers'))
@@ -960,6 +962,7 @@ GameService.php
 WinConditionChecker.php
     functions:
       - check(Game $game) → return true
+      - buildLastAction(Game $game) → return ['phase' => 'day', 'round' => $round, 'eliminated' => $eliminated ? ['pseudo' => $eliminated->pseudo, 'role' => $eliminated->role] : null, 'vote_count' => $topWeight]
 
 // app/Services/ChatService.php
 ChatService.php
