@@ -320,6 +320,10 @@
   - 7.2 : `PlayerEliminatedDayNotification` + `RoleAssignedNotification` — `const ROLE_LABELS` supprimés, remplacés par `config('game_ui.role_labels_emoji')`
   - 7.3 : Blade Component `<x-role-label>` créé (`resources/views/components/role-label.blade.php`)
   - 7.4 : Commentaire TODO ajouté sur `playerAvatarColor` dans `day.blade.php`, `waiting-room.blade.php`, `mayor-election.blade.php`
+- [x] **ROADMAP Étape 8** — Tests manquants pour les nouvelles méthodes (Models + HistoryService)
+  - 8.1 : `tests/Unit/Models/GameModelTest.php` — isNightPhase, isDayPhase, isCancelled, aliveWerewolvesCount, aliveVillagersCount, timer fallback (7 tests)
+  - 8.2 : `tests/Unit/Models/GamePlayerModelTest.php` — witchHealUsed, witchKillUsed, witchHasPotion, isActiveAndAlive (4 tests)
+  - 8.3 : `tests/Feature/Game/GameHistoryServiceTest.php` — buildTimeline partie sans rounds (1 test)
 
 ---
 
