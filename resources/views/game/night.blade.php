@@ -916,11 +916,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 if (elapsed >= 10 && this.wolfTimerSeconds > 15 && !this.wolfChatVisible && !this.wolfManualOverride && !this.wolfAutoOpened) {
                     this.wolfChatVisible = true;
                     this.wolfAutoOpened  = true;
-                    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-                        this.$nextTick(() => {
-                            gsap.from(this.$refs.wolfChatPanel, { opacity: 0, y: 20, duration: 0.4, ease: 'power2.out' });
-                        });
-                    }
+                    // x-transition sur le div gère l'animation
                 }
 
                 // Auto-fermeture à 15s restantes
