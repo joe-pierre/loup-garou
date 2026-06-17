@@ -342,6 +342,18 @@
                             </p>
                         @endif
 
+                        @if(!empty($entry['succession']))
+                            <p class="text-sm mt-1" style="color:rgba(232,224,208,0.6);">
+                                👑
+                                @if(!empty($entry['succession']['former_mayor']))
+                                    <span class="font-semibold" style="color:#c9a84c;">{{ $entry['succession']['former_mayor']['pseudo'] }}</span>
+                                    a désigné
+                                @endif
+                                <span class="font-semibold" style="color:#c9a84c;">{{ $entry['succession']['new_mayor']['pseudo'] }}</span>
+                                comme successeur.
+                            </p>
+                        @endif
+
                     @elseif($entry['type'] === 'day')
                         @if($entry['result'] === 'eliminated' && !empty($entry['eliminated']))
                             <p class="text-sm">
@@ -371,8 +383,13 @@
 
                         @if(!empty($entry['succession']))
                             <p class="text-sm mt-1" style="color:rgba(232,224,208,0.6);">
-                                👑 Nouveau maire :
-                                <span class="font-semibold" style="color:#c9a84c;">{{ $entry['succession']['pseudo'] }}</span>
+                                👑
+                                @if(!empty($entry['succession']['former_mayor']))
+                                    <span class="font-semibold" style="color:#c9a84c;">{{ $entry['succession']['former_mayor']['pseudo'] }}</span>
+                                    a désigné
+                                @endif
+                                <span class="font-semibold" style="color:#c9a84c;">{{ $entry['succession']['new_mayor']['pseudo'] }}</span>
+                                comme successeur.
                             </p>
                         @endif
 
