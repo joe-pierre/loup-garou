@@ -115,6 +115,11 @@ export function gameState(gameId, userId) {
             if (this._wsInitialized) return;
             this._wsInitialized = true;
 
+            // Garantir que myRole est résolu avant toute décision de souscription
+            if (!this.myRole) {
+                this.myRole = window.MY_ROLE ?? null;
+            }
+
             const echo = window.Echo;
             if (!echo) return;
 
@@ -189,7 +194,13 @@ export function gameState(gameId, userId) {
             }
 
             // ── Canal loups (si loup) ────────────────────────────────────────
-            if (this.isWerewolf) {
+            // Utiliser window.MY_ROLE comme fallback au moment précis de la décision
+            // — this.myRole peut être null si _loadState() a échoué et que le fallback
+            // dans init() n'a pas encore reçu window.MY_ROLE (défini par le layout).
+            const effectiveRole = this.myRole ?? window.MY_ROLE ?? null;
+            const isWolfEffective = ['werewolf', 'white_wolf'].includes(effectiveRole);
+
+            if (isWolfEffective) {
                 echo.private(`game.${this.gameId}.werewolves`)
                     .listen('.werewolves.turn.started', e => {
                         this.nightPhase = 'werewolves_turn';

@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-17 — Canal loups jamais souscrit si myRole null au moment de initWebSocket
+
+- **Symptôme :** les messages envoyés par les loups n'étaient jamais reçus par les autres loups (canal `game.{id}.werewolves` non souscrit côté client).
+- **Cause :** `initWebSocket()` évaluait `this.isWerewolf` (getter sur `this.myRole`) pour décider de souscrire au canal loups. Si `_loadState()` échouait silencieusement, `this.myRole` restait `null`, `isWerewolf` valait `false`, et le guard `_wsInitialized` bloquait toute nouvelle tentative de souscription.
+- **Fix :** au début de `initWebSocket()`, fallback `if (!this.myRole) { this.myRole = window.MY_ROLE ?? null; }`. Au moment de la décision de souscription, calcul d'`effectiveRole = this.myRole ?? window.MY_ROLE ?? null` et `isWolfEffective` pour remplacer le getter `isWerewolf`.
+
+---
+
 ### [x] 2026-06-17 — Sorcière et chasseur jamais distribués sans settings hôte explicites
 
 - **Symptôme :** dans une partie créée sans ouvrir la modale paramètres, sorcière et chasseur n'étaient jamais inclus dans la distribution, quelles que soient les valeurs de `config/game.php`.
