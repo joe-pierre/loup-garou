@@ -177,10 +177,12 @@
 <body>
     <nav class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4" style="background:linear-gradient(to bottom, rgba(10,15,30,0.95) 0%, transparent 100%);">
         <div class="flex items-center gap-2">
+          <a href="{{ route('home') }}">
             <span class="text-xl" aria-hidden="true">🐺</span>
             <span class="font-medieval font-bold text-gold text-sm tracking-widest hidden sm:inline">
-                LOUP-GAROU UNDU
+              LOUP-GAROU UNDU
             </span>
+          </a>
         </div>
         <a href="{{ route('auth.google') }}" class="px-4 py-2 rounded-lg font-medieval text-xs font-semibold transition-all hover:opacity-80 focus:ring-2 focus:ring-gold focus:outline-none" style="background-color:rgba(201,168,76,0.12); border:1px solid rgba(201,168,76,0.3); color:#c9a84c;">
             Se connecter
