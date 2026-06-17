@@ -327,8 +327,19 @@
 
 ---
 
+---
+
+## Phase 21 — Documentation routes et README technique (Étape 9)
+
+- [x] **Étape 9.1** — `routes/web.php` : commentaires de sections + annotations Guard/Policy inline
+- [x] **Étape 9.2** — `routes/channels.php` : commentaires d'autorisation par canal
+- [x] **Étape 9.3** — `README.md` : v1.2 confirmé ✅, Architecture + Enums + Guards + Tests mis à jour
+
+---
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
 - v1.2 ✅ Terminé — Étapes 2→5 + Phases 17→18 complètes
+- Étape 9 ✅ Terminée — Documentation routes + README technique
 - v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md

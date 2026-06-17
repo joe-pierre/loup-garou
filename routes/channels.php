@@ -7,14 +7,14 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
 
-// Tous les joueurs de la partie
+// Canal public : tout joueur de la partie peut s'abonner (vérifie game_id + user_id)
 Broadcast::channel('game.{gameId}', function ($user, $gameId) {
     return GamePlayer::where('game_id', $gameId)
         ->where('user_id', $user->id)
         ->exists();
 });
 
-// Canal privé d'un joueur individuel
+// Canal privé individuel : uniquement le joueur dont l'id correspond (game_id + player_id + user_id)
 Broadcast::channel('game.{gameId}.player.{playerId}', function ($user, $gameId, $playerId) {
     return GamePlayer::where('id', $playerId)
         ->where('game_id', $gameId)
@@ -22,7 +22,7 @@ Broadcast::channel('game.{gameId}.player.{playerId}', function ($user, $gameId, 
         ->exists();
 });
 
-// Canal privé des loups-garous
+// Canal privé loups : uniquement les joueurs dont isWerewolf() === true (role IN werewolf, white_wolf)
 Broadcast::channel('game.{gameId}.werewolves', function ($user, $gameId) {
     $player = GamePlayer::where('game_id', $gameId)
         ->where('user_id', $user->id)
@@ -31,7 +31,7 @@ Broadcast::channel('game.{gameId}.werewolves', function ($user, $gameId) {
     return $player && $player->isWerewolf();
 });
 
-// Canal presence — détection déconnexion via leaving()
+// Canal presence : tous les joueurs (nécessaire pour la détection de déconnexion via leaving())
 Broadcast::channel('game.{gameId}.presence', function ($user, $gameId) {
     $player = GamePlayer::where('game_id', $gameId)
         ->where('user_id', $user->id)

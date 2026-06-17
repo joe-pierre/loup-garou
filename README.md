@@ -105,16 +105,18 @@ L'application est accessible sur `http://localhost:8000`.
 1. **Salle d'attente** — 6 à 12 joueurs rejoignent via un code
 2. **Révélation des rôles** — chaque joueur découvre son rôle en privé
 3. **Élection du Maire** — vote collectif, le maire a un poids de 2 au vote jour
-4. **Nuit** — la Voyante inspecte un joueur, les Loups votent une victime
-5. **Jour** — débat collectif puis vote d'élimination
+4. **Nuit** — la Voyante inspecte un joueur, les Loups votent une victime, la Sorcière agit
+5. **Jour** — débat collectif puis vote d'élimination ; le Chasseur tire s'il est éliminé
 6. Répéter nuit/jour jusqu'à la victoire d'un camp
 
-### Rôles (v1.1)
+### Rôles (v1.2)
 | Rôle | Camp | Pouvoir |
 |---|---|---|
 | Villageois | Village | Aucun |
 | Loup-Garou | Loups | Vote la nuit pour éliminer |
 | Voyante | Village | Inspecte le rôle d'un joueur chaque nuit |
+| Sorcière | Village | Potion de soin + potion de poison (une fois chacune), auto-soin interdit |
+| Chasseur | Village | Tire sur un joueur de son choix quand il est éliminé |
 | Maire | — | Élu en début de partie, vote compte double le jour |
 
 ### Composition par défaut
@@ -124,6 +126,8 @@ L'application est accessible sur `http://localhost:8000`.
 | 8 | 2 | 1 | 5 |
 | 10 | 2 | 1 | 7 |
 | 12 | 3 | 1 | 8 |
+
+La Sorcière et le Chasseur sont activables par le host avant le démarrage (composition configurable v1.2).
 
 ---
 
@@ -138,13 +142,27 @@ app/
 │   ├── VoteService.php
 │   ├── RoleDistributor.php
 │   ├── WinConditionChecker.php
-│   └── ChatService.php
+│   ├── ChatService.php
+│   ├── HistoryService.php
+│   └── TimerCalculator.php
 ├── Jobs/                    ← gestion des timers uniquement
 ├── Events/Game/             ← events WebSocket
 └── Models/                  ← User, Game, GamePlayer, GameAction, ChatMessage, Exclusion
 ```
 
 **Règle stricte :** toute logique métier est dans `Services/`, jamais dans les Controllers.
+
+---
+
+## Enums
+
+| Fichier | Valeurs clés |
+|---|---|
+| `app/Enums/GameStatus.php` | waiting, electing_mayor, night, wolves_turn, processing_night, day, processing_day, finished |
+| `app/Enums/PlayerRole.php` | villager, werewolf, white_wolf, seer, witch, hunter |
+| `app/Enums/ActionType.php` | mayor_vote, night_vote, day_vote, seer_check, witch_heal, witch_kill, hunter_shot, ready, … |
+| `app/Enums/ChatChannel.php` | general, werewolves, dead |
+| `app/Enums/WinnerTeam.php` | villagers, werewolves |
 
 ---
 
@@ -155,7 +173,16 @@ php artisan test
 ```
 
 Couverture : Auth, Lobby, Phases nuit/jour, Sorcière, Chasseur, Succession maire,
-Race conditions, Workflow, Timers configurables, Rôles v1.2.
+Race conditions, Workflow, Timers configurables, Rôles v1.2,
+Modèles (GameModelTest, GamePlayerModelTest, GameActionTest),
+Historique de partie (GameHistoryServiceTest).
+
+---
+
+## Guards anti-régression
+
+Voir `RISK_GUARDS.md` pour les protections obligatoires à vérifier avant toute modification
+des phases de jeu, des timers, ou de la logique de vote.
 
 ---
 
@@ -164,7 +191,7 @@ Race conditions, Workflow, Timers configurables, Rôles v1.2.
 | Version | Contenu |
 |---|---|
 | v1.1 ✅ | Villageois, Loup-Garou, Voyante, Maire électif |
-| v1.2 ✅ | Sorcière, Chasseur — timers + composition rôles configurables — canal fantômes |
+| v1.2 ✅ | Sorcière, Chasseur — timers + composition rôles configurables — canal fantômes (`dead`) — Symfony Workflow |
 | v1.3+ (futur) | Loup Blanc, Cupidon, Petite Fille |
 
 ---
@@ -174,8 +201,11 @@ Race conditions, Workflow, Timers configurables, Rôles v1.2.
 | Fichier | Rôle |
 |---|---|
 | `SPEC.md` | Spécification complète (modèle de données, règles métier, endpoints, WebSocket) |
+| `SPEC_TIMERS.md` | Timers par rôle, pattern action volontaire / job auto |
+| `SPEC_TRANSITIONS.md` | Annonces de phases, file Alpine, reconnexion |
 | `CONVENTIONS.md` | Règles de codage (nommage, format API, Alpine.js) |
 | `DECISIONS.md` | Journal des choix techniques et bugs complexes résolus |
 | `BUGS_AND_ROADMAP.md` | Bugs corrigés + améliorations futures |
+| `RISK_GUARDS.md` | Protections anti-régression obligatoires |
 | `TODO.md` | Avancement des tâches |
 | `CLAUDE.md` | Contexte pour Claude Code (lu automatiquement à chaque session) |
