@@ -18,13 +18,14 @@ class HistoryService
             $totals    = $mayorVotes->groupBy('target_player_id')->map(fn ($g) => $g->count())->sortDesc();
             $maxVotes  = $totals->first();
             $topIds    = $totals->filter(fn ($c) => $c === $maxVotes)->keys()->toArray();
-            $electedId = count($topIds) === 1 ? $topIds[0] : null;
+            $electedId = count($topIds) === 1 ? (int) $topIds[0] : null;
 
             $timeline[] = [
                 'type'       => 'election',
                 'label'      => 'Élection du Maire',
                 'was_random' => count($topIds) > 1,
                 'mayor'      => $electedId ? $this->playerSnapshot($players, $electedId) : null,
+                'vote_count' => $electedId ? $totals->get($topIds[0]) : null,
             ];
         }
 
@@ -32,38 +33,83 @@ class HistoryService
         $maxRound = max((int) $actions->max('round'), $game->round);
 
         for ($round = 1; $round <= $maxRound; $round++) {
-            // Nuit
-            $nightVotes = $actions->where('type', 'night_vote')->where('round', $round);
-            if ($nightVotes->isNotEmpty()) {
-                $totals   = $nightVotes->groupBy('target_player_id')->map(fn ($g) => $g->count())->sortDesc();
-                $maxVotes = $totals->first();
-                $topIds   = $totals->filter(fn ($c) => $c === $maxVotes)->keys()->toArray();
-                // En cas d'égalité le jeu tire au sort — on affiche le premier (ordre insertion)
-                $killedId = $topIds[0];
+            // ── Nuit ────────────────────────────────────────────────────────
+            $nightVotes  = $actions->where('type', 'night_vote')->where('round', $round);
+            $witchHeal   = $actions->where('type', 'witch_heal')->where('round', $round)->first();
+            $witchKill   = $actions->where('type', 'witch_kill')->where('round', $round)->first();
+            $hunterNight = $actions->where('type', 'hunter_shot')->where('round', $round)->where('phase', 'night')->first();
 
-                $timeline[] = [
-                    'type'   => 'night',
-                    'round'  => $round,
-                    'label'  => "Nuit {$round}",
-                    'killed' => $this->playerSnapshot($players, $killedId),
+            if ($nightVotes->isNotEmpty() || $witchHeal || $witchKill || $hunterNight) {
+                $nightEntry = [
+                    'type'              => 'night',
+                    'round'             => $round,
+                    'label'             => "Nuit {$round}",
+                    'killed'            => null,
+                    'wolf_no_agreement' => false,
+                    'witch_heal'        => null,
+                    'witch_kill'        => null,
+                    'hunter_shot'       => null,
                 ];
+
+                if ($nightVotes->isEmpty()) {
+                    $nightEntry['wolf_no_agreement'] = true;
+                } else {
+                    $totals   = $nightVotes->groupBy('target_player_id')->map(fn ($g) => $g->count())->sortDesc();
+                    $maxV     = $totals->first();
+                    $topIds   = $totals->filter(fn ($c) => $c === $maxV)->keys()->toArray();
+
+                    if (count($topIds) > 1) {
+                        $nightEntry['wolf_no_agreement'] = true;
+                    } else {
+                        $nightEntry['killed'] = $this->playerSnapshot($players, (int) $topIds[0]);
+                    }
+                }
+
+                if ($witchHeal?->target_player_id) {
+                    $nightEntry['witch_heal'] = $this->playerSnapshot($players, $witchHeal->target_player_id);
+                }
+                if ($witchKill?->target_player_id) {
+                    $nightEntry['witch_kill'] = $this->playerSnapshot($players, $witchKill->target_player_id);
+                }
+                if ($hunterNight?->target_player_id) {
+                    $hunter = $players->firstWhere('role', 'hunter');
+                    $nightEntry['hunter_shot'] = [
+                        'hunter_pseudo' => $hunter?->pseudo ?? '?',
+                        'target'        => $this->playerSnapshot($players, $hunterNight->target_player_id),
+                    ];
+                }
+
+                $timeline[] = $nightEntry;
             }
 
-            // Jour
-            $dayVotes = $actions->where('type', 'day_vote')->where('round', $round);
-            $dayEntry = ['type' => 'day', 'round' => $round, 'label' => "Jour {$round}"];
+            // ── Jour ─────────────────────────────────────────────────────────
+            $dayVotes  = $actions->where('type', 'day_vote')->where('round', $round);
+            $hunterDay = $actions->where('type', 'hunter_shot')->where('round', $round)->where('phase', 'day')->first();
+
+            $dayEntry = [
+                'type'        => 'day',
+                'round'       => $round,
+                'label'       => "Jour {$round}",
+                'vote_totals' => [],
+                'hunter_shot' => null,
+            ];
 
             if ($dayVotes->isNotEmpty()) {
                 $totals    = $dayVotes->groupBy('target_player_id')->map(fn ($g) => $g->sum('weight'))->sortDesc();
                 $maxWeight = $totals->first();
                 $topIds    = $totals->filter(fn ($w) => $w === $maxWeight)->keys()->toArray();
 
+                $dayEntry['vote_totals'] = $totals->map(function ($weight, $targetId) use ($players) {
+                    $snap = $this->playerSnapshot($players, (int) $targetId);
+                    return ['pseudo' => $snap['pseudo'], 'vote_count' => $weight];
+                })->values()->toArray();
+
                 if (count($topIds) > 1) {
                     $dayEntry['result']     = 'equality';
                     $dayEntry['eliminated'] = null;
                 } else {
                     $dayEntry['result']     = 'eliminated';
-                    $dayEntry['eliminated'] = $this->playerSnapshot($players, $topIds[0]);
+                    $dayEntry['eliminated'] = $this->playerSnapshot($players, (int) $topIds[0]);
                 }
             } else {
                 $dayEntry['result']     = 'no_vote';
@@ -74,6 +120,14 @@ class HistoryService
             $succession = $actions->where('type', 'mayor_succession')->where('round', $round)->first();
             if ($succession?->target_player_id) {
                 $dayEntry['succession'] = $this->playerSnapshot($players, $succession->target_player_id);
+            }
+
+            if ($hunterDay?->target_player_id) {
+                $hunter = $players->firstWhere('role', 'hunter');
+                $dayEntry['hunter_shot'] = [
+                    'hunter_pseudo' => $hunter?->pseudo ?? '?',
+                    'target'        => $this->playerSnapshot($players, $hunterDay->target_player_id),
+                ];
             }
 
             $timeline[] = $dayEntry;

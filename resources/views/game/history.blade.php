@@ -298,6 +298,8 @@
                                 <span class="font-semibold" style="color:#c9a84c;">{{ $entry['mayor']['pseudo'] }}</span>
                                 @if($entry['was_random'])
                                     <span class="text-xs ml-1" style="color:rgba(232,224,208,0.4);">(tirage au sort)</span>
+                                @elseif(!empty($entry['vote_count']))
+                                    <span class="text-xs ml-1" style="color:rgba(232,224,208,0.4);">({{ $entry['vote_count'] }} vote{{ $entry['vote_count'] > 1 ? 's' : '' }})</span>
                                 @endif
                             </p>
                         @else
@@ -305,7 +307,9 @@
                         @endif
 
                     @elseif($entry['type'] === 'night')
-                        @if(!empty($entry['killed']))
+                        @if($entry['wolf_no_agreement'])
+                            <p class="text-sm" style="color:rgba(232,224,208,0.5);">Les loups ne se sont pas mis d'accord cette nuit.</p>
+                        @elseif(!empty($entry['killed']))
                             <p class="text-sm">
                                 Tué cette nuit :
                                 <span class="font-semibold" style="color:#ef4444;">{{ $entry['killed']['pseudo'] }}</span>
@@ -315,8 +319,27 @@
                                     </span>
                                 @endif
                             </p>
-                        @else
-                            <p class="text-sm" style="color:rgba(232,224,208,0.5);">Personne tué cette nuit.</p>
+                        @endif
+
+                        @if(!empty($entry['witch_heal']))
+                            <p class="text-sm mt-1" style="color:#3493d3;">
+                                🧙 La sorcière a sauvé
+                                <span class="font-semibold">{{ $entry['witch_heal']['pseudo'] }}</span>
+                            </p>
+                        @endif
+
+                        @if(!empty($entry['witch_kill']))
+                            <p class="text-sm mt-1" style="color:#3493d3;">
+                                🧙 La sorcière a empoisonné
+                                <span class="font-semibold">{{ $entry['witch_kill']['pseudo'] }}</span>
+                            </p>
+                        @endif
+
+                        @if(!empty($entry['hunter_shot']))
+                            <p class="text-sm mt-1" style="color:#fbbf24;">
+                                🏹 Le chasseur <span class="font-semibold">{{ $entry['hunter_shot']['hunter_pseudo'] }}</span>
+                                a tiré sur <span class="font-semibold">{{ $entry['hunter_shot']['target']['pseudo'] }}</span>
+                            </p>
                         @endif
 
                     @elseif($entry['type'] === 'day')
@@ -333,13 +356,30 @@
                         @elseif($entry['result'] === 'equality')
                             <p class="text-sm" style="color:rgba(232,224,208,0.6);">Égalité — personne éliminé.</p>
                         @else
-                            <p class="text-sm" style="color:rgba(232,224,208,0.6);">Aucun vote exprimé.</p>
+                            <p class="text-sm" style="color:rgba(232,224,208,0.6);">Personne n'a voté — tirage au sort.</p>
+                        @endif
+
+                        @if(!empty($entry['vote_totals']))
+                            <div class="mt-1.5 space-y-0.5">
+                                @foreach($entry['vote_totals'] as $vt)
+                                    <p class="text-xs" style="color:rgba(232,224,208,0.45);">
+                                        {{ $vt['pseudo'] }} — {{ $vt['vote_count'] }} vote{{ $vt['vote_count'] > 1 ? 's' : '' }}
+                                    </p>
+                                @endforeach
+                            </div>
                         @endif
 
                         @if(!empty($entry['succession']))
                             <p class="text-sm mt-1" style="color:rgba(232,224,208,0.6);">
                                 👑 Nouveau maire :
                                 <span class="font-semibold" style="color:#c9a84c;">{{ $entry['succession']['pseudo'] }}</span>
+                            </p>
+                        @endif
+
+                        @if(!empty($entry['hunter_shot']))
+                            <p class="text-sm mt-1" style="color:#fbbf24;">
+                                🏹 Le chasseur <span class="font-semibold">{{ $entry['hunter_shot']['hunter_pseudo'] }}</span>
+                                a tiré sur <span class="font-semibold">{{ $entry['hunter_shot']['target']['pseudo'] }}</span>
                             </p>
                         @endif
 
