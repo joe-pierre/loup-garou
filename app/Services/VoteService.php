@@ -191,6 +191,7 @@ class VoteService
     {
         $game = $wolf->game;
 
+        // PhaseGuard ne couvre pas ce cas : 'processing_night' exclu volontairement (vote clos)
         if (! in_array($game->status, ['night', 'wolves_turn'])) {
             abort(409, 'La partie n\'est pas en phase nuit.');
         }

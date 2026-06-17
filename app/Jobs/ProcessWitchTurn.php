@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Events\Game\WitchTurnStarted;
 use App\Models\Game;
+use App\Services\PhaseGuard;
 use App\Services\VoteService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -56,7 +57,7 @@ class ProcessWitchTurn implements ShouldQueue
     {
         $game = Game::find($this->gameId);
 
-        if (! $game || $game->round !== $this->round || ! in_array($game->status, ['night', 'processing_night'])) {
+        if (! $game || $game->round !== $this->round || ! PhaseGuard::isNightOrProcessing($game)) {
             return;
         }
 

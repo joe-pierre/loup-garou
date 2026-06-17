@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Events\Game\HunterTurnStarted;
 use App\Models\Game;
+use App\Services\PhaseGuard;
 use App\Services\PhaseManager;
 use App\Services\WinConditionChecker;
 use Illuminate\Bus\Queueable;
@@ -63,7 +64,7 @@ class ProcessHunterTurn implements ShouldQueue
         // Mémorise depuis quelle macro-phase ce tour de chasseur a été déclenché,
         // pour que ProcessHunterAutoAction sache quelle transition appliquer
         // sans risquer de la déclencher deux fois (Guard #2).
-        $fromNight = in_array($game->status, ['night', 'processing_night']);
+        $fromNight = PhaseGuard::isNightOrProcessing($game);
 
         $hunter = $game->players()->where('id', $this->hunterId)->first();
 

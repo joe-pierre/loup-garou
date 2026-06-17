@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 00h19
+Generated at: 00h31
 
 ## PHP Analysis (Core Logic)
 
@@ -793,7 +793,7 @@ GameController.php
       - spectator(Request $request, string $code) → return view('game.spectator', compact('game', 'player', 'allPlayers'))
       - day(Request $request, string $code) → return view('game.day', compact('game', 'player', 'players', 'nightVictim'))
       - night(Request $request, string $code) → return view('game.night', compact('game', 'player', 'players'))
-      - redirectToCurrentPhase(Game $game, string $code) → return match (true) { in_array($game->status, ['day', 'processing_day']) => redirect()->route('game.day', ['code' => $code]), in_array($game->status, ['night', 'wolves_turn', 'processing_night', 'processing_wolves']) => redirect()->route('game.night', ['code' => $code]), $game->status === 'electing_mayor' => redirect()->route('game.mayor-election', ['code' => $code]), $game->status === 'finished' && $game->winner_team !== null => redirect()->route('game.finished', ['code' => $code]), $game->status === 'finished' => redirect()->route('game.cancelled', ['code' => $code]), default => redirect()->route('game.role-reveal', ['code' => $code]), }
+      - redirectToCurrentPhase(Game $game, string $code) → return match (true) { PhaseGuard::isDay($game) => redirect()->route('game.day', ['code' => $code]), PhaseGuard::isNight($game) => redirect()->route('game.night', ['code' => $code]), $game->status === 'electing_mayor' => redirect()->route('game.mayor-election', ['code' => $code]), $game->status === 'finished' && $game->winner_team !== null => redirect()->route('game.finished', ['code' => $code]), $game->status === 'finished' => redirect()->route('game.cancelled', ['code' => $code]), default => redirect()->route('game.role-reveal', ['code' => $code]), }
       - history(Request $request, string $code) → return view('game.history', compact('game', 'players', 'timeline', 'duration', 'myPlayer'))
       - state(Request $request, string $code) → return response()->json(['success' => true, 'data' => ['phase' => $game->status, 'round' => $game->round, 'my_role' => $player->role, 'is_alive' => (bool) $player->is_alive, 'is_mayor' => (bool) $player->is_mayor, 'phase_remaining_seconds' => $game->phaseRemainingSeconds(), 'seer_turn_active' => $seerTurnActive, 'werewolves_turn_active' => $werewolvesTurnActive, 'allies' => $allies]])
       - quit(Request $request, int $id) → return response()->json(['success' => true])
@@ -901,6 +901,18 @@ VoteService.php
       - getNightVoteState(Game $game) → return $aliveWolves->map(fn(GamePlayer $w) => ['player_id' => $w->id, 'pseudo' => $w->pseudo, 'has_voted' => $votes->has($w->id), 'target_player_id' => $votes->get($w->id)?->target_player_id, 'target_pseudo' => $votes->has($w->id) ? $targets[$votes[$w->id]->target_player_id] ?? null : null])->values()->toArray()
       - getMayorVoteTotals(Game $game) → return GameAction::where('game_actions.game_id', $game->id)->where('game_actions.type', 'mayor_vote')->where('game_actions.round', $game->round)->join('game_players', 'game_actions.target_player_id', '=', 'game_players.id')->selectRaw('game_actions.target_player_id, game_players.pseudo, COUNT(*) as vote_count')->groupBy('game_actions.target_player_id', 'game_players.pseudo')->get()->map(fn($row) => ['target_player_id' => $row->target_player_id, 'pseudo' => $row->pseudo, 'vote_count' => (int) $row->vote_count])->values()->toArray()
 
+// app/Services/PhaseGuard.php
+PhaseGuard.php
+    functions:
+      - isNight(Game $game) → return in_array($game->status, ['night', 'wolves_turn', 'processing_night'])
+      - isNightOrProcessing(Game $game) → return in_array($game->status, ['night', 'processing_night'])
+      - isDay(Game $game) → return in_array($game->status, ['day', 'processing_day'])
+      - canWitchAct(Game $game) → return self::isNightOrProcessing($game)
+      - canHunterShoot(Game $game) → return self::isNight($game) || self::isDay($game)
+      - canChatGeneral(Game $game) → return in_array($game->status, ['electing_mayor', 'day', 'processing_day'])
+      - canChatWolves(Game $game) → return $game->status === 'night'
+      - canChatDead(Game $game) → return self::isDay($game)
+
 // app/Services/HistoryService.php
 HistoryService.php
     functions:
@@ -943,7 +955,7 @@ GameService.php
       - validateRoleSettings(array $roles) → void
       - updateRoleSettings(Game $game, array $roles) → return $game
       - witchAct(GamePlayer $witch, string $action, ?int $targetId) → return $result
-      - hunterShoot(GamePlayer $hunter, int $targetId) → return DB::transaction(function () use ($hunter, $targetId, $game) { $alreadyShot = GameAction::where('game_id', $game->id)->where('player_id', $hunter->id)->where('type', 'hunter_shot')->where('round', $game->round)->lockForUpdate()->exists(); if ($alreadyShot) { abort(409, 'Vous avez déjà tiré ce round.'); } $target = GamePlayer::where('id', $targetId)->where('game_id', $game->id)->where('is_alive', true)->lockForUpdate()->first(); if (!$target) { abort(404, 'Cible invalide.'); } $target->update(['is_alive' => false]); GameAction::create(['game_id' => $game->id, 'player_id' => $hunter->id, 'type' => 'hunter_shot', 'target_player_id' => $target->id, 'round' => $game->round, 'phase' => in_array($game->status, ['night', 'processing_night']) ? 'night' : 'day']); return $target; })
+      - hunterShoot(GamePlayer $hunter, int $targetId) → return DB::transaction(function () use ($hunter, $targetId, $game) { $alreadyShot = GameAction::where('game_id', $game->id)->where('player_id', $hunter->id)->where('type', 'hunter_shot')->where('round', $game->round)->lockForUpdate()->exists(); if ($alreadyShot) { abort(409, 'Vous avez déjà tiré ce round.'); } $target = GamePlayer::where('id', $targetId)->where('game_id', $game->id)->where('is_alive', true)->lockForUpdate()->first(); if (!$target) { abort(404, 'Cible invalide.'); } $target->update(['is_alive' => false]); GameAction::create(['game_id' => $game->id, 'player_id' => $hunter->id, 'type' => 'hunter_shot', 'target_player_id' => $target->id, 'round' => $game->round, 'phase' => PhaseGuard::isNightOrProcessing($game) ? 'night' : 'day']); return $target; })
       - cancelGame(Game $game) → void
       - generateUniqueCode() → return $code
 
@@ -1268,6 +1280,20 @@ EventPayloadTest.php
 ExampleTest.php
     functions:
       - test_that_true_is_true() → void
+
+// tests/Unit/Services/PhaseGuardTest.php
+PhaseGuardTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_is_night_retourne_true_pour_statuts_nocturnes(string $status) → void
+      - nightStatusProvider() → return [['night'], ['wolves_turn'], ['processing_night']]
+      - test_is_day_retourne_true_pour_statuts_diurnes(string $status) → void
+      - dayStatusProvider() → return [['day'], ['processing_day']]
+      - test_is_night_retourne_false_pour_statuts_non_nocturnes(string $status) → void
+      - nonNightStatusProvider() → return [['waiting'], ['electing_mayor'], ['day'], ['processing_day'], ['finished']]
+      - test_can_witch_act_retourne_false_pour_wolves_turn() → void
+      - test_can_hunter_shoot_couvre_nuit_et_jour() → void
 
 // tests/TestCase.php
 TestCase.php

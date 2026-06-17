@@ -16,6 +16,7 @@ use App\Events\Game\PlayerReconnected;
 use App\Jobs\CheckReconnectionTimeout;
 use App\Jobs\ProcessMayorElection;
 use App\Jobs\WaitForReadyPlayers;
+use App\Services\PhaseGuard;
 use App\Services\TimerCalculator;
 use App\Models\Exclusion;
 use App\Models\Game;
@@ -585,7 +586,7 @@ class GameService
 
         $game = $witch->game;
 
-        if (! in_array($game->status, ['night', 'processing_night'])) {
+        if (! PhaseGuard::canWitchAct($game)) {
             abort(409, 'L\'action de la sorcière n\'est pas disponible hors phase nuit.');
         }
 
@@ -711,7 +712,7 @@ class GameService
 
         $game = $hunter->game;
 
-        if (! in_array($game->status, ['night', 'processing_night', 'day', 'processing_day'])) {
+        if (! PhaseGuard::canHunterShoot($game)) {
             abort(409, 'Le tir du chasseur n\'est pas disponible dans cette phase.');
         }
 
@@ -749,7 +750,7 @@ class GameService
                 'type'             => 'hunter_shot',
                 'target_player_id' => $target->id,
                 'round'            => $game->round,
-                'phase'            => in_array($game->status, ['night', 'processing_night']) ? 'night' : 'day',
+                'phase'            => PhaseGuard::isNightOrProcessing($game) ? 'night' : 'day',
             ]);
 
             return $target;

@@ -110,6 +110,7 @@ class Game extends Model
      */
     public function isNightPhase(): bool
     {
+        // PhaseGuard ne couvre pas ce cas : méthode d'instance sur le modèle, évite une dépendance service → modèle
         return in_array($this->status, ['night', 'wolves_turn', 'processing_night']);
     }
 
@@ -118,6 +119,7 @@ class Game extends Model
      */
     public function isDayPhase(): bool
     {
+        // PhaseGuard ne couvre pas ce cas : méthode d'instance sur le modèle, évite une dépendance service → modèle
         return in_array($this->status, ['day', 'processing_day']);
     }
 

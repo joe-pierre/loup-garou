@@ -8,6 +8,7 @@ use App\Models\GameAction;
 use App\Models\GamePlayer;
 use App\Services\GameService;
 use App\Services\HistoryService;
+use App\Services\PhaseGuard;
 use App\Services\VoteService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -112,7 +113,7 @@ class GameController extends Controller
     {
         $game = Game::where('code', strtoupper($code))->firstOrFail();
 
-        if (! in_array($game->status, ['night', 'wolves_turn', 'processing_night'])) {
+        if (! PhaseGuard::isNight($game)) {
             return $this->redirectToCurrentPhase($game, $code);
         }
 
@@ -128,9 +129,9 @@ class GameController extends Controller
     private function redirectToCurrentPhase(Game $game, string $code): RedirectResponse
     {
         return match (true) {
-            in_array($game->status, ['day', 'processing_day'])
+            PhaseGuard::isDay($game)
                 => redirect()->route('game.day', ['code' => $code]),
-            in_array($game->status, ['night', 'wolves_turn', 'processing_night', 'processing_wolves'])
+            PhaseGuard::isNight($game)
                 => redirect()->route('game.night', ['code' => $code]),
             $game->status === 'electing_mayor'
                 => redirect()->route('game.mayor-election', ['code' => $code]),
@@ -219,7 +220,7 @@ class GameController extends Controller
             return response()->json(['success' => false, 'message' => 'Tu ne participes pas à cette partie.'], 403);
         }
 
-        $isNight        = in_array($game->status, ['night', 'wolves_turn', 'processing_night']);
+        $isNight        = PhaseGuard::isNight($game);
         $deadlineActive = $game->phase_deadline !== null && $game->phase_deadline->isAfter(now());
 
         $aliveSeerExists = $isNight && $game->players()

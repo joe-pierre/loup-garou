@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ChatMessage;
 use App\Models\GamePlayer;
+use App\Services\PhaseGuard;
 
 /**
  * Gère l'envoi de messages dans les canaux de chat d'une partie.
@@ -43,22 +44,20 @@ class ChatService
             if (! $player->isWerewolf()) {
                 abort(403, 'Seuls les loups peuvent écrire dans le canal des loups.');
             }
-            if ($game->status !== 'night') {
+            if (! PhaseGuard::canChatWolves($game)) {
                 abort(409, 'Le chat des loups n\'est disponible que pendant la phase nuit.');
             }
         }
 
-        if ($channel === 'general') {
-            if (! in_array($game->status, ['electing_mayor', 'day', 'processing_day'])) {
-                abort(409, 'Le chat général n\'est disponible que pendant l\'élection du maire et le jour.');
-            }
+        if ($channel === 'general' && ! PhaseGuard::canChatGeneral($game)) {
+            abort(409, 'Le chat général n\'est disponible que pendant l\'élection du maire et le jour.');
         }
 
         if ($channel === 'dead') {
             if ($player->is_alive) {
                 abort(403, 'Seuls les joueurs éliminés peuvent écrire dans le canal des fantômes.');
             }
-            if (! in_array($game->status, ['day', 'processing_day'])) {
+            if (! PhaseGuard::canChatDead($game)) {
                 abort(409, 'Le chat des fantômes n\'est disponible que pendant la phase jour.');
             }
 

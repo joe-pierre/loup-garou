@@ -74,6 +74,7 @@ class CheckReconnectionTimeout implements ShouldQueue
 
         $game = Game::find($player->game_id);
 
+        // PhaseGuard ne couvre pas ce cas : ensemble custom ['night','day','electing_mayor'] = toutes les phases actives (hors finished/waiting/processing)
         if (! $game || ! in_array($game->status, ['night', 'day', 'electing_mayor'], true)) {
             return;
         }

@@ -19,6 +19,7 @@ use App\Jobs\ProcessWitchAutoAction;
 use App\Models\Game;
 use App\Models\GamePlayer;
 use App\Services\GameService;
+use App\Services\PhaseGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -100,7 +101,7 @@ class ActionController extends Controller
             ->where('user_id', $request->user()->id)
             ->firstOrFail();
 
-        $fromNight = in_array($hunter->game->status, ['night', 'processing_night']);
+        $fromNight = PhaseGuard::isNightOrProcessing($hunter->game);
 
         $target = $this->gameService->hunterShoot($hunter, $request->validated('target_player_id'));
 
@@ -130,6 +131,7 @@ class ActionController extends Controller
     {
         $game = Game::where('code', strtoupper($code))->firstOrFail();
 
+        // PhaseGuard ne couvre pas ce cas : statuts canoniques uniquement (hors processing) pour roleReveal
         if (! in_array($game->status, ['electing_mayor', 'night', 'day'])) {
             abort(404, 'Rôles non encore distribués.');
         }

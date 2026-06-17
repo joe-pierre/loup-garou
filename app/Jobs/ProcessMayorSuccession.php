@@ -64,6 +64,7 @@ class ProcessMayorSuccession implements ShouldQueue
         $game = Game::find($this->gameId);
 
         // Accepter night, processing_night, day ET processing_day
+        // PhaseGuard ne couvre pas ce cas : union de isNightOrProcessing + isDay (ensemble unique à ce job)
         if (! $game || ! in_array($game->status, ['night', 'processing_night', 'day', 'processing_day']) || $game->round !== $this->round) {
             return;
         }
