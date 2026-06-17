@@ -1,3 +1,19 @@
+## [CHOIX] setInterval parallèle à GSAP pour wolfTimerSeconds dans nightScreen()
+
+**Contexte :** feat/chat-toggle-ux — `resources/views/game/night.blade.php`
+
+**Symptôme / Problème :** Le timer visuel du tour des loups (barre rouge) est animé par `gsap.to('#wolf-timer-bar', { width:'0%', duration: WOLVES_TIMER })`. GSAP n'expose pas de callback tick accessible par Alpine — impossible de vérifier les seuils 75s et 15s pour l'auto-affichage du chat loups directement depuis l'animation.
+
+**Cause / Alternatives :** (1) Utiliser `gsap.ticker.add()` — coupling fort entre GSAP et Alpine, difficile à nettoyer. (2) Dériver le temps écoulé depuis `Date.now()` au moment du `werewolves-turn-started` — fragile si l'onglet est en arrière-plan. (3) Ajouter un `setInterval` de 1s dédié au tracking de `wolfTimerSeconds`, lancé et nettoyé conjointement avec l'animation GSAP.
+
+**Fix / Décision :** Option 3 retenue : `_wolfTimerInterval` lancé dans le listener `werewolves-turn-started`, décrémente `wolfTimerSeconds` chaque seconde et appelle `_checkWolfChatAuto()`. Nettoyé quand `wolfTimerSeconds <= 0`. Pattern identique à `_startDayTimer()` dans `dayScreen()` où le setInterval gère à la fois l'UI et la logique auto-chat.
+
+**Leçon :** Quand GSAP anime une barre visuelle pure, ne pas lui faire porter la logique métier temporelle — utiliser un `setInterval` séparé pour le tracking de secondes. Les deux coexistent sans conflit : GSAP pilote le DOM, l'interval pilote l'état Alpine.
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [RÉSOLU] canChatWolves excluait wolves_turn — chat loups muet pendant le tour actif
 
 **Contexte :** fix/wolf-chat-reception — `app/Services/PhaseGuard.php`, `tests/Feature/Game/ChatTest.php`, `tests/Unit/Services/PhaseGuardTest.php`.

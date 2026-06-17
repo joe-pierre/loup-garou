@@ -338,8 +338,33 @@
 
         {{-- ── CHAT LOUPS ── --}}
         <div class="max-w-lg mx-auto">
-            <p class="font-medieval text-xs mb-2 tracking-widest" style="color:rgba(232,224,208,0.85);">CANAL LOUPS</p>
-            <div class="rounded-xl overflow-hidden" style="border:1px solid rgba(139,0,0,0.3);background:#1a0505;">
+            <div class="flex items-center justify-between mb-2">
+                <p class="font-medieval text-xs tracking-widest" style="color:rgba(232,224,208,0.85);">CANAL LOUPS</p>
+                <button
+                    @click="toggleWolfChat()"
+                    class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medieval"
+                    style="background-color:rgba(139,0,0,0.15);border:1px solid rgba(139,0,0,0.4);color:#ff8888;"
+                >
+                    <span x-text="wolfChatVisible ? 'Masquer' : 'Chat loups'"></span>
+                    <span
+                        x-show="!wolfChatVisible && wolfUnreadMessages > 0"
+                        class="text-xs px-1.5 py-0.5 rounded-full"
+                        style="background-color:rgba(139,0,0,0.2);color:#ff8888;"
+                        x-text="wolfUnreadMessages"
+                    ></span>
+                </button>
+            </div>
+            <div
+                x-show="wolfChatVisible"
+                x-cloak
+                x-ref="wolfChatPanel"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                class="rounded-xl overflow-hidden" style="border:1px solid rgba(139,0,0,0.3);background:#1a0505;">
                 <div class="p-3 overflow-y-auto flex flex-col gap-2" style="height:150px;" x-ref="wolfChatMessages">
                     <template x-for="(msg, i) in wolfMessages" :key="i">
                         <div class="wolf-chat-bubble text-xs flex flex-col"
@@ -606,6 +631,14 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             wolfChatInput:   '',
             wolfChatSending: false,
 
+            wolfChatVisible:    false,
+            wolfManualOverride: false,
+            wolfAutoOpened:     false,
+            wolfAutoClosed:     false,
+            wolfUnreadMessages: 0,
+            wolfTimerSeconds:   0,
+            _wolfTimerInterval: null,
+
             witchVictim:         null,
             witchHealAvailable:  false,
             witchKillAvailable:  false,
@@ -739,6 +772,25 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                         this.wolfEligibleTargets = data.eligible_targets ?? [];
                         this.wolfVoteLocked      = false;
                         this.wolfSelectedTarget  = null;
+
+                        // Réinitialiser le chat loups pour ce tour
+                        this.wolfChatVisible    = false;
+                        this.wolfManualOverride = false;
+                        this.wolfAutoOpened     = false;
+                        this.wolfAutoClosed     = false;
+                        this.wolfUnreadMessages = 0;
+                        this.wolfTimerSeconds   = WOLVES_TIMER;
+
+                        if (this._wolfTimerInterval) clearInterval(this._wolfTimerInterval);
+                        this._wolfTimerInterval = setInterval(() => {
+                            this.wolfTimerSeconds = Math.max(0, this.wolfTimerSeconds - 1);
+                            this._checkWolfChatAuto();
+                            if (this.wolfTimerSeconds <= 0) {
+                                clearInterval(this._wolfTimerInterval);
+                                this._wolfTimerInterval = null;
+                            }
+                        }, 1000);
+
                         this.$nextTick(() => {
                             if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
                             gsap.to('#wolf-timer-bar', { width: '0%', duration: WOLVES_TIMER, ease: 'none' });
@@ -749,6 +801,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                     });
                     window.addEventListener('werewolf-chat-message', (e) => {
                         this.wolfMessages.push(e.detail);
+                        if (!this.wolfChatVisible) this.wolfUnreadMessages++;
                         this.$nextTick(() => {
                             const el = this.$refs.wolfChatMessages;
                             if (el) el.scrollTop = el.scrollHeight;
@@ -848,6 +901,28 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                     }
                 } catch { }
                 finally { this.hunterSubmitting = false; }
+            },
+
+            toggleWolfChat() {
+                this.wolfChatVisible = !this.wolfChatVisible;
+                this.wolfManualOverride = true;
+                if (this.wolfChatVisible) this.wolfUnreadMessages = 0;
+            },
+
+            _checkWolfChatAuto() {
+                if (this.wolfTimerSeconds <= 75 && !this.wolfChatVisible && !this.wolfManualOverride && !this.wolfAutoOpened) {
+                    this.wolfChatVisible = true;
+                    this.wolfAutoOpened  = true;
+                    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                        this.$nextTick(() => {
+                            gsap.from(this.$refs.wolfChatPanel, { opacity: 0, y: 20, duration: 0.4, ease: 'power2.out' });
+                        });
+                    }
+                }
+                if (this.wolfTimerSeconds <= 15 && this.wolfChatVisible && !this.wolfManualOverride && !this.wolfAutoClosed) {
+                    this.wolfChatVisible = false;
+                    this.wolfAutoClosed  = true;
+                }
             },
 
             async wolfVote() {
