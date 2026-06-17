@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 23h59
+Generated at: 00h09
 
 ## PHP Analysis (Core Logic)
 
@@ -969,6 +969,13 @@ GoogleAuthTest.php
       - test_authentifie_le_joueur_après_callback() → void
       - test_exception_socialite_redirige_vers_login_avec_erreur() → void
 
+// tests/Feature/Game/GameHistoryServiceTest.php
+GameHistoryServiceTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_build_timeline_retourne_election_plus_finish_pour_partie_sans_rounds() → void
+
 // tests/Feature/Game/ReconnectionTest.php
 ReconnectionTest.php
     attributes:
@@ -1215,6 +1222,16 @@ LobbyTest.php
       - test_cas3_rejoindre_avec_code_invalide_renvoie_un_message_derreur_exploitable() → void
       - test_cas4_pseudo_vide_renvoie_une_erreur_de_validation_exploitable() → void
 
+// tests/Unit/Models/GamePlayerModelTest.php
+GamePlayerModelTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_witch_heal_used_retourne_false_si_settings_null() → void
+      - test_witch_kill_used_retourne_true_si_potion_utilisee() → void
+      - test_witch_has_potion_retourne_false_si_les_deux_epuisees() → void
+      - test_is_active_and_alive_retourne_false_si_inactif() → void
+
 // tests/Unit/Models/GameActionTest.php
 GameActionTest.php
     attributes:
@@ -1223,6 +1240,19 @@ GameActionTest.php
       - test_scope_anonymized_exclut_player_id_des_colonnes() → void
       - test_scope_anonymized_retourne_toutes_les_lignes_sans_filtre() → void
       - test_scope_anonymized_retourne_target_player_id_type_weight_round_phase() → void
+
+// tests/Unit/Models/GameModelTest.php
+GameModelTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_is_night_phase_retourne_true_pour_night_wolves_turn_processing_night() → void
+      - test_is_night_phase_retourne_false_pour_day_et_autres() → void
+      - test_is_day_phase_retourne_true_pour_day_et_processing_day() → void
+      - test_is_cancelled_retourne_true_uniquement_si_finished_sans_vainqueur() → void
+      - test_alive_werewolves_count_ne_compte_pas_les_morts() → void
+      - test_alive_villagers_count_exclut_les_loups() → void
+      - test_timer_fallback_si_settings_null() → void
 
 // tests/Unit/Events/EventPayloadTest.php
 EventPayloadTest.php
