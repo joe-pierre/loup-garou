@@ -618,6 +618,14 @@
 
 ---
 
+### [x] 2026-06-18 — Empoisonnement sorcière ignoré (race condition ProcessWitchAutoAction)
+
+- **Symptôme :** la sorcière soumettait un `kill`, recevait `success: true`, mais la nuit se terminait sans que la victime soit éliminée.
+- **Cause :** `ProcessWitchAutoAction::delay(0)` dispatché depuis le Controller pouvait s'exécuter avant que la transaction `witch_kill` soit visible en DB (driver sync en tests, worker rapide en prod). Le guard `$alreadyActed` trouvait aucune action → créait `witch_pass` → `ProcessNightEnd` terminait la nuit immédiatement.
+- **Fix :** `delay(now()->addSeconds(2))` dans `ActionController::witchAct()` + `$game->refresh()` avant le guard dans `ProcessWitchAutoAction::handle()`.
+
+---
+
 ### [x] 2026-06-16 — Redirection /night bloquée si MayorSuccessionDone précède le listener
 
 - **Symptôme :** redirection vers /night jamais déclenchée si `MayorSuccessionDone` arrive côté client avant que `handleNightStarted()` pose son listener `mayor-succession-done` (réordonnancement WebSocket possible) — `successionDepth` reste > 0, la partie reste bloquée sur /day indéfiniment.

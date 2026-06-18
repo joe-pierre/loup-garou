@@ -57,6 +57,7 @@ class ProcessWitchAutoAction implements ShouldQueue
             return; // idempotent : déjà transitionné
         }
 
+        $game->refresh();
         $alreadyActed = $game->actions()
             ->where('round', $this->round)
             ->whereIn('type', ['witch_heal', 'witch_kill', 'witch_pass'])

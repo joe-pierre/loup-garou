@@ -86,8 +86,9 @@ class ActionController extends Controller
             broadcast(new WitchActedPublic($witch->game));
         }
 
-        // L'action est résolue immédiatement -> ProcessWitchAutoAction termine le tour sans attendre le timer
-        ProcessWitchAutoAction::dispatch($witch->game_id, $witch->game->round)->delay(0);
+        // Délai de 2s pour garantir que la transaction witchAct() est committée avant la lecture du guard
+        ProcessWitchAutoAction::dispatch($witch->game_id, $witch->game->round)
+            ->delay(now()->addSeconds(2));
 
         return response()->json([
             'success' => true,
