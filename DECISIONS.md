@@ -820,3 +820,19 @@ bundle Vite. Pour les variables lues dès init() (avant le premier tick Alpine),
 seul le layout garantit une disponibilité synchrone. Ne pas exposer sur window depuis
 une const locale d'une vue Blade.
 **Statut :** ✅ Résolu
+
+---
+
+## [RÉSOLU] Empoisonnement sorcière ignoré — race condition ProcessWitchAutoAction vs transaction witchAct()
+
+**Contexte :** `fix/witch-kill-timing` — `app/Http/Controllers/Game/ActionController.php`, `app/Jobs/ProcessWitchAutoAction.php`
+
+**Symptôme / Problème :** La sorcière soumettait une action `kill`, recevait `success: true`, mais la nuit se terminait sans que l'empoisonnement soit pris en compte. L'interface affichait `witchActionDone = true` mais la victime n'était pas éliminée. Reproductible surtout avec le driver queue `database` en mode sync (tests) ou un worker très rapide en prod.
+
+**Cause / Alternatives :** `ActionController::witchAct()` dispatchait `ProcessWitchAutoAction::delay(0)` immédiatement après le retour de `gameService->witchAct()`. Avec le driver sync (ou un worker ultra-rapide), le job s'exécutait avant que la transaction interne ait pu être vue par une requête DB ultérieure (isolation de lecture, Eloquent model non-rafraîchi). Le guard `$alreadyActed` ne trouvait pas d'action `witch_kill` → créait un `witch_pass` → dispatchait `ProcessNightEnd::delay(0)` → nuit terminée sans empoisonnement. En parallèle, `ProcessWitchAutoAction` lisait `$game->actions()` sur un modèle Eloquent potentiellement stale (pas de `refresh()`).
+
+**Fix / Décision :** (1) `delay(0)` → `delay(now()->addSeconds(2))` dans `ActionController::witchAct()` pour laisser la transaction se propager. (2) `$game->refresh()` avant le guard `$alreadyActed` dans `ProcessWitchAutoAction::handle()` pour forcer la lecture des données fraîches. Les deux fixes sont complémentaires : le délai couvre la race condition en prod, le refresh couvre les lectures Eloquent stale en test.
+
+**Leçon :** Toute action volontaire qui dispatche un job auto en `delay(0)` crée une fenêtre de race condition. Pattern à appliquer systématiquement : (a) délai minimal de 2s sur le dispatch auto depuis un Controller, (b) `$game->refresh()` avant chaque guard de double-fire dans les jobs qui succèdent à une action volontaire. Voir aussi DECISIONS.md "Race condition vote loups" pour le même pattern appliqué aux loups.
+
+**Statut :** ✅ Résolu

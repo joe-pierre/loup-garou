@@ -454,6 +454,7 @@
                         <button
                             type="button"
                             class="target-btn"
+                            data-witch-kill-target
                             :class="witchSelectedTarget === {{ $witchTarget->id }} ? 'wolf-sel' : ''"
                             :disabled="witchActionDone"
                             @click="witchSelectedTarget = {{ $witchTarget->id }}"
@@ -466,6 +467,11 @@
                         </button>
                         @endforeach
                     </div>
+                    <p x-show="witchKillTargets.length === 0"
+                       class="text-xs italic"
+                       style="color:rgba(232,224,208,0.5);">
+                        Aucune cible disponible pour le poison.
+                    </p>
                     <button
                         @click="witchAct('kill', witchSelectedTarget)"
                         :disabled="!witchSelectedTarget || witchSubmitting || witchActionDone"
@@ -864,6 +870,10 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                     this.seerActionDone = true;
                 } catch { }
                 finally { this.seerSubmitting = false; }
+            },
+
+            get witchKillTargets() {
+                return Array.from(document.querySelectorAll('[data-witch-kill-target]'));
             },
 
             async witchAct(action, targetId = null) {
