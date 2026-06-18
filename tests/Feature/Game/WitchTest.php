@@ -282,6 +282,49 @@ class WitchTest extends TestCase
     }
 
     /**
+     * La sorcière empoisonne un joueur vivant pendant processing_night :
+     * l'action doit être persistée même avec un worker rapide.
+     */
+    public function test_sorciere_empoisonne_joueur_vivant_pendant_processing_night(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game = Game::factory()->create([
+            'status' => 'processing_night', 'max_players' => 6, 'round' => 1,
+        ]);
+        $user   = User::factory()->create();
+        $witch  = GamePlayer::factory()->witch()->create(['game_id' => $game->id, 'user_id' => $user->id]);
+        $target = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+        GamePlayer::factory()->werewolf()->create(['game_id' => $game->id]);
+        GamePlayer::factory()->count(2)->villager()->create(['game_id' => $game->id]);
+
+        $response = $this->actingAs($user)->postJson("/game/{$game->id}/witch/act", [
+            'action'           => 'kill',
+            'target_player_id' => $target->id,
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertFalse($target->fresh()->is_alive);
+        $this->assertDatabaseHas('game_actions', [
+            'game_id'   => $game->id,
+            'player_id' => $witch->id,
+            'type'      => 'witch_kill',
+            'round'     => 1,
+        ]);
+
+        // ProcessWitchAutoAction ne doit PAS créer de witch_pass puisque witch_kill existe
+        Queue::assertPushed(\App\Jobs\ProcessWitchAutoAction::class);
+        // Simuler l'exécution du job
+        (new \App\Jobs\ProcessWitchAutoAction($game->id, 1))->handle();
+
+        $this->assertSame(
+            0,
+            GameAction::where('game_id', $game->id)->where('type', 'witch_pass')->count()
+        );
+    }
+
+    /**
      * Guard #3 (variante AutoAction) : même sans victime des loups,
      * ProcessWitchAutoAction doit résoudre le tour (witch_pass) et
      * dispatcher ProcessNightEnd sans bloquer.
