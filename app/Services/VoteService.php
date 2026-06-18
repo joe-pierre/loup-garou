@@ -260,9 +260,11 @@ class VoteService
             return $this->getNightVoteState($game);
         });
 
-        // Résolution anticipée : tous les loups ont voté → déclencher ProcessNightActions immédiatement
+        // Délai de 1s pour absorber les votes quasi-simultanés avant que ProcessNightActions
+        // ne passe le statut à 'processing_night' et bloque les votes tardifs (race condition réseau).
         if ($allVoted) {
-            \App\Jobs\ProcessNightActions::dispatch($game->id, $round);
+            \App\Jobs\ProcessNightActions::dispatch($game->id, $round)
+                ->delay(now()->addSecond());
         }
 
         return $state;
