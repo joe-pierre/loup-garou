@@ -1,3 +1,19 @@
+## [RÉSOLU] Race condition : vote d'un second loup rejeté 409 si le premier déclenche ProcessNightActions
+
+**Contexte :** `fix/wolf-vote-simultaneous` — `app/Services/VoteService.php` méthode `castNightVote()`
+
+**Symptôme / Problème :** Avec 2 loups votant quasi-simultanément, le premier vote déclenchait `ProcessNightActions::dispatch()` sans délai. En quelques ms, le job transitait le statut de `wolves_turn` vers `processing_night`. Le POST du second loup arrivait alors avec `status = 'processing_night'`, exclu du guard `in_array($game->status, ['night', 'wolves_turn'])` → abort(409). Le second vote était silencieusement ignoré côté client (`wolfVoteLocked` déjà `true` pour le premier loup).
+
+**Cause / Alternatives :** La résolution anticipée (tous loups ont voté) dispatchait le job immédiatement. En conditions réseau normales (quelques ms entre deux clics simultanés), la transaction `ProcessNightActions` pouvait s'exécuter avant l'arrivée du second POST. Alternative envisagée : mutex Redis — rejeté (sur-ingénierie, fragile si Redis redémarre). Le dispatch différé absorbe la fenêtre de réseau sans changer la logique.
+
+**Fix / Décision :** `->delay(now()->addSecond())` sur `ProcessNightActions::dispatch()` dans `castNightVote()`. Le guard `whereIn('status', ['night', 'wolves_turn'])` de `ProcessNightActions` reste le verrou anti-double-fire (inchangé). Un second dispatch éventuel du timer loups trouvera `status = 'processing_night'` et retournera null.
+
+**Leçon :** Toute résolution anticipée déclenchée depuis un endpoint HTTP (plusieurs joueurs peuvent appuyer quasi-simultanément) doit laisser une fenêtre d'au moins 1s avant que le job ne verrouille le statut. Le pattern : dispatch anticipé + délai minimal, timer auto + délai complet, guard atomique dans le job.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [RÉSOLU] Nuits sans action absentes de la timeline + succession maire sans filtre de phase
 
 **Contexte :** fix/history-and-death-banner — `app/Services/HistoryService.php`, `resources/views/game/history.blade.php`

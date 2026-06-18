@@ -348,6 +348,12 @@
 
 ---
 
+## Phase 23 — Bugfix race condition vote loups simultanés (2026-06-18)
+
+- [x] **Fix** — `VoteService::castNightVote()` : `->delay(now()->addSecond())` sur le dispatch anticipé de `ProcessNightActions` pour absorber les votes quasi-simultanés (`fix/wolf-vote-simultaneous`)
+
+---
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
