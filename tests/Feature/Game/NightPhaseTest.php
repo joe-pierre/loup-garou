@@ -232,6 +232,39 @@ class NightPhaseTest extends TestCase
     }
 
     /**
+     * Deux loups votent quasi-simultanément : les deux votes doivent être
+     * enregistrés, pas seulement le premier.
+     */
+    public function test_deux_loups_peuvent_voter_sans_conflit(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game   = $this->makeNightGame();
+        $game->update(['status' => 'wolves_turn']);
+
+        $user1 = User::factory()->create();
+        $user2 = User::factory()->create();
+        $wolf1 = GamePlayer::factory()->werewolf()->create(['game_id' => $game->id, 'user_id' => $user1->id]);
+        $wolf2 = GamePlayer::factory()->werewolf()->create(['game_id' => $game->id, 'user_id' => $user2->id]);
+        $target = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+        GamePlayer::factory()->count(3)->villager()->create(['game_id' => $game->id]);
+
+        $this->actingAs($user1)->postJson("/game/{$game->id}/vote/night", [
+            'target_player_id' => $target->id,
+        ])->assertStatus(200);
+
+        $this->actingAs($user2)->postJson("/game/{$game->id}/vote/night", [
+            'target_player_id' => $target->id,
+        ])->assertStatus(200);
+
+        $this->assertSame(
+            2,
+            GameAction::where('game_id', $game->id)->where('type', 'night_vote')->count()
+        );
+    }
+
+    /**
      * Le délai de ProcessNightEnd doit couvrir celui de ProcessMayorSuccession
      * (buffer) lorsque le maire meurt la nuit, pour éviter que la nuit se termine
      * avant que la succession ait pu se résoudre.
