@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Action automatique de la Sorcière après expiration du timer.
@@ -58,12 +59,18 @@ class ProcessWitchAutoAction implements ShouldQueue
         }
 
         $game->refresh();
-        $alreadyActed = $game->actions()
-            ->where('round', $this->round)
-            ->whereIn('type', ['witch_heal', 'witch_kill', 'witch_pass'])
-            ->exists();
 
-        if (! $alreadyActed) {
+        DB::transaction(function () use ($game) {
+            $alreadyActed = $game->actions()
+                ->where('round', $this->round)
+                ->whereIn('type', ['witch_heal', 'witch_kill', 'witch_pass'])
+                ->lockForUpdate()
+                ->exists();
+
+            if ($alreadyActed) {
+                return;
+            }
+
             $witch = $game->players()->where('role', 'witch')->where('is_alive', true)->first();
 
             if ($witch) {
@@ -76,7 +83,7 @@ class ProcessWitchAutoAction implements ShouldQueue
                     'phase'            => 'night',
                 ]);
             }
-        }
+        });
 
         ProcessNightEnd::dispatch($this->gameId, $this->round)->delay(0);
     }

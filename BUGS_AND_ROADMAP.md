@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-19 — Guard sans lock dans ProcessWitchAutoAction
+
+- **Symptôme :** double `witch_pass` possible en théorie si deux exécutions concurrentes du job passaient simultanément le guard anti-doublon.
+- **Cause :** la vérification `exists()` sur les actions sorcières était effectuée hors transaction, sans `lockForUpdate()`.
+- **Fix :** guard + création enveloppés dans `DB::transaction()` avec `lockForUpdate()` ; `ProcessNightEnd::dispatch()->delay(0)` reste hors transaction (RISK_GUARDS Guard #5).
+
+---
+
 ### [x] 2026-06-19 — Broadcasts dans transactions lockForUpdate + race conditions
 
 - **Symptôme :** (1) Broadcasts (`PlayerJoined`, `GameStarted`, `PlayerExcluded`, `GameFinished`, `PlayerReady`, `MayorElectionStarted`) émis à l'intérieur de `DB::transaction()` + `lockForUpdate()` dans `GameService`, violant la règle de non side-effect en transaction. (2) `hunter_pending` lu + supprimé sans verrou dans `ProcessNightEnd` — deux jobs concurrents pouvaient déclencher deux `ProcessHunterTurn`. (3) `ProcessSeerTurn` sans guard sur le round — un job stale d'une nuit précédente pouvait s'exécuter sur la nuit suivante.
