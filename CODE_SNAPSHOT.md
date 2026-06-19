@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 14h09
+Generated at: 15h06
 
 ## PHP Analysis (Core Logic)
 
@@ -210,7 +210,7 @@ ProcessSeerTurn.php
       - Queueable
       - SerializesModels
     functions:
-      - __construct(int $gameId) {}
+      - __construct(int $gameId, int $round) {}
       - handle() → void
 
 // app/Jobs/ProcessWitchAutoAction.php
@@ -940,7 +940,7 @@ GameService.php
     functions:
       - __construct(RoleDistributor $roleDistributor, PhaseManager $phaseManager) {}
       - createGame(User $user, string $pseudo, int $maxPlayers) → return DB::transaction(function () use ($user, $pseudo, $maxPlayers, $code) { $game = Game::create(['code' => $code, 'status' => 'waiting', 'max_players' => $maxPlayers]); GamePlayer::create(['game_id' => $game->id, 'user_id' => $user->id, 'pseudo' => $pseudo, 'is_host' => true, 'joined_at' => now()]); return $game; })
-      - joinGame(User $user, string $code, string $pseudo) → return DB::transaction(function () use ($user, $code, $pseudo) { $game = Game::where('code', $code)->lockForUpdate()->first(); if (!$game) { abort(404, 'Partie introuvable.'); } if ($game->status !== 'waiting') { abort(409, 'Cette partie a déjà commencé.'); } // Vérifier si l'utilisateur est déjà dans la partie $existing = GamePlayer::where('game_id', $game->id)->where('user_id', $user->id)->first(); if ($existing) { return $existing; } if ($game->players()->count() >= $game->max_players) { abort(409, 'Cette partie est déjà complète.'); } $excluded = Exclusion::where('game_id', $game->id)->where('user_id', $user->id)->exists(); if ($excluded) { abort(403, 'Tu as été exclu de cette partie.'); } $player = GamePlayer::create(['game_id' => $game->id, 'user_id' => $user->id, 'pseudo' => $pseudo, 'joined_at' => now()]); broadcast(new PlayerJoined($game, $player)); $currentCount = $game->players()->count(); if ($currentCount === $game->max_players) { $this->startGame($game); } return $player; })
+      - joinGame(User $user, string $code, string $pseudo) → return $result['player']
       - startGame(Game $game) → void
       - markReady(GamePlayer $player) → void
       - excludePlayer(GamePlayer $host, GamePlayer $target, string $reason) → void

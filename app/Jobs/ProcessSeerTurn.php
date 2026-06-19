@@ -13,7 +13,8 @@ use Illuminate\Queue\SerializesModels;
 /**
  * Démarre le tour de la voyante.
  *
- * Dispatché par ProcessMayorElection après un délai mayor_reveal.
+ * Dispatché par ProcessMayorElection après un délai mayor_reveal, et par
+ * PhaseManager::startNight() pour les rondes suivantes.
  * Si la voyante est morte, absente ou inactive → dispatch immédiat de ProcessWerewolvesTurn.
  * Sinon :
  *   - Broadcast SeerTurnStarted sur le canal privé de la voyante.
@@ -26,8 +27,9 @@ class ProcessSeerTurn implements ShouldQueue
 
     /**
      * @param int $gameId Identifiant de la partie.
+     * @param int $round  Round de référence (guard anti-double-fire entre deux nuits).
      */
-    public function __construct(public readonly int $gameId) {}
+    public function __construct(public readonly int $gameId, public readonly int $round) {}
 
     /**
      * Vérifie les guards, broadcast SeerTurnStarted et dispatche les jobs suivants.
@@ -35,6 +37,7 @@ class ProcessSeerTurn implements ShouldQueue
      * Guards d'entrée :
      *   - La partie existe.
      *   - status === 'night'.
+     *   - round === $this->round (évite qu'un job stale d'une nuit précédente s'exécute).
      *
      * Dispatche :
      *   - ProcessWerewolvesTurn(delay=0) si voyante morte/absente/inactive.
@@ -45,7 +48,7 @@ class ProcessSeerTurn implements ShouldQueue
     {
         $game = Game::find($this->gameId);
 
-        if (! $game || $game->status !== 'night') {
+        if (! $game || $game->status !== 'night' || $game->round !== $this->round) {
             return;
         }
 

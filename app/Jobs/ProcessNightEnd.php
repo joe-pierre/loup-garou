@@ -11,6 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -70,14 +71,26 @@ class ProcessNightEnd implements ShouldQueue
             return;
         }
 
-        $hunterPending = GameAction::where('game_id', $game->id)
-            ->where('type', 'hunter_pending')
-            ->where('round', $game->round)
-            ->first();
+        // Lecture + suppression atomique pour éviter un double dispatch du chasseur
+        $hunterId = DB::transaction(function () use ($game) {
+            $hunterPending = GameAction::where('game_id', $game->id)
+                ->where('type', 'hunter_pending')
+                ->where('round', $game->round)
+                ->lockForUpdate()
+                ->first();
 
-        if ($hunterPending) {
+            if (! $hunterPending) {
+                return null;
+            }
+
+            $playerId = $hunterPending->player_id;
             $hunterPending->delete();
-            ProcessHunterTurn::dispatch($game->id, $game->round, $hunterPending->player_id)->delay(0);
+            return $playerId;
+        });
+
+        if ($hunterId !== null) {
+            // delay(0) interdit dans la transaction (Guard #5) — dispatché hors transaction
+            ProcessHunterTurn::dispatch($game->id, $game->round, $hunterId)->delay(0);
             return;
         }
 

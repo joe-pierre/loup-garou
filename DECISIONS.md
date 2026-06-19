@@ -836,3 +836,24 @@ une const locale d'une vue Blade.
 **Leçon :** Toute action volontaire qui dispatche un job auto en `delay(0)` crée une fenêtre de race condition. Pattern à appliquer systématiquement : (a) délai minimal de 2s sur le dispatch auto depuis un Controller, (b) `$game->refresh()` avant chaque guard de double-fire dans les jobs qui succèdent à une action volontaire. Voir aussi DECISIONS.md "Race condition vote loups" pour le même pattern appliqué aux loups.
 
 **Statut :** ✅ Résolu
+
+---
+
+## [RÉSOLU] Broadcasts et race conditions dans les transactions lockForUpdate
+
+**Contexte :** `fix/broadcasts-out-of-transaction` — `app/Services/GameService.php`, `app/Jobs/ProcessNightEnd.php`, `app/Jobs/ProcessSeerTurn.php`, `app/Jobs/ProcessMayorElection.php`, `app/Services/PhaseManager.php`
+
+**Symptôme / Problème :** Plusieurs méthodes de `GameService` (`cancelGame`, `markReady`, `joinGame`, `startGame`, `excludePlayer`) contenaient des `broadcast()` et des `notify()` à l'intérieur de blocs `DB::transaction()` avec `lockForUpdate()`. En cas d'échec de rollback ou de lenteur du worker Reverb, le broadcast était émis avant que la transaction soit visible pour les autres connexions DB. Dans `ProcessNightEnd`, la lecture + suppression de `hunter_pending` était non atomique : deux exécutions simultanées du job pouvaient toutes deux voir l'enregistrement avant qu'il soit supprimé, déclenchant deux `ProcessHunterTurn`. Dans `ProcessSeerTurn`, aucun guard sur le round n'existait : un job stale d'une nuit précédente (en retard dans la queue) pouvait déclencher le tour voyante d'une nouvelle nuit.
+
+**Cause / Alternatives :** Pattern anti-pattern : side-effects (broadcasts, notifications HTTP, dispatches delay(0)) dans une transaction DB ouverte. La transaction garantit l'atomicité des écritures, pas des effets de bord réseaux. Alternative pour les broadcasts : faire retourner les données nécessaires par le closure de transaction, puis broadcaster après.
+
+**Fix / Décision :**
+- `cancelGame`, `markReady`, `startGame`, `joinGame`, `excludePlayer` : la transaction retourne un tableau de données, tous les `broadcast()` et `notify()` sont appelés après, conditionnés par un check non-null.
+- `markReady` : `ProcessMayorElection::dispatch()->delay(timer)` reste DANS la transaction (delay > 0, autorisé par Guard #5 — il ne s'exécute pas pendant la transaction).
+- `excludePlayer` : `$targetUser` chargé avant le `DB::transaction()` ; `$target` reste en mémoire PHP avec ses attributs après `delete()` — les broadcasts peuvent l'utiliser sans aller en base.
+- `ProcessNightEnd` : lecture + suppression de `hunter_pending` enveloppée dans `DB::transaction()` + `lockForUpdate()` ; `ProcessHunterTurn::dispatch()->delay(0)` dispatché hors transaction (Guard #5).
+- `ProcessSeerTurn` : ajout du paramètre `$round` au constructeur ; guard `$game->round !== $this->round` dans `handle()`.
+
+**Leçon :** Règle absolue : aucun `broadcast()`, `notify()` ou `dispatch()->delay(0)` dans un `DB::transaction()` qui contient un `lockForUpdate()`. Les dispatches avec `delay > 0` sont tolérés (ils ne s'exécutent pas pendant la transaction). Pour les jobs avec guard de double-fire, l'opération "lire + détruire" doit elle-même être atomique (transaction + lockForUpdate).
+
+**Statut :** ✅ Résolu

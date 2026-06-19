@@ -33,8 +33,7 @@ use Illuminate\Support\Str;
  * actions spéciales (voyante, sorcière, chasseur) et gestion du cycle de vie d'une partie.
  *
  * Tous les guards métier (phase, rôle, vivant) sont vérifiés dans ce service.
- * Les broadcasts et dispatches de jobs se font hors des transactions lockForUpdate,
- * sauf dans startGame() où les broadcasts sont intégrés à la transaction de distribution de rôles.
+ * Les broadcasts et dispatches de jobs se font hors des transactions lockForUpdate.
  */
 class GameService
 {
@@ -89,7 +88,7 @@ class GameService
      */
     public function joinGame(User $user, string $code, string $pseudo): GamePlayer
     {
-        return DB::transaction(function () use ($user, $code, $pseudo) {
+        $result = DB::transaction(function () use ($user, $code, $pseudo) {
             $game = Game::where('code', $code)->lockForUpdate()->first();
 
             if (! $game) {
@@ -106,7 +105,7 @@ class GameService
                 ->first();
 
             if ($existing) {
-                return $existing;
+                return ['player' => $existing, 'broadcast' => false, 'start' => false, 'game' => null];
             }
 
             if ($game->players()->count() >= $game->max_players) {
@@ -128,15 +127,26 @@ class GameService
                 'joined_at' => now(),
             ]);
 
-            broadcast(new PlayerJoined($game, $player));
-
             $currentCount = $game->players()->count();
-            if ($currentCount === $game->max_players) {
-                $this->startGame($game);
-            }
+            $start        = $currentCount === $game->max_players;
 
-            return $player;
+            return [
+                'player'    => $player,
+                'broadcast' => true,
+                'start'     => $start,
+                'game'      => $game,
+            ];
         });
+
+        if ($result['broadcast']) {
+            broadcast(new PlayerJoined($result['game'], $result['player']));
+        }
+
+        if ($result['start']) {
+            $this->startGame($result['game']);
+        }
+
+        return $result['player'];
     }
 
     /**
@@ -148,7 +158,7 @@ class GameService
      */
     public function startGame(Game $game): void
     {
-        DB::transaction(function () use ($game) {
+        $data = DB::transaction(function () use ($game) {
             // Re-lock et vérifier le status pour éviter un double démarrage
             $locked = Game::where('id', $game->id)
                 ->where('status', 'waiting')
@@ -156,12 +166,12 @@ class GameService
                 ->first();
 
             if (! $locked) {
-                return;
+                return null;
             }
 
             if (! $locked->canTransition('start_election')) {
                 Log::warning("Transition 'start_election' refusée depuis status={$locked->status}");
-                return;
+                return null;
             }
 
             $locked->update([
@@ -178,34 +188,37 @@ class GameService
                 GamePlayer::where('id', $playerId)->update(['role' => $role]);
             }
 
-            // Recharger avec les rôles assignés (user eager-loadé pour les notifications)
-            $players = $locked->players()->with('user')->get();
-
-            // Broadcast public — liste sans rôles
-            broadcast(new GameStarted($locked));
-
-            // Broadcast privé par joueur — rôle + alliés loups si applicable
-            foreach ($players as $player) {
-                $allies = null;
-                if ($player->isWerewolf()) {
-                    $allies = $players
-                        ->filter(fn (GamePlayer $p) => $p->id !== $player->id && $p->isWerewolf())
-                        ->map(fn (GamePlayer $p) => ['id' => $p->id, 'pseudo' => $p->pseudo])
-                        ->values()
-                        ->toArray();
-                }
-
-                broadcast(new GameStarted($locked, $player, $allies));
-
-                try {
-                    $player->user->notify(new RoleAssignedNotification($player->role));
-                } catch (\Throwable) {}
-            }
-
             WaitForReadyPlayers::dispatch($locked->id)->delay(
                 now()->addSeconds($locked->timer('ready_timeout'))
             );
+
+            return ['game' => $locked, 'players' => $locked->players()->with('user')->get()];
         });
+
+        if (! $data) {
+            return;
+        }
+
+        // Broadcast public — liste sans rôles
+        broadcast(new GameStarted($data['game']));
+
+        // Broadcast privé par joueur — rôle + alliés loups si applicable
+        foreach ($data['players'] as $player) {
+            $allies = null;
+            if ($player->isWerewolf()) {
+                $allies = $data['players']
+                    ->filter(fn (GamePlayer $p) => $p->id !== $player->id && $p->isWerewolf())
+                    ->map(fn (GamePlayer $p) => ['id' => $p->id, 'pseudo' => $p->pseudo])
+                    ->values()
+                    ->toArray();
+            }
+
+            broadcast(new GameStarted($data['game'], $player, $allies));
+
+            try {
+                $player->user->notify(new RoleAssignedNotification($player->role));
+            } catch (\Throwable) {}
+        }
     }
 
     /**
@@ -217,14 +230,14 @@ class GameService
      */
     public function markReady(GamePlayer $player): void
     {
-        DB::transaction(function () use ($player) {
+        $result = DB::transaction(function () use ($player) {
             $game = Game::where('id', $player->game_id)
                 ->where('status', 'electing_mayor')
                 ->lockForUpdate()
                 ->first();
 
             if (! $game || $player->is_ready) {
-                return;
+                return null;
             }
 
             $player->update(['is_ready' => true]);
@@ -232,17 +245,27 @@ class GameService
             $total      = $game->players()->count();
             $readyCount = $game->players()->where('is_ready', true)->count();
 
-            broadcast(new PlayerReady($game, $readyCount, $total));
-
-            // Déclencher l'élection maire si tous prêts et pas encore déclenchée
+            $startElection = false;
             if ($readyCount === $total && $game->phase_deadline === null) {
-                $timer    = $game->timer('mayor_election');
-                $deadline = now()->addSeconds($timer);
-                $game->update(['phase_deadline' => $deadline]);
-                broadcast(new MayorElectionStarted($game));
+                $timer = $game->timer('mayor_election');
+                $game->update(['phase_deadline' => now()->addSeconds($timer)]);
+                // delay > 0 : autorisé dans la transaction (Guard #5)
                 ProcessMayorElection::dispatch($game->id)->delay(now()->addSeconds($timer));
+                $startElection = true;
             }
+
+            return compact('game', 'readyCount', 'total', 'startElection');
         });
+
+        if (! $result) {
+            return;
+        }
+
+        broadcast(new PlayerReady($result['game'], $result['readyCount'], $result['total']));
+
+        if ($result['startElection']) {
+            broadcast(new MayorElectionStarted($result['game']));
+        }
     }
 
     /**
@@ -272,9 +295,10 @@ class GameService
             abort(403, 'Le host ne peut pas s\'exclure lui-même.');
         }
 
-        DB::transaction(function () use ($game, $target, $reason) {
-            $targetUser = $target->user;
+        // Capturer avant le delete : $target->user reste en mémoire PHP même après delete()
+        $targetUser = $target->user;
 
+        DB::transaction(function () use ($game, $target, $reason, $targetUser) {
             Exclusion::create([
                 'game_id'     => $game->id,
                 'user_id'     => $targetUser->id,
@@ -284,16 +308,16 @@ class GameService
             ]);
 
             $target->delete();
-
-            // Broadcast public (pseudo seulement) puis privé (avec motif)
-            // L'event stocke des scalaires : pas de dépendance DB après delete
-            broadcast(new PlayerExcluded($game, $target));
-            broadcast(new PlayerExcluded($game, $target, $reason));
-
-            try {
-                $targetUser->notify(new PlayerExcludedNotification($reason));
-            } catch (\Throwable) {}
         });
+
+        // Broadcast public (pseudo seulement) puis privé (avec motif)
+        // $target reste en mémoire PHP avec ses attributs après delete()
+        broadcast(new PlayerExcluded($game, $target));
+        broadcast(new PlayerExcluded($game, $target, $reason));
+
+        try {
+            $targetUser->notify(new PlayerExcludedNotification($reason));
+        } catch (\Throwable) {}
     }
 
     /**
@@ -767,14 +791,14 @@ class GameService
      */
     public function cancelGame(Game $game): void
     {
-        DB::transaction(function () use ($game) {
+        $data = DB::transaction(function () use ($game) {
             $locked = Game::where('id', $game->id)
                 ->whereNotIn('status', ['finished', 'waiting'])
                 ->lockForUpdate()
                 ->first();
 
             if (! $locked) {
-                return;
+                return null;
             }
 
             $locked->update([
@@ -783,10 +807,12 @@ class GameService
                 'finished_at' => now(),
             ]);
 
-            $players = $locked->players()->get();
-
-            broadcast(new GameFinished($locked, $players, null));
+            return ['game' => $locked, 'players' => $locked->players()->get()];
         });
+
+        if ($data) {
+            broadcast(new GameFinished($data['game'], $data['players'], null));
+        }
     }
 
     /**

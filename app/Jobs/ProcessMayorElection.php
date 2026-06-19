@@ -70,7 +70,7 @@ class ProcessMayorElection implements ShouldQueue
         broadcast(new NightStarted($result['game']));
 
         // Délai avant le premier tour voyante : laisse le temps à l'UI d'afficher MayorElected.
-        ProcessSeerTurn::dispatch($this->gameId)
+        ProcessSeerTurn::dispatch($this->gameId, $result['game']->round)
             ->delay(now()->addSeconds($game->timer('mayor_reveal')));
     }
 }

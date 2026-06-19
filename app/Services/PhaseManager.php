@@ -126,7 +126,7 @@ class PhaseManager
         }
 
         broadcast(new NightStarted($locked));
-        ProcessSeerTurn::dispatch($locked->id)
+        ProcessSeerTurn::dispatch($locked->id, $locked->round)
             ->delay(now()->addSeconds($locked->timer('night_start_delay')));
     }
 
