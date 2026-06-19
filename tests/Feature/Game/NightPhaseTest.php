@@ -225,7 +225,7 @@ class NightPhaseTest extends TestCase
         GamePlayer::factory()->seer()->dead()->create(['game_id' => $game->id]);
         GamePlayer::factory()->count(5)->villager()->create(['game_id' => $game->id]);
 
-        (new ProcessSeerTurn($game->id))->handle();
+        (new ProcessSeerTurn($game->id, $game->round))->handle();
 
         Event::assertNotDispatched(SeerTurnStarted::class);
         Queue::assertPushed(ProcessWerewolvesTurn::class, fn ($job) => $job->gameId === $game->id);

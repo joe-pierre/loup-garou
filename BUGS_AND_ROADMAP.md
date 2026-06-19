@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-19 — Broadcasts dans transactions lockForUpdate + race conditions
+
+- **Symptôme :** (1) Broadcasts (`PlayerJoined`, `GameStarted`, `PlayerExcluded`, `GameFinished`, `PlayerReady`, `MayorElectionStarted`) émis à l'intérieur de `DB::transaction()` + `lockForUpdate()` dans `GameService`, violant la règle de non side-effect en transaction. (2) `hunter_pending` lu + supprimé sans verrou dans `ProcessNightEnd` — deux jobs concurrents pouvaient déclencher deux `ProcessHunterTurn`. (3) `ProcessSeerTurn` sans guard sur le round — un job stale d'une nuit précédente pouvait s'exécuter sur la nuit suivante.
+- **Cause :** Manque d'isolation des side-effects réseau (WebSocket, notifications) hors des transactions DB ; lecture non atomique de `hunter_pending` ; absence du paramètre `$round` dans `ProcessSeerTurn`.
+- **Fix :** (1) Les 5 méthodes concernées de `GameService` retournent maintenant un tableau de données depuis la transaction, et broadcastent après. (2) `ProcessNightEnd` lit et supprime `hunter_pending` dans une transaction + `lockForUpdate()` atomique ; dispatche `ProcessHunterTurn::delay(0)` après. (3) `ProcessSeerTurn` reçoit un second paramètre `$round` et vérifie `$game->round !== $this->round` en entrée de `handle()`.
+
+---
+
 ### [x] 2026-06-17 — Bandeau "Tu as été éliminé" absent au rechargement de page
 
 - **Symptôme :** un joueur mort qui recharge `/day` ou `/night` ne voit pas le bandeau d'élimination.
