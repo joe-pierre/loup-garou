@@ -195,6 +195,25 @@ class VoteService
     }
 
     /**
+     * Retourne la victime persistée par ProcessNightActions pour le round courant.
+     *
+     * NE DOIT être appelée qu'après que ProcessNightActions a tourné pour le round
+     * concerné — sinon retourne toujours null (aucun night_resolve en base).
+     *
+     * @param  Game        $game La partie en cours
+     * @return GamePlayer|null    La victime résolue, ou null si aucune
+     */
+    public function resolveNightVoteFromAction(Game $game): ?GamePlayer
+    {
+        $action = GameAction::where('game_id', $game->id)
+            ->where('type', 'night_resolve')
+            ->where('round', $game->round)
+            ->first();
+
+        return $action ? GamePlayer::find($action->target_player_id) : null;
+    }
+
+    /**
      * Enregistre ou remplace le vote nocturne d'un loup (delete+insert atomique).
      * Un loup peut changer de cible jusqu'à expiration du timer.
      * Déclenche ProcessNightActions immédiatement si tous les loups vivants ont voté.

@@ -630,7 +630,7 @@ class GameService
             $target   = null;
 
             if ($action === 'heal') {
-                $victim = app(VoteService::class)->resolveNightVote($game);
+                $victim = app(VoteService::class)->resolveNightVoteFromAction($game);
 
                 if (! $victim || $victim->id === $witch->id) {
                     abort(403, 'Aucune victime à sauver ce round.');
