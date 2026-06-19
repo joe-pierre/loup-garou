@@ -1,3 +1,19 @@
+## [RÉSOLU] Victime loups et sorcière potentiellement différentes en cas d'égalité
+
+**Contexte :** `fix/night-resolve-shared-victim` — `ProcessNightActions.php`, `ProcessWitchTurn.php`, `GameService::witchAct()`, `VoteService.php`
+
+**Symptôme / Problème :** `ProcessNightActions::handle()` et `ProcessWitchTurn::handle()` appelaient chacun indépendamment `VoteService::resolveNightVote($game)`. En cas d'égalité parfaite entre deux cibles, cette méthode tire aléatoirement via `inRandomOrder()`. Les deux appels pouvaient retourner deux joueurs différents : la sorcière voyait une victime qui n'était pas celle effectivement éliminée par les loups.
+
+**Cause / Alternatives :** Deux appels indépendants à une méthode non-déterministe. Alternative envisagée : rendre `resolveNightVote()` déterministe (ex. tri par ID) — rejetée, car changerait le comportement de tirage au sort sans garantie réelle d'unicité entre jobs en cas de re-dispatch.
+
+**Fix / Décision :** Pattern `night_resolve` aligné sur `hunter_pending` déjà en place. `ProcessNightActions` crée un `GameAction` de type `night_resolve` (player_id = target_player_id = victime résolue) immédiatement après la résolution du vote et avant le dispatch de `ProcessWitchTurn`. `VoteService::resolveNightVoteFromAction()` lit cette action. `ProcessWitchTurn` et `GameService::witchAct(heal)` utilisent `resolveNightVoteFromAction()`. `resolveNightVote()` original conservé uniquement dans `ProcessNightActions` (source de vérité unique au moment de la résolution) et `PhaseManager::endNight()` (les night_vote ne changent plus à ce stade, le résultat est stable).
+
+**Leçon :** Toute méthode non-déterministe appelée plusieurs fois dans la même séquence doit persister son résultat en base dès la première résolution. Les lectures ultérieures dans le même round lisent cette action, jamais la méthode brute.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [RÉSOLU] Race condition : vote d'un second loup rejeté 409 si le premier déclenche ProcessNightActions
 
 **Contexte :** `fix/wolf-vote-simultaneous` — `app/Services/VoteService.php` méthode `castNightVote()`

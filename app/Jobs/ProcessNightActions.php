@@ -84,6 +84,18 @@ class ProcessNightActions implements ShouldQueue
 
         if ($victim) {
             $victim->update(['is_alive' => false]);
+
+            // Persiste la victime résolue pour les jobs suivants (ProcessWitchTurn,
+            // witchAct). Pattern identique à hunter_pending.
+            GameAction::create([
+                'game_id'          => $game->id,
+                'player_id'        => $victim->id,
+                'type'             => 'night_resolve',
+                'target_player_id' => $victim->id,
+                'round'            => $game->round,
+                'phase'            => 'night',
+            ]);
+
             broadcast(new PlayerEliminated($game, $victim, 'night_kill'));
 
             if ($victim->isHunter()) {

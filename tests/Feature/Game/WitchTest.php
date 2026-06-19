@@ -52,6 +52,12 @@ class WitchTest extends TestCase
             'target_player_id' => $victim->id, 'round' => 1, 'phase' => 'night',
         ]);
 
+        // Simule la résolution persistée par ProcessNightActions (night_resolve).
+        GameAction::factory()->create([
+            'game_id' => $game->id, 'player_id' => $victim->id, 'type' => 'night_resolve',
+            'target_player_id' => $victim->id, 'round' => 1, 'phase' => 'night',
+        ]);
+
         $response = $this->actingAs($user)->postJson("/game/{$game->id}/witch/act", [
             'action'           => 'heal',
             'target_player_id' => $victim->id,
@@ -83,6 +89,12 @@ class WitchTest extends TestCase
 
         GameAction::factory()->create([
             'game_id' => $game->id, 'player_id' => $wolf->id, 'type' => 'night_vote',
+            'target_player_id' => $witch->id, 'round' => 1, 'phase' => 'night',
+        ]);
+
+        // Simule la résolution persistée par ProcessNightActions : la sorcière est la victime.
+        GameAction::factory()->create([
+            'game_id' => $game->id, 'player_id' => $witch->id, 'type' => 'night_resolve',
             'target_player_id' => $witch->id, 'round' => 1, 'phase' => 'night',
         ]);
 
@@ -322,6 +334,59 @@ class WitchTest extends TestCase
             0,
             GameAction::where('game_id', $game->id)->where('type', 'witch_pass')->count()
         );
+    }
+
+    /**
+     * La victime présentée à la sorcière est exactement celle persistée par
+     * ProcessNightActions (night_resolve), même en cas d'égalité parfaite entre loups.
+     *
+     * Avant ce fix, ProcessWitchTurn rappelait resolveNightVote() indépendamment,
+     * pouvant retourner une victime différente via inRandomOrder().
+     */
+    public function test_victime_sorciere_identique_a_victime_loups_en_cas_egalite(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game = $this->makeNightGame();
+
+        // 2 villageois cibles (vote en égalité parfaite), 2 villageois extra pour éviter
+        // la condition de victoire (2 loups vs 4 côté village après élimination).
+        $target1 = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+        $target2 = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+        GamePlayer::factory()->count(2)->villager()->create(['game_id' => $game->id]);
+        GamePlayer::factory()->witch()->create(['game_id' => $game->id]);
+        $wolf1   = GamePlayer::factory()->werewolf()->create(['game_id' => $game->id]);
+        $wolf2   = GamePlayer::factory()->werewolf()->create(['game_id' => $game->id]);
+
+        // Égalité parfaite : chaque loup vote pour une cible différente.
+        GameAction::factory()->create([
+            'game_id' => $game->id, 'player_id' => $wolf1->id, 'type' => 'night_vote',
+            'target_player_id' => $target1->id, 'round' => 1, 'phase' => 'night',
+        ]);
+        GameAction::factory()->create([
+            'game_id' => $game->id, 'player_id' => $wolf2->id, 'type' => 'night_vote',
+            'target_player_id' => $target2->id, 'round' => 1, 'phase' => 'night',
+        ]);
+
+        (new ProcessNightActions($game->id, 1))->handle(app(VoteService::class), app(WinConditionChecker::class));
+
+        // Capture la victime persistée par ProcessNightActions.
+        $nightResolve = \App\Models\GameAction::where('game_id', $game->id)
+            ->where('type', 'night_resolve')
+            ->where('round', 1)
+            ->first();
+
+        $this->assertNotNull($nightResolve, 'night_resolve doit exister après ProcessNightActions');
+
+        // Exécute le tour sorcière directement (Queue::fake() a empêché son dispatch réel).
+        (new ProcessWitchTurn($game->id, 1))->handle(app(VoteService::class));
+
+        // La sorcière doit voir exactement la même victime que celle résolue par les loups.
+        Event::assertDispatched(WitchTurnStarted::class, function ($e) use ($nightResolve) {
+            return $e->victim !== null
+                && $e->victim->id === $nightResolve->target_player_id;
+        });
     }
 
     /**

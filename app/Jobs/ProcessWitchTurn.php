@@ -77,8 +77,9 @@ class ProcessWitchTurn implements ShouldQueue
             return;
         }
 
-        // Guard #3 (révisé) : égalité chez les loups -> pas de victime à sauver
-        $victim = $voteService->resolveNightVote($game);
+        // Guard #3 (révisé) : lit la victime persistée par ProcessNightActions ce round.
+        // Retourne null si pas de night_resolve (égalité totale sans victime).
+        $victim = $voteService->resolveNightVoteFromAction($game);
 
         $witchSettings = $witch->settings ?? [];
         $healUsed      = $witchSettings['witch_heal_used'] ?? false;

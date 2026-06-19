@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 15h40
+Generated at: 15h48
 
 ## PHP Analysis (Core Logic)
 
@@ -893,6 +893,7 @@ VoteService.php
       - castMayorVote(GamePlayer $voter, int $targetId) → return $totals
       - resolveMayorElection(Game $game) → return DB::transaction(function () use ($game) { $locked = Game::where('id', $game->id)->where('status', 'electing_mayor')->lockForUpdate()->first(); if (!$locked) { return null; } if (!$locked->canTransition('start_night')) { Log::warning("Transition 'start_night' refusée depuis status={$locked->status}"); return null; } $votes = GameAction::where('game_id', $locked->id)->where('type', 'mayor_vote')->where('round', $locked->round)->selectRaw('target_player_id, COUNT(*) as vote_count')->groupBy('target_player_id')->orderByDesc('vote_count')->get(); $wasRandom = false; if ($votes->isEmpty()) { $winner = $locked->alivePlayers()->inRandomOrder()->first(); $wasRandom = true; } else { $maxVotes = $votes->first()->vote_count; $topCandidates = $votes->where('vote_count', $maxVotes); if ($topCandidates->count() > 1) { $wasRandom = true; $winnerId = $topCandidates->random()->target_player_id; } else { $winnerId = $topCandidates->first()->target_player_id; } $winner = GamePlayer::find($winnerId); } $winner->update(['is_mayor' => true]); $locked->update(['status' => 'night', 'round' => 1, 'phase_deadline' => now()->addSeconds($locked->timer('seer'))]); return ['player' => $winner, 'game' => $locked, 'was_random' => $wasRandom]; })
       - resolveNightVote(Game $game) → return GamePlayer::find($winnerId)
+      - resolveNightVoteFromAction(Game $game) → return $action ? GamePlayer::find($action->target_player_id) : null
       - castNightVote(GamePlayer $wolf, int $targetId) → return $state
       - resolveDayVote(Game $game) → void
       - castDayVote(GamePlayer $voter, int $targetId) → return $this->getDayVoteSummary($voter->game)
@@ -1191,6 +1192,7 @@ WitchTest.php
       - test_witch_turn_dispatche_par_night_actions_uniquement() → void
       - test_witch_turn_non_double_dispatche_meme_round() → void
       - test_sorciere_empoisonne_joueur_vivant_pendant_processing_night() → void
+      - test_victime_sorciere_identique_a_victime_loups_en_cas_egalite() → void
       - test_sorciere_auto_action_sans_victime_ne_bloque_pas() → void
 
 // tests/Feature/Game/ProcessDayVoteTest.php
@@ -1401,6 +1403,12 @@ TestCase.php
 
 // database/migrations/2026_06_03_000004_create_chat_messages_table.php
 2026_06_03_000004_create_chat_messages_table.php
+    functions:
+      - up() → void
+      - down() → void
+
+// database/migrations/2026_06_19_000000_add_night_resolve_to_game_actions_type_enum.php
+2026_06_19_000000_add_night_resolve_to_game_actions_type_enum.php
     functions:
       - up() → void
       - down() → void

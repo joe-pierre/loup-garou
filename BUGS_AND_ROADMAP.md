@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-19 — Victime loups et sorcière potentiellement différentes (égalité vote)
+
+- **Symptôme :** En cas d'égalité parfaite entre deux cibles du vote nocturne, `ProcessNightActions` et `ProcessWitchTurn` appelaient chacun `resolveNightVote()` indépendamment — deux tirages aléatoires pouvaient désigner deux victimes différentes.
+- **Cause :** Deux appels à une méthode non-déterministe (`inRandomOrder()`) sans persistance du résultat intermédiaire.
+- **Fix :** `ProcessNightActions` persiste la victime résolue dans un `GameAction night_resolve` (pattern `hunter_pending`). `ProcessWitchTurn` et `witchAct(heal)` lisent ce `night_resolve` via `VoteService::resolveNightVoteFromAction()`.
+
+---
+
 ### [x] 2026-06-19 — Guard sans lock dans ProcessWitchAutoAction
 
 - **Symptôme :** double `witch_pass` possible en théorie si deux exécutions concurrentes du job passaient simultanément le guard anti-doublon.
