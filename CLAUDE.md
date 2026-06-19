@@ -9,8 +9,10 @@ Lis ces fichiers dans l'ordre avant de faire quoi que ce soit :
 - `CONVENTIONS.md`
 - `TODO.md`
 - `DECISIONS.md`
+- `BUGS_AND_ROADMAP.md`
 - `CODE_SNAPSHOT.md` (index structurel pour économiser les tokens)
 - `RISK_GUARDS.md` (protections anti-bugs obligatoires — lire avant Étapes 3, 4, 5)
+- `AGENTS_GUIDE.md` (si tu veux que Claude Code sache comment fonctionnent les agents)
 
 Dis-moi ce que tu as compris du projet en 5 points clés, puis attends mes instructions.
 

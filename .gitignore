@@ -6,6 +6,8 @@
 /z_tools
 /.treeignore
 /CARTE_PROJECT_CODE_LOGIC.md
+
+/z_agents/logs
 ----------------------------------------
 
 /.phpunit.cache
