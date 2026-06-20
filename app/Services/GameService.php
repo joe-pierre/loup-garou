@@ -335,39 +335,7 @@ class GameService
      */
     public function seerCheck(GamePlayer $seer, int $targetId): GamePlayer
     {
-        if ($seer->role !== 'seer') {
-            abort(403, 'Seule la voyante peut utiliser ce pouvoir.');
-        }
-
-        $game = $seer->game;
-
-        if ($game->status !== 'night') {
-            abort(409, 'L\'action de la voyante n\'est pas disponible hors phase nuit.');
-        }
-
-        return DB::transaction(function () use ($seer, $targetId, $game) {
-            $alreadyActed = GameAction::where('game_id', $game->id)
-                ->where('player_id', $seer->id)
-                ->where('type', 'seer_check')
-                ->where('round', $game->round)
-                ->lockForUpdate()
-                ->exists();
-
-            if ($alreadyActed) {
-                abort(409, 'Vous avez déjà utilisé votre pouvoir ce round.');
-            }
-
-            GameAction::create([
-                'game_id'          => $game->id,
-                'player_id'        => $seer->id,
-                'type'             => 'seer_check',
-                'target_player_id' => $targetId,
-                'round'            => $game->round,
-                'phase'            => 'night',
-            ]);
-
-            return GamePlayer::findOrFail($targetId);
-        });
+        return app(\App\Services\RoleActions\SeerAction::class)->check($seer, $targetId);
     }
 
     /**
@@ -602,116 +570,7 @@ class GameService
      */
     public function witchAct(GamePlayer $witch, string $action, ?int $targetId): array
     {
-        if (! $witch->isWitch()) {
-            abort(403, 'Seule la sorcière peut utiliser ce pouvoir.');
-        }
-
-        if (! $witch->is_alive) {
-            abort(403, 'Un joueur éliminé ne peut pas agir.');
-        }
-
-        $game = $witch->game;
-
-        if (! PhaseGuard::canWitchAct($game)) {
-            abort(409, 'L\'action de la sorcière n\'est pas disponible hors phase nuit.');
-        }
-
-        $result = DB::transaction(function () use ($witch, $action, $targetId, $game) {
-            $alreadyActed = GameAction::where('game_id', $game->id)
-                ->where('player_id', $witch->id)
-                ->where('round', $game->round)
-                ->whereIn('type', ['witch_heal', 'witch_kill', 'witch_pass'])
-                ->lockForUpdate()
-                ->exists();
-
-            if ($alreadyActed) {
-                abort(409, 'Vous avez déjà utilisé votre pouvoir ce round.');
-            }
-
-            $settings = $witch->settings ?? [];
-            $target   = null;
-
-            if ($action === 'heal') {
-                $victim = app(VoteService::class)->resolveNightVoteFromAction($game);
-
-                if (! $victim || $victim->id === $witch->id) {
-                    abort(403, 'Aucune victime à sauver ce round.');
-                }
-
-                if ($settings['witch_heal_used'] ?? false) {
-                    abort(409, 'Vous avez déjà utilisé votre potion de soin.');
-                }
-
-                $victim->update(['is_alive' => true]);
-                $settings['witch_heal_used'] = true;
-                $witch->update(['settings' => $settings]);
-
-                GameAction::create([
-                    'game_id'          => $game->id,
-                    'player_id'        => $witch->id,
-                    'type'             => 'witch_heal',
-                    'target_player_id' => $victim->id,
-                    'round'            => $game->round,
-                    'phase'            => 'night',
-                ]);
-
-                $target = $victim;
-            } elseif ($action === 'kill') {
-                if ($targetId === $witch->id) {
-                    abort(403, 'La sorcière ne peut pas s\'empoisonner elle-même.');
-                }
-
-                $target = GamePlayer::where('id', $targetId)
-                    ->where('game_id', $game->id)
-                    ->where('is_alive', true)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (! $target) {
-                    abort(404, 'Cible invalide.');
-                }
-
-                if ($settings['witch_kill_used'] ?? false) {
-                    abort(409, 'Vous avez déjà utilisé votre potion de poison.');
-                }
-
-                $target->update(['is_alive' => false]);
-                $settings['witch_kill_used'] = true;
-                $witch->update(['settings' => $settings]);
-
-                GameAction::create([
-                    'game_id'          => $game->id,
-                    'player_id'        => $witch->id,
-                    'type'             => 'witch_kill',
-                    'target_player_id' => $target->id,
-                    'round'            => $game->round,
-                    'phase'            => 'night',
-                ]);
-
-                if ($target->isHunter()) {
-                    GameAction::create([
-                        'game_id'   => $game->id,
-                        'player_id' => $target->id,
-                        'type'      => 'hunter_pending',
-                        'round'     => $game->round,
-                        'phase'     => 'night',
-                    ]);
-                }
-            } else {
-                GameAction::create([
-                    'game_id'          => $game->id,
-                    'player_id'        => $witch->id,
-                    'type'             => 'witch_pass',
-                    'target_player_id' => null,
-                    'round'            => $game->round,
-                    'phase'            => 'night',
-                ]);
-            }
-
-            return ['action' => $action, 'target' => $target];
-        });
-
-        return $result;
+        return app(\App\Services\RoleActions\WitchAction::class)->act($witch, $action, $targetId);
     }
 
     /**
@@ -728,59 +587,7 @@ class GameService
      */
     public function hunterShoot(GamePlayer $hunter, int $targetId): GamePlayer
     {
-        if (! $hunter->isHunter()) {
-            abort(403, 'Seul le chasseur peut utiliser ce pouvoir.');
-        }
-
-        if ($hunter->is_alive) {
-            abort(403, 'Le chasseur ne peut tirer qu\'après sa mort.');
-        }
-
-        $game = $hunter->game;
-
-        if (! PhaseGuard::canHunterShoot($game)) {
-            abort(409, 'Le tir du chasseur n\'est pas disponible dans cette phase.');
-        }
-
-        if ($targetId === $hunter->id) {
-            abort(403, 'Le chasseur ne peut pas se tirer lui-même.');
-        }
-
-        return DB::transaction(function () use ($hunter, $targetId, $game) {
-            $alreadyShot = GameAction::where('game_id', $game->id)
-                ->where('player_id', $hunter->id)
-                ->where('type', 'hunter_shot')
-                ->where('round', $game->round)
-                ->lockForUpdate()
-                ->exists();
-
-            if ($alreadyShot) {
-                abort(409, 'Vous avez déjà tiré ce round.');
-            }
-
-            $target = GamePlayer::where('id', $targetId)
-                ->where('game_id', $game->id)
-                ->where('is_alive', true)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $target) {
-                abort(404, 'Cible invalide.');
-            }
-
-            $target->update(['is_alive' => false]);
-
-            GameAction::create([
-                'game_id'          => $game->id,
-                'player_id'        => $hunter->id,
-                'type'             => 'hunter_shot',
-                'target_player_id' => $target->id,
-                'round'            => $game->round,
-                'phase'            => PhaseGuard::isNightOrProcessing($game) ? 'night' : 'day',
-            ]);
-
-            return $target;
-        });
+        return app(\App\Services\RoleActions\HunterAction::class)->shoot($hunter, $targetId);
     }
 
     /**
