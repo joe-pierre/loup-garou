@@ -1,3 +1,19 @@
+## [RÉSOLU] Double abonnement Echo — mayor-election.blade.php et role-reveal.blade.php
+
+**Contexte :** `fix/double-echo-subscription-election-views` — `resources/js/game-state.js`, `resources/views/game/mayor-election.blade.php`, `resources/views/game/role-reveal.blade.php`
+
+**Symptôme / Problème :** Les deux vues ouvraient un second `window.Echo.channel()` sur `game.{gameId}` en parallèle de `game-state.js`. `mayor-election.blade.php` écoutait `.mayor.vote.cast`, `.mayor.elected` et `.night.started` — chaque event Reverb déclenchait deux handlers simultanés, dont deux redirections concurrentes vers `/night` (un `setTimeout` brut et l'animation GSAP coordonnée de `game-state.js`). `role-reveal.blade.php` écoutait `.player.ready` (absent de game-state.js) et `.mayor.election.started` (présent dans `_handleMayorElectionStarted` mais sans CustomEvent).
+
+**Cause / Alternatives :** `_handleMayorVoteCast`, `handleMayorElected` et `_handleMayorElectionStarted` ne dispatchaient aucun `CustomEvent` window — les vues ne pouvaient pas se brancher sur game-state.js et devaient s'abonner directement à Echo. `.player.ready` n'était tout simplement pas géré dans le store central.
+
+**Fix / Décision :** Pattern identique aux vues `day.blade.php` et `night.blade.php` déjà corrigées. Trois `window.dispatchEvent(new CustomEvent(...))` ajoutés dans les handlers concernés de `game-state.js`. Nouveau listener `.listen('.player.ready', e => this._handlePlayerReady(e))` + handler `_handlePlayerReady` ajoutés au canal public. Blocs `window.Echo.channel()` supprimés des deux vues, remplacés par `window.addEventListener('mayor-vote-cast' | 'mayor-elected' | 'mayor-election-started' | 'player-ready', ...)`. Guard `_initialized` ajouté dans les deux `init()`. Redirect `.night.started` dans `mayor-election.blade.php` supprimée sans remplacement — `handleNightStarted` dans `game-state.js` est monté dans le layout commun et couvre toutes les vues.
+
+**Leçon :** Quand game-state.js gère un event Echo, il DOIT aussi dispatcher un CustomEvent window pour que les vues locales puissent réagir sans second abonnement. Vérifier systématiquement `_handleMayorVoteCast`, `handleMayorElected`, `_handleMayorElectionStarted` lors de tout ajout de vue en phase d'élection.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [RÉSOLU] Victime loups et sorcière potentiellement différentes en cas d'égalité
 
 **Contexte :** `fix/night-resolve-shared-victim` — `ProcessNightActions.php`, `ProcessWitchTurn.php`, `GameService::witchAct()`, `VoteService.php`

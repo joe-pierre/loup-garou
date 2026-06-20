@@ -154,6 +154,7 @@ export function gameState(gameId, userId) {
                 .listen('.witch.acted.public',         () => {
                     this._dispatchToast('🧙 La sorcière a agi cette nuit.', 'info');
                 })
+                .listen('.player.ready',               e => this._handlePlayerReady(e))
                 .listen('.game.finished',              e => this.handleGameFinished(e));
 
             // Présence (détection leaving)
@@ -339,6 +340,7 @@ export function gameState(gameId, userId) {
         handleMayorElected(e) {
             this._dispatchToast(`👑 ${e.pseudo} est élu Maire`, 'info');
             this._updateMayorBadges(e.player_id);
+            window.dispatchEvent(new CustomEvent('mayor-elected', { detail: e }));
         },
 
         _updateMayorBadges(playerId) {
@@ -456,11 +458,17 @@ export function gameState(gameId, userId) {
             // e.votes = [{ target_player_id, vote_count }]
             this.votes = {};
             (e.votes ?? []).forEach(v => { this.votes[v.target_player_id] = v.vote_count; });
+            window.dispatchEvent(new CustomEvent('mayor-vote-cast', { detail: e }));
         },
 
         _handleMayorElectionStarted(e) {
             this.phase = 'electing_mayor';
             this.votes = {};
+            window.dispatchEvent(new CustomEvent('mayor-election-started', { detail: e }));
+        },
+
+        _handlePlayerReady(e) {
+            window.dispatchEvent(new CustomEvent('player-ready', { detail: e }));
         },
 
         _handleRoleAssigned(e) {

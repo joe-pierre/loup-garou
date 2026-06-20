@@ -199,6 +199,9 @@
             allies:     @json($allies),
 
             init() {
+                if (this._initialized) return;
+                this._initialized = true;
+
                 gsap.fromTo('#rr-title', { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' });
                 gsap.fromTo('#rr-timer', { opacity: 0 }, { opacity: 1, duration: 0.5, delay: 0.05, ease: 'power2.out' });
                 gsap.fromTo('#card-wrap', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.7, delay: 0.1, ease: 'power2.out' });
@@ -219,11 +222,10 @@
                     if (this.countdown <= 0) { clearInterval(tick); this.flipCard(); }
                 }, 1000);
 
-                window.Echo.channel(`game.${GAME_ID}`)
-                    .listen('.player.ready', (data) => { this.nbReady = data.nb_ready; })
-                    .listen('.mayor.election.started', () => {
-                        setTimeout(() => { this.redirect(); }, 1000);
-                    });
+                window.addEventListener('player-ready', (ev) => { this.nbReady = ev.detail.nb_ready; });
+                window.addEventListener('mayor-election-started', () => {
+                    setTimeout(() => { this.redirect(); }, 1000);
+                });
 
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'visible') { this.syncRole(); }
