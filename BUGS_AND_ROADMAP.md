@@ -690,6 +690,14 @@
 
 ---
 
+### [x] 2026-06-20 — players[] du store central jamais peuplé (deux sources de vérité parallèles)
+
+- **Symptôme :** `game-state.js` déclarait `players: []` mais `GameController::state()` ne retournait jamais la liste des joueurs — `_loadState()` ne peuplait donc jamais `this.players`. Les vues (`day.blade.php`, `night.blade.php`) maintenaient chacune leur propre copie locale (`this.players = PLAYERS_DATA`, injectée côté Blade) sans jamais lire le store central, créant deux sources de vérité parallèles avec risque de désynchronisation future.
+- **Cause :** `GameController::state()` n'incluait pas de clé `players` dans son payload JSON. `_loadState()` n'avait aucun code pour lire `d.players`. Chaque vue bootstrappait sa propre liste depuis Blade.
+- **Fix :** (1) `GameController::state()` ajoute `players` au payload : liste de tous les joueurs ordonnée vivants en premier, avec `id/pseudo/is_alive/is_mayor` pour tous, et `revealed_role/revealed_role_label` uniquement pour les morts (règle de non-exposition du rôle des vivants). (2) `game-state.js::_loadState()` ajoute `this.players = d.players ?? []` (fallback `[]` pour compatibilité déploiement progressif). (3) `PLAYERS_DATA` conservé comme amorçage initial légitime dans `day.blade.php` — voir DECISIONS.md. Test ajouté : `test_state_endpoint_retourne_la_liste_des_joueurs` (ReconnectionTest).
+
+---
+
 # ROADMAP (idées / améliorations futures)
  
 - [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)
@@ -703,6 +711,7 @@
       (nuit → jour, jour → nuit) non encore implémentés — prévu post-v1.2
 - [ ] Révision timers par défaut config/game.php (day_vote, seer, werewolves)
       et valeurs minimales — prompt séparé après validation prod
+- [ ] Étendre players[] du store central à night.blade.php et spectator.blade.php
 
 ## Refactoring architectural planifié
 

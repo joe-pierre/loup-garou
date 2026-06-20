@@ -261,6 +261,28 @@ class GameController extends Controller
                 ->toArray();
         }
 
+        $players = $game->players()->orderBy('is_alive', 'desc')->get()
+            ->map(fn (GamePlayer $p) => array_merge(
+                [
+                    'id'       => $p->id,
+                    'pseudo'   => $p->pseudo,
+                    'is_alive' => (bool) $p->is_alive,
+                    'is_mayor' => (bool) $p->is_mayor,
+                ],
+                $p->is_alive ? [] : [
+                    'revealed_role'       => $p->role,
+                    'revealed_role_label' => match ($p->role) {
+                        'werewolf' => 'Loup-Garou',
+                        'seer'     => 'Voyante',
+                        'witch'    => 'Sorcière',
+                        'hunter'   => 'Chasseur',
+                        default    => 'Villageois',
+                    },
+                ]
+            ))
+            ->values()
+            ->toArray();
+
         return response()->json([
             'success' => true,
             'data'    => [
@@ -273,6 +295,7 @@ class GameController extends Controller
                 'seer_turn_active'        => $seerTurnActive,
                 'werewolves_turn_active'  => $werewolvesTurnActive,
                 'allies'                  => $allies,
+                'players'                 => $players,
             ],
         ]);
     }

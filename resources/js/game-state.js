@@ -103,6 +103,7 @@ export function gameState(gameId, userId) {
                 if (d.seer_turn_active)            this.nightPhase = 'seer_turn';
                 else if (d.werewolves_turn_active) this.nightPhase = 'werewolves_turn';
                 this._allies              = d.allies ?? [];
+                this.players              = d.players ?? [];
             } catch {
                 // silencieux — état sera reconstruit via WebSocket
             }

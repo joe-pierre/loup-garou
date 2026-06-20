@@ -76,6 +76,51 @@ class ReconnectionTest extends TestCase
         $response->assertJsonPath('data.werewolves_turn_active', false);
     }
 
+    public function test_state_endpoint_retourne_la_liste_des_joueurs(): void
+    {
+        $game = Game::factory()->create([
+            'status'         => 'day',
+            'max_players'    => 6,
+            'round'          => 1,
+            'phase_deadline' => now()->addSeconds(60),
+        ]);
+        $user       = User::factory()->create();
+        $player     = GamePlayer::factory()->villager()->create(['game_id' => $game->id, 'user_id' => $user->id]);
+        $deadPlayer = GamePlayer::factory()->create([
+            'game_id'  => $game->id,
+            'role'     => 'werewolf',
+            'is_alive' => false,
+        ]);
+
+        $response = $this->actingAs($user)->getJson("/game/{$game->code}/state");
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            'data' => [
+                'players' => [
+                    '*' => ['id', 'pseudo', 'is_alive', 'is_mayor'],
+                ],
+            ],
+        ]);
+
+        $players = $response->json('data.players');
+        $this->assertNotEmpty($players);
+
+        // Aucun joueur vivant ne doit exposer revealed_role
+        foreach ($players as $p) {
+            if ($p['is_alive']) {
+                $this->assertArrayNotHasKey('revealed_role', $p, "Le rôle d'un joueur vivant ne doit pas être exposé.");
+            }
+        }
+
+        // Le joueur mort doit avoir revealed_role et revealed_role_label
+        $dead = collect($players)->firstWhere('id', $deadPlayer->id);
+        $this->assertNotNull($dead);
+        $this->assertFalse($dead['is_alive']);
+        $this->assertEquals('werewolf', $dead['revealed_role']);
+        $this->assertEquals('Loup-Garou', $dead['revealed_role_label']);
+    }
+
     public function test_state_retourne_403_si_joueur_absent(): void
     {
         $game = Game::factory()->create(['status' => 'day', 'max_players' => 6, 'round' => 1]);

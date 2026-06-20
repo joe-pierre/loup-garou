@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 01h18
+Generated at: 01h14
 
 ## PHP Analysis (Core Logic)
 
@@ -798,7 +798,7 @@ GameController.php
       - night(Request $request, string $code) → return view('game.night', compact('game', 'player', 'players'))
       - redirectToCurrentPhase(Game $game, string $code) → return match (true) { PhaseGuard::isDay($game) => redirect()->route('game.day', ['code' => $code]), PhaseGuard::isNight($game) => redirect()->route('game.night', ['code' => $code]), $game->status === 'electing_mayor' => redirect()->route('game.mayor-election', ['code' => $code]), $game->status === 'finished' && $game->winner_team !== null => redirect()->route('game.finished', ['code' => $code]), $game->status === 'finished' => redirect()->route('game.cancelled', ['code' => $code]), default => redirect()->route('game.role-reveal', ['code' => $code]), }
       - history(Request $request, string $code) → return view('game.history', compact('game', 'players', 'timeline', 'duration', 'myPlayer'))
-      - state(Request $request, string $code) → return response()->json(['success' => true, 'data' => ['phase' => $game->status, 'round' => $game->round, 'my_role' => $player->role, 'is_alive' => (bool) $player->is_alive, 'is_mayor' => (bool) $player->is_mayor, 'phase_remaining_seconds' => $game->phaseRemainingSeconds(), 'seer_turn_active' => $seerTurnActive, 'werewolves_turn_active' => $werewolvesTurnActive, 'allies' => $allies]])
+      - state(Request $request, string $code) → return response()->json(['success' => true, 'data' => ['phase' => $game->status, 'round' => $game->round, 'my_role' => $player->role, 'is_alive' => (bool) $player->is_alive, 'is_mayor' => (bool) $player->is_mayor, 'phase_remaining_seconds' => $game->phaseRemainingSeconds(), 'seer_turn_active' => $seerTurnActive, 'werewolves_turn_active' => $werewolvesTurnActive, 'allies' => $allies, 'players' => $players]])
       - quit(Request $request, int $id) → return response()->json(['success' => true])
       - disconnect(Request $request, int $id) → return response()->json(['success' => true])
       - reconnect(Request $request, string $code) → return response()->json(['success' => true])
@@ -998,6 +998,7 @@ ReconnectionTest.php
       - test_state_endpoint_retourne_phase_courante() → void
       - test_state_traduit_wolves_turn_en_night() → void
       - test_state_traduit_processing_day_en_day() → void
+      - test_state_endpoint_retourne_la_liste_des_joueurs() → void
       - test_state_retourne_403_si_joueur_absent() → void
       - test_state_retourne_404_si_partie_inexistante() → void
       - test_reconnect_remet_is_inactive_a_false() → void
