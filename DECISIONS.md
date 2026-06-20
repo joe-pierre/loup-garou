@@ -1,3 +1,19 @@
+## [CHOIX] Extraction SeerAction / WitchAction / HunterAction de GameService (God Service)
+
+**Contexte :** `refactor/extract-role-actions-from-game-service` — `app/Services/GameService.php`, `app/Services/RoleActions/SeerAction.php`, `app/Services/RoleActions/WitchAction.php`, `app/Services/RoleActions/HunterAction.php`
+
+**Symptôme / Problème :** `GameService` était un God Service concentrant à la fois l'orchestration générale (joinGame, startGame, markReady, …) et les actions de rôles spéciaux (seerCheck, witchAct, hunterShoot). Audit Passe 3 "Faiblesse 1" : manque de maintenabilité, chaque nouveau rôle v1.3+ aurait alourdi ce fichier déjà de 835 lignes.
+
+**Cause / Alternatives :** (1) Extraction complète avec mise à jour de tous les appelants (ActionController, Jobs, Services) — risque élevé, change l'API publique. (2) Pattern Facade/délégation : `GameService` conserve ses méthodes publiques identiques (zéro changement pour les appelants) et délègue vers des classes dédiées `RoleActions/*.php` — risque zéro de régression API. (3) Extraction en une seule passe sur les 3 actions — risque de régression accumulé non détectable par les tests intermédiaires.
+
+**Fix / Décision :** Option 2 + extraction progressive en 3 étapes indépendantes (A→B→C), avec validation des tests entre chaque étape. `GameService::seerCheck/witchAct/hunterShoot` délèguent via `app(RoleActions\XxxAction::class)->method(...)`. Les nouvelles classes sont instanciées par le container Laravel — cohérent avec `app(VoteService::class)` déjà utilisé dans le projet. `WitchAction` reçoit `VoteService` en injection de constructeur (résolu automatiquement par Laravel). Aucun appelant externe (ActionController, Jobs) n'a été modifié — la signature publique de `GameService` reste identique.
+
+**Leçon :** Pour extraire des méthodes d'un service central sans changer l'API publique, le pattern "délégation par le container" (`app(Xxx::class)->method(...)`) est le chemin de migration à risque minimal. Il permet de faire coexister l'ancienne signature et la nouvelle implémentation, et de valider chaque extraction indépendamment. Pour v1.3+, chaque nouveau rôle ajoute sa propre classe `RoleActions/XxxAction.php` sans toucher `GameService`.
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] PhaseAnnouncement — adaptation `.announcement-text` et point d'ancrage startDay()
 
 **Contexte :** `feat/phase-announcement-overlay` — `app/Events/Game/PhaseAnnouncement.php`, `app/Services/PhaseManager.php`, `resources/js/game-state.js`, `resources/views/components/announcement-overlay.blade.php`

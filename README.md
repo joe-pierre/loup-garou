@@ -137,7 +137,11 @@ La Sorcière et le Chasseur sont activables par le host avant le démarrage (com
 app/
 ├── Http/Controllers/Game/   ← valident la request, appellent les Services
 ├── Services/                ← toute la logique métier
-│   ├── GameService.php
+│   ├── GameService.php      ← orchestration (joinGame, startGame, markReady, …)
+│   ├── RoleActions/         ← actions de rôles spéciaux (extraits de GameService)
+│   │   ├── SeerAction.php   ← seerCheck()
+│   │   ├── WitchAction.php  ← witchAct()
+│   │   └── HunterAction.php ← hunterShoot()
 │   ├── PhaseManager.php
 │   ├── VoteService.php
 │   ├── RoleDistributor.php
@@ -151,6 +155,7 @@ app/
 ```
 
 **Règle stricte :** toute logique métier est dans `Services/`, jamais dans les Controllers.
+`GameService` délègue les actions de rôles à `Services/RoleActions/` via `app(...)` (container Laravel).
 
 ---
 
