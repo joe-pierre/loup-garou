@@ -280,7 +280,7 @@
 - [x] **Étape 3** — Timers configurables par partie — stockage dans `games.settings['timers']`, fallback `config/game.php`, UI dans waiting-room
 - [x] **Étape 4** — Rôles v1.2 — Sorcière, Chasseur (avec actions volontaires et timers fallback)
 - [x] **Étape 5** — Tests intégration v1.2 — couvrir les nouveaux endpoints, jobs auto, file d'annonces, reconnexion
-  - Note : `PhaseAnnouncementTest.php` non créé — event `PhaseAnnouncement` non implémenté (prévu SPEC_TRANSITIONS.md)
+- [x] **PhaseAnnouncement** — event + overlays de transition de phase + `PhaseAnnouncementTest.php` (SPEC_TRANSITIONS.md §3, §5, §10)
 - [ ] **Rôles v1.3+** (hors périmètre v1.2) — Loup Blanc, Cupidon, Petite Fille
 - [ ] **Timers par défaut** — révision des valeurs par défaut et minimales
       dans config/game.php (day_vote, seer, werewolves) — à faire en prompt séparé

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Events\Game\GameFinished;
 use App\Events\Game\GameStarted;
+use App\Events\Game\PhaseAnnouncement;
 use App\Events\Game\PlayerEliminated;
 use App\Notifications\PlayerExcludedNotification;
 use App\Notifications\RoleAssignedNotification;
@@ -264,6 +265,7 @@ class GameService
         broadcast(new PlayerReady($result['game'], $result['readyCount'], $result['total']));
 
         if ($result['startElection']) {
+            broadcast(new PhaseAnnouncement($result['game']->id, 'mayor_election', 'Élection du Maire. Que la sagesse guide vos votes !', 4000));
             broadcast(new MayorElectionStarted($result['game']));
         }
     }
@@ -811,6 +813,7 @@ class GameService
         });
 
         if ($data) {
+            broadcast(new PhaseAnnouncement($data['game']->id, 'game_cancelled', 'Partie annulée (trop d\'inactifs).', 5000));
             broadcast(new GameFinished($data['game'], $data['players'], null));
         }
     }

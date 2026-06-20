@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Events\Game\MayorSuccessionDone;
+use App\Events\Game\PhaseAnnouncement;
 use App\Models\Game;
 use App\Models\GameAction;
 use App\Services\PhaseManager;
@@ -126,6 +127,7 @@ class ProcessMayorSuccession implements ShouldQueue
         }
 
         // Broadcast APRÈS commit de la transaction
+        broadcast(new PhaseAnnouncement($result['game']->id, 'mayor_succession', 'Le Maire a succombé. Un nouveau va prendre sa place.', 3000));
         broadcast(new MayorSuccessionDone($result['game'], $result['successor'], true));
 
         if ($phaseToStart === 'night') {

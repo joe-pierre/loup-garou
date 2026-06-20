@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Events\Game\DayStarted;
 use App\Events\Game\NightStarted;
+use App\Events\Game\PhaseAnnouncement;
 use App\Jobs\ProcessDayVote;
 use App\Jobs\ProcessSeerTurn;
 use App\Models\Game;
@@ -76,6 +77,7 @@ class PhaseManager
             return;
         }
 
+        broadcast(new PhaseAnnouncement($locked->id, 'day_break', "L'aube approche\u{2026}", 3000));
         broadcast(new DayStarted($locked, $victim, $witchActed, $savedPlayerId));
         ProcessDayVote::dispatch($locked->id, $locked->round)
             ->delay(now()->addSeconds($timer));
@@ -125,6 +127,7 @@ class PhaseManager
             return;
         }
 
+        broadcast(new PhaseAnnouncement($locked->id, 'night_fall', "Le village s'endort\u{2026}", 3000));
         broadcast(new NightStarted($locked));
         ProcessSeerTurn::dispatch($locked->id, $locked->round)
             ->delay(now()->addSeconds($locked->timer('night_start_delay')));

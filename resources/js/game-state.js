@@ -44,6 +44,13 @@ export function gameState(gameId, userId) {
         votes:       {},   // { player_id: total_weight }
         wolvesVotes: {},   // { player_id: count }
 
+        // ── Annonces de phases (overlays de transition) ───────────────────────
+        announcements:         [],     // file FIFO d'objets { type, message, durationMs }
+        isAnnouncing:          false,  // true pendant l'affichage d'un overlay
+        _pendingNightStarted:  null,
+        _pendingDayStarted:    null,
+        _pendingMayorElected:  null,
+
         // ── Internes ─────────────────────────────────────────────────────────
         _csrf:     '',
         _motion:   true,   // !prefers-reduced-motion
@@ -125,7 +132,10 @@ export function gameState(gameId, userId) {
             if (!echo) return;
 
             // ── Canal public ─────────────────────────────────────────────────
+            // ⚠️ Ordre critique : .phase.announcement AVANT .night.started et .day.started
+            // (SPEC_TRANSITIONS.md §5.3) pour alimenter la file avant que ces events tentent d'être différés.
             echo.channel(`game.${this.gameId}`)
+                .listen('.phase.announcement',         e => this.addAnnouncement(e.type, e.messagePublic, e.durationMs))
                 .listen('.night.started',              e => this.handleNightStarted(e))
                 .listen('.day.started',                e => this.handleDayStarted(e))
                 .listen('.mayor.election.started',     e => this._handleMayorElectionStarted(e))
@@ -228,12 +238,50 @@ export function gameState(gameId, userId) {
                     this._dispatchToast('Reconnecté !', 'success');
                 });
             } catch {}
+
+            // ── Signal de fin d'overlay (depuis announcementOverlay) ─────────
+            window.addEventListener('announcement-done', () => {
+                this.onAnnouncementDone();
+            });
+        },
+
+        // ════════════════════════════════════════════════════════════════════
+        // ANNONCES DE PHASES — FILE FIFO (SPEC_TRANSITIONS.md §5.1)
+        // ════════════════════════════════════════════════════════════════════
+        addAnnouncement(type, message, durationMs) {
+            this.announcements.push({ type, message, durationMs });
+            this.consumeAnnouncements();
+        },
+
+        consumeAnnouncements() {
+            if (this.isAnnouncing) return;
+            if (this.announcements.length === 0) return;
+
+            this.isAnnouncing = true;
+            const next = this.announcements.shift();
+            window.dispatchEvent(new CustomEvent('show-announcement', { detail: next }));
+        },
+
+        onAnnouncementDone() {
+            this.isAnnouncing = false;
+            if (this._pendingNightStarted)  { this._applyNightStarted(this._pendingNightStarted);  this._pendingNightStarted  = null; }
+            if (this._pendingDayStarted)    { this._applyDayStarted(this._pendingDayStarted);      this._pendingDayStarted    = null; }
+            if (this._pendingMayorElected)  { this._applyMayorElected(this._pendingMayorElected);  this._pendingMayorElected  = null; }
+            this.consumeAnnouncements();
         },
 
         // ════════════════════════════════════════════════════════════════════
         // HANDLERS — PHASES
         // ════════════════════════════════════════════════════════════════════
             handleNightStarted(e) {
+                if (this.isAnnouncing) {
+                    this._pendingNightStarted = e;
+                    return;
+                }
+                this._applyNightStarted(e);
+            },
+
+            _applyNightStarted(e) {
                 this.phase            = 'night';
                 this.round            = e.round ?? this.round;
                 this.votes            = {};
@@ -289,6 +337,14 @@ export function gameState(gameId, userId) {
         },
 
         handleDayStarted(e) {
+            if (this.isAnnouncing) {
+                this._pendingDayStarted = e;
+                return;
+            }
+            this._applyDayStarted(e);
+        },
+
+        _applyDayStarted(e) {
             this.phase            = 'day';
             this.nightPhase       = 'village_sleeping';
             this.pendingSeerEvent = null;
@@ -339,6 +395,14 @@ export function gameState(gameId, userId) {
         },
 
         handleMayorElected(e) {
+            if (this.isAnnouncing) {
+                this._pendingMayorElected = e;
+                return;
+            }
+            this._applyMayorElected(e);
+        },
+
+        _applyMayorElected(e) {
             this._dispatchToast(`👑 ${e.pseudo} est élu Maire`, 'info');
             this._updateMayorBadges(e.player_id);
             window.dispatchEvent(new CustomEvent('mayor-elected', { detail: e }));
@@ -558,6 +622,13 @@ export function gameState(gameId, userId) {
         },
 
         _reconnect() {
+            // Un joueur qui se reconnecte ne voit jamais les annonces manquées (SPEC_TRANSITIONS.md §6)
+            this.announcements        = [];
+            this.isAnnouncing         = false;
+            this._pendingNightStarted = null;
+            this._pendingDayStarted   = null;
+            this._pendingMayorElected = null;
+
             if (!this.gameCode) return;
             fetch(`/game/${this.gameCode}/reconnect`, {
                 method:  'POST',
