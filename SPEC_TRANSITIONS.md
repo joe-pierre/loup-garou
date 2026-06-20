@@ -81,12 +81,12 @@ class PhaseAnnouncement implements ShouldBroadcastNow
 
 | Type               | Durée (ms) | Message public                                        | Moment de déclenchement              |
 |--------------------|------------|-------------------------------------------------------|--------------------------------------|
-| `night_fall`       | 3000       | "Le village s'endort…"                               | `PhaseManager::startNight()`         |
-| `day_break`        | 3000       | "L'aube approche…"                                   | `PhaseManager::endNight()`           |
-| `mayor_election`   | 4000       | "Élection du Maire. Que la sagesse guide vos votes !" | `PhaseManager::startMayorElection()` |
-| `mayor_succession` | 3000       | "Le Maire a succombé. Un nouveau va prendre sa place."| `ProcessMayorSuccession::handle()`   |
-| `game_finished`    | 4000       | "Le village a triomphé !" / "Les loups ont dévoré le village !" | `WinConditionChecker`     |
-| `game_cancelled`   | 5000       | "Partie annulée (trop d'inactifs)."                  | `GameService::checkInactivity()`     |
+| `night_fall`       | 4000       | "Le village s'endort…"                               | `PhaseManager::startNight()`         |
+| `day_break`        | 4000       | "L'aube approche…"                                   | `PhaseManager::endNight()`           |
+| `mayor_election`   | 5000       | "Élection du Maire. Que la sagesse guide vos votes !" | `PhaseManager::startMayorElection()` |
+| `mayor_succession` | 4000       | "Le Maire a succombé. Un nouveau va prendre sa place."| `ProcessMayorSuccession::handle()`   |
+| `game_finished`    | 5000       | "Le village a triomphé !" / "Les loups ont dévoré le village !" | `WinConditionChecker`     |
+| `game_cancelled`   | 6000       | "Partie annulée (trop d'inactifs)."                  | `GameService::checkInactivity()`     |
 
 **Important :** les types `seer_turn` et `werewolves_turn` n'existent **jamais** sur le canal public. Pendant l'intervalle entre `night_fall` et `day_break`, l'affichage public reste sur un écran "nuit" neutre sans aucune annonce.
 

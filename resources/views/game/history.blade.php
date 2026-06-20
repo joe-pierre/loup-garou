@@ -305,6 +305,15 @@
                         @else
                             <p class="text-sm" style="color:rgba(232,224,208,0.5);">Élection non résolue.</p>
                         @endif
+                        @if(!empty($entry['vote_totals']))
+                            <div class="mt-1.5 space-y-0.5">
+                                @foreach($entry['vote_totals'] as $vt)
+                                    <p class="text-xs" style="color:rgba(232,224,208,0.45);">
+                                        {{ $vt['pseudo'] }} — {{ $vt['vote_count'] }} vote{{ $vt['vote_count'] > 1 ? 's' : '' }}
+                                    </p>
+                                @endforeach
+                            </div>
+                        @endif
 
                     @elseif($entry['type'] === 'night')
                         @if($entry['wolf_no_agreement'])

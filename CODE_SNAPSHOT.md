@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 01h55
+Generated at: 14h31
 
 ## PHP Analysis (Core Logic)
 
@@ -1044,6 +1044,7 @@ GameHistoryServiceTest.php
     functions:
       - test_build_timeline_retourne_election_plus_finish_pour_partie_sans_rounds() → void
       - test_history_with_multiple_successions_and_rounds() → void
+      - test_election_timeline_contient_le_detail_des_votes_par_candidat() → void
 
 // tests/Feature/Game/ReconnectionTest.php
 ReconnectionTest.php

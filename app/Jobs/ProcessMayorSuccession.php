@@ -127,7 +127,7 @@ class ProcessMayorSuccession implements ShouldQueue
         }
 
         // Broadcast APRÈS commit de la transaction
-        broadcast(new PhaseAnnouncement($result['game']->id, 'mayor_succession', 'Le Maire a succombé. Un nouveau va prendre sa place.', 3000));
+        broadcast(new PhaseAnnouncement($result['game']->id, 'mayor_succession', 'Le Maire a succombé. Un nouveau va prendre sa place.', 4000));
         broadcast(new MayorSuccessionDone($result['game'], $result['successor'], true));
 
         if ($phaseToStart === 'night') {

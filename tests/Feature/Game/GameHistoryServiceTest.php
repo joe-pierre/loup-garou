@@ -195,4 +195,88 @@ class GameHistoryServiceTest extends TestCase
             'Les deux successions ont le même ancien maire — elles interfèrent'
         );
     }
+
+    /**
+     * Le détail des voix par candidat (vote_totals) est présent dans l'entrée election
+     * et respecte : triée par voix décroissantes, uniquement les candidats avec ≥ 1 voix.
+     */
+    public function test_election_timeline_contient_le_detail_des_votes_par_candidat(): void
+    {
+        $game = Game::factory()->create([
+            'status'      => 'finished',
+            'winner_team' => 'villagers',
+            'round'       => 1,
+        ]);
+
+        $candidateA = GamePlayer::factory()->villager()->create(['game_id' => $game->id, 'pseudo' => 'Alice']);
+        $candidateB = GamePlayer::factory()->villager()->create(['game_id' => $game->id, 'pseudo' => 'Bob']);
+        $candidateC = GamePlayer::factory()->villager()->create(['game_id' => $game->id, 'pseudo' => 'Charlie']);
+        $noVotes    = GamePlayer::factory()->villager()->create(['game_id' => $game->id, 'pseudo' => 'Dave']);
+        $wolf       = GamePlayer::factory()->werewolf()->create(['game_id' => $game->id]);
+
+        $players = $game->players()->get()->keyBy('id');
+
+        // Alice reçoit 3 voix, Bob 2 voix, Charlie 1 voix, Dave 0 voix
+        $votes = [];
+        foreach ([$candidateA, $candidateA, $candidateA] as $target) {
+            $votes[] = GameAction::factory()->create([
+                'game_id'          => $game->id,
+                'player_id'        => $wolf->id,
+                'type'             => 'mayor_vote',
+                'target_player_id' => $target->id,
+                'round'            => 0,
+                'phase'            => 'election',
+            ]);
+        }
+        foreach ([$candidateB, $candidateB] as $target) {
+            $votes[] = GameAction::factory()->create([
+                'game_id'          => $game->id,
+                'player_id'        => $candidateA->id,
+                'type'             => 'mayor_vote',
+                'target_player_id' => $target->id,
+                'round'            => 0,
+                'phase'            => 'election',
+            ]);
+        }
+        GameAction::factory()->create([
+            'game_id'          => $game->id,
+            'player_id'        => $candidateB->id,
+            'type'             => 'mayor_vote',
+            'target_player_id' => $candidateC->id,
+            'round'            => 0,
+            'phase'            => 'election',
+        ]);
+
+        $actions = GameAction::where('game_id', $game->id)->get();
+
+        $service  = new HistoryService();
+        $timeline = $service->buildTimeline($game, $players, $actions);
+
+        $election = collect($timeline)->firstWhere('type', 'election');
+
+        $this->assertNotNull($election, 'Entrée election absente de la timeline');
+        $this->assertArrayHasKey('vote_totals', $election, 'vote_totals absent de l\'entrée election');
+
+        $voteTotals = $election['vote_totals'];
+
+        // Exactement 3 candidats ayant reçu au moins 1 voix
+        $this->assertCount(3, $voteTotals, 'vote_totals doit contenir exactement 3 candidats (Dave exclut)');
+
+        // Triés par voix décroissantes
+        $this->assertSame('Alice',   $voteTotals[0]['pseudo']);
+        $this->assertSame(3,         $voteTotals[0]['vote_count']);
+        $this->assertSame('Bob',     $voteTotals[1]['pseudo']);
+        $this->assertSame(2,         $voteTotals[1]['vote_count']);
+        $this->assertSame('Charlie', $voteTotals[2]['pseudo']);
+        $this->assertSame(1,         $voteTotals[2]['vote_count']);
+
+        // Dave n'apparaît pas dans vote_totals
+        $pseudos = array_column($voteTotals, 'pseudo');
+        $this->assertNotContains('Dave', $pseudos, 'Dave (0 voix) ne doit pas figurer dans vote_totals');
+
+        // Alice est bien le maire élu (3 voix = majorité)
+        $this->assertSame('Alice', $election['mayor']['pseudo']);
+        $this->assertSame(3, $election['vote_count']);
+        $this->assertFalse($election['was_random']);
+    }
 }
