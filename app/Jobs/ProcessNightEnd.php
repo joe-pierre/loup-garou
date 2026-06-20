@@ -65,7 +65,8 @@ class ProcessNightEnd implements ShouldQueue
             return;
         }
 
-        // Double-check Workflow : 'processing_night' (Tâches E-H) reste hors périmètre et bypasse le guard.
+        // Double-check Workflow : 'processing_night' reste hors périmètre et bypasse canTransition() intentionnellement.
+        // ⚠️ applyTransition() est INTERDIT ici — seul $locked->update(['status' => ...]) est autorisé pour les statuts intermédiaires.
         if ($game->status === 'night' && ! $game->canTransition('start_day')) {
             Log::warning("Transition 'start_day' refusée depuis status={$game->status}");
             return;

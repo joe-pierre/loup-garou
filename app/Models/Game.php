@@ -98,6 +98,33 @@ class Game extends Model
         return $registry->get($this)->can($this, $transitionName);
     }
 
+    /**
+     * Applique une transition Symfony Workflow et persiste le nouveau statut.
+     *
+     * ⚠️ INTERDIT si $this->status est un statut intermédiaire hors Workflow.
+     *
+     * Le Workflow Symfony ne connaît que 5 places canoniques :
+     *   waiting · electing_mayor · night · day · finished
+     *
+     * Les statuts suivants sont gérés MANUELLEMENT hors Workflow (via update()) :
+     *   processing_night · processing_day · wolves_turn · role_reveal
+     *
+     * Appeler applyTransition() depuis l'un de ces statuts intermédiaires lèvera :
+     *   Symfony\Component\Workflow\Exception\LogicException
+     *   "The marking does not contain a place 'processing_night'."
+     * Cette exception est catchée silencieusement par le queue worker Laravel
+     * (job marqué 'failed' sans message clair dans les logs applicatifs).
+     *
+     * ✅ Pattern autorisé pour quitter un statut intermédiaire :
+     *   $game->update(['status' => 'night']); // retour au dernier statut canonique
+     *   $game->applyTransition('start_day');  // puis transition Workflow
+     *
+     * ❌ Pattern interdit — provoque une LogicException silencieuse :
+     *   // $game->status === 'processing_night'
+     *   $game->applyTransition('start_day'); // BOOM
+     *
+     * Voir RISK_GUARDS.md Guard #5 pour la règle lockForUpdate() associée.
+     */
     public function applyTransition(string $transitionName): void
     {
         $registry = app(Registry::class);
