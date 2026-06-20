@@ -685,6 +685,16 @@ class GameService
                     'round'            => $game->round,
                     'phase'            => 'night',
                 ]);
+
+                if ($target->isHunter()) {
+                    GameAction::create([
+                        'game_id'   => $game->id,
+                        'player_id' => $target->id,
+                        'type'      => 'hunter_pending',
+                        'round'     => $game->round,
+                        'phase'     => 'night',
+                    ]);
+                }
             } else {
                 GameAction::create([
                     'game_id'          => $game->id,
@@ -698,16 +708,6 @@ class GameService
 
             return ['action' => $action, 'target' => $target];
         });
-
-        if ($action === 'kill' && $result['target']?->isHunter()) {
-            GameAction::create([
-                'game_id'   => $game->id,
-                'player_id' => $result['target']->id,
-                'type'      => 'hunter_pending',
-                'round'     => $game->round,
-                'phase'     => 'night',
-            ]);
-        }
 
         return $result;
     }
