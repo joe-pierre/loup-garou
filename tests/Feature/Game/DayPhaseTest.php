@@ -115,6 +115,51 @@ class DayPhaseTest extends TestCase
         ]);
     }
 
+    public function test_day_vote_request_rejette_cible_morte(): void
+    {
+        Event::fake();
+
+        $game   = $this->makeDayGame();
+        $user   = User::factory()->create();
+        GamePlayer::factory()->villager()->create([
+            'game_id' => $game->id,
+            'user_id' => $user->id,
+        ]);
+        $dead = GamePlayer::factory()->villager()->dead()->create([
+            'game_id' => $game->id,
+        ]);
+
+        $response = $this->actingAs($user)->postJson("/game/{$game->id}/vote/day", [
+            'target_player_id' => $dead->id,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['target_player_id']);
+    }
+
+    public function test_day_vote_request_rejette_cible_hors_partie(): void
+    {
+        Event::fake();
+
+        $game1  = $this->makeDayGame();
+        $game2  = $this->makeDayGame();
+        $user   = User::factory()->create();
+        GamePlayer::factory()->villager()->create([
+            'game_id' => $game1->id,
+            'user_id' => $user->id,
+        ]);
+        $outsider = GamePlayer::factory()->villager()->create([
+            'game_id' => $game2->id,
+        ]);
+
+        $response = $this->actingAs($user)->postJson("/game/{$game1->id}/vote/day", [
+            'target_player_id' => $outsider->id,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['target_player_id']);
+    }
+
     public function test_vote_hors_phase_day_retourne_409(): void
     {
         Event::fake();

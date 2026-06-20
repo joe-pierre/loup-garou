@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-20 — DayVoteRequest ne validait pas que la cible est vivante et dans la partie
+
+- **Symptôme :** voter pour un joueur mort ou appartenant à une autre partie retournait une 404/500 depuis `firstOrFail()` dans `VoteService::castDayVote()` au lieu d'un 422 propre avec message d'erreur de validation.
+- **Cause :** `DayVoteRequest` ne validait que `required|integer` — aucune vérification d'existence en base, de game_id, ni de is_alive. La validation complète était reportée au Service.
+- **Fix :** ajout de `Rule::exists('game_players', 'id')->where('game_id', ...)->where('is_alive', true)` et `Rule::notIn($selfId)` dans `DayVoteRequest::rules()`, avec `messages()` en français. Même pattern que `HunterShootRequest` et `SeerCheckRequest`. `MayorSuccessionRequest::authorize()` renforcé pour vérifier que le demandeur est bien le maire éliminé (is_mayor && !is_alive).
+
+---
+
 ### [x] 2026-06-20 — hunter_pending créé hors transaction dans witchAct('kill')
 
 - **Symptôme :** si le process PHP crashait entre le commit de la transaction `witch_kill` et le `GameAction::create('hunter_pending')` hors transaction, le chasseur empoisonné par la sorcière perdait silencieusement son tour de tir — aucune trace en base, aucune erreur visible.
