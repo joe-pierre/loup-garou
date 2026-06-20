@@ -438,14 +438,6 @@
     window.GAME_CODE    = GAME_CODE;
     window.MY_PLAYER_ID = MY_PLAYER_ID;
 
-    // TODO : cette fonction est dupliquée dans plusieurs vues.
-    // Source de vérité : config/game_ui.php > avatar_colors
-    // À centraliser dans un helper Alpine global en v1.3+
-    function playerAvatarColor(id) {
-        const colors = ['#c9a84c','#a78bfa','#4ade80','#ff4444','#38bdf8','#fb923c','#f472b6','#34d399'];
-        return colors[id % colors.length];
-    }
-
     function dayScreen() {
         return {
             confirmQuit:      false,

@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-20 — playerAvatarColor() dupliquée dans day.blade.php et waiting-room.blade.php
+
+- **Symptôme :** la même fonction utilitaire JS était définie en double dans deux vues Blade avec un commentaire TODO pointant vers `config/game_ui.php`.
+- **Cause :** la centralisation était reportée — les vues ne pouvant pas être des modules ES6, aucun import commun n'était en place.
+- **Fix :** extraction dans `resources/js/player-avatar.js` (export nommé avec palette fallback), exposition sur `window.playerAvatarColor` dans `app.js` avant `Alpine.start()`, suppression des deux définitions locales et leurs commentaires TODO.
+
+---
+
 ### [x] 2026-06-20 — Double abonnement Echo sur mayor-election.blade.php et role-reveal.blade.php
 
 - **Symptôme :** `mayor-election.blade.php` et `role-reveal.blade.php` ouvraient un second `window.Echo.channel()` sur `game.{gameId}` en parallèle du store `game-state.js`, provoquant un double traitement de chaque event Reverb — dont une double logique de redirection concurrente vers `/night` (un `setTimeout` brut depuis la vue, une animation GSAP coordonnée depuis `game-state.js`).
