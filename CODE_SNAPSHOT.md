@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 00h41
+Generated at: 00h51
 
 ## PHP Analysis (Core Logic)
 
@@ -681,7 +681,8 @@ HunterShootRequest.php
 DayVoteRequest.php
     functions:
       - authorize() → return true
-      - rules() → return ['target_player_id' => 'required|integer']
+      - rules() → return ['target_player_id' => ['required', 'integer', Rule::exists('game_players', 'id')->where('game_id', $gameId)->where('is_alive', true), Rule::notIn($selfId)]]
+      - messages() → return ['target_player_id.required' => 'La cible est obligatoire.', 'target_player_id.exists' => 'Ce joueur n\'existe pas ou est déjà éliminé.', 'target_player_id.not_in' => 'Vous ne pouvez pas voter contre vous-même.']
 
 // app/Http/Requests/SendMessageRequest.php
 SendMessageRequest.php
@@ -756,7 +757,7 @@ SeerCheckRequest.php
 // app/Http/Requests/MayorSuccessionRequest.php
 MayorSuccessionRequest.php
     functions:
-      - authorize() → return true
+      - authorize() → return $player && $player->is_mayor && !$player->is_alive
       - rules() → return ['target_player_id' => ['required', 'integer', Rule::exists('game_players', 'id')->where('game_id', $this->route('id'))->where('is_alive', true)]]
       - messages() → return ['target_player_id.required' => 'Le successeur est obligatoire.', 'target_player_id.exists' => 'Ce joueur n\'existe pas ou est éliminé.']
 
@@ -1213,6 +1214,8 @@ DayPhaseTest.php
       - test_un_joueur_ne_peut_pas_voter_pour_lui_meme_retourne_422() → void
       - test_égalité_vote_jour_élimine_personne_et_broadcast_no_elimination() → void
       - test_vote_maire_weight_2_correctement_compté() → void
+      - test_day_vote_request_rejette_cible_morte() → void
+      - test_day_vote_request_rejette_cible_hors_partie() → void
       - test_vote_hors_phase_day_retourne_409() → void
 
 // tests/Feature/Game/MigrationTest.php

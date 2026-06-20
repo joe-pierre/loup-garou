@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\GamePlayer;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -9,7 +10,12 @@ class MayorSuccessionRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $gameId = $this->route('id');
+        $player = GamePlayer::where('game_id', $gameId)
+            ->where('user_id', $this->user()->id)
+            ->first();
+
+        return $player && $player->is_mayor && ! $player->is_alive;
     }
 
     public function rules(): array
