@@ -58,7 +58,7 @@ class PhaseAnnouncementTest extends TestCase
         Event::assertDispatched(PhaseAnnouncement::class, function (PhaseAnnouncement $e) use ($game) {
             return $e->gameId === $game->id
                 && $e->type === 'night_fall'
-                && $e->durationMs === 3000;
+                && $e->durationMs === 4000;
         });
 
         Event::assertDispatched(NightStarted::class);
@@ -133,7 +133,7 @@ class PhaseAnnouncementTest extends TestCase
         $announcements = Event::dispatched(PhaseAnnouncement::class);
         $nightFallA = $announcements->first(fn ($args) => ($args[0]->type ?? '') === 'night_fall');
         $this->assertNotNull($nightFallA, 'PhaseAnnouncement night_fall attendu (scénario A : voyante active)');
-        $this->assertSame(3000, $nightFallA[0]->durationMs);
+        $this->assertSame(4000, $nightFallA[0]->durationMs);
 
         Event::clearResolvedInstances();
         Event::fake();
@@ -152,6 +152,6 @@ class PhaseAnnouncementTest extends TestCase
         $announcements = Event::dispatched(PhaseAnnouncement::class);
         $nightFallB = $announcements->first(fn ($args) => ($args[0]->type ?? '') === 'night_fall');
         $this->assertNotNull($nightFallB, 'PhaseAnnouncement night_fall attendu (scénario B : sans voyante)');
-        $this->assertSame(3000, $nightFallB[0]->durationMs);
+        $this->assertSame(4000, $nightFallB[0]->durationMs);
     }
 }

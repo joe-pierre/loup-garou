@@ -28,14 +28,14 @@ function announcementOverlay() {
                 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                     gsap.fromTo('.announcement-text',
                         { opacity: 0, y: 20 },
-                        { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }
+                        { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out' }
                     );
                 }
 
                 this._timer = setTimeout(() => {
                     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                         gsap.to('.announcement-text', {
-                            opacity: 0, duration: 0.4, ease: 'power2.in',
+                            opacity: 0, duration: 0.25, ease: 'power2.in',
                             onComplete: () => {
                                 this.active = false;
                                 window.dispatchEvent(new CustomEvent('announcement-done'));

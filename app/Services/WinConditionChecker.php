@@ -65,7 +65,7 @@ class WinConditionChecker
         $announcementMessage = $winnerTeam === 'villagers'
             ? 'Le village a triomphé !'
             : 'Les loups ont dévoré le village !';
-        broadcast(new PhaseAnnouncement($game->id, 'game_finished', $announcementMessage, 4000));
+        broadcast(new PhaseAnnouncement($game->id, 'game_finished', $announcementMessage, 5000));
         broadcast(new GameFinished($game, $allPlayers, $winnerTeam, $lastAction));
 
         try {

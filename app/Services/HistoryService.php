@@ -20,12 +20,18 @@ class HistoryService
             $topIds    = $totals->filter(fn ($c) => $c === $maxVotes)->keys()->toArray();
             $electedId = count($topIds) === 1 ? (int) $topIds[0] : null;
 
+            $electionVoteTotals = $totals->map(function ($count, $targetId) use ($players) {
+                $snap = $this->playerSnapshot($players, (int) $targetId);
+                return ['pseudo' => $snap['pseudo'], 'vote_count' => $count];
+            })->values()->toArray();
+
             $timeline[] = [
-                'type'       => 'election',
-                'label'      => 'Élection du Maire',
-                'was_random' => count($topIds) > 1,
-                'mayor'      => $electedId ? $this->playerSnapshot($players, $electedId) : null,
-                'vote_count' => $electedId ? $totals->get($topIds[0]) : null,
+                'type'        => 'election',
+                'label'       => 'Élection du Maire',
+                'was_random'  => count($topIds) > 1,
+                'mayor'       => $electedId ? $this->playerSnapshot($players, $electedId) : null,
+                'vote_count'  => $electedId ? $totals->get($topIds[0]) : null,
+                'vote_totals' => $electionVoteTotals,
             ];
         }
 
