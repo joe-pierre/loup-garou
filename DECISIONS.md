@@ -1,3 +1,19 @@
+## [CHOIX] PLAYERS_DATA conservé comme amorçage initial dans day.blade.php
+
+**Contexte :** `fix/game-state-players-source-of-truth` — `resources/js/game-state.js`, `app/Http/Controllers/Game/GameController.php`, `resources/views/game/day.blade.php`
+
+**Symptôme / Problème :** `game-state.js` déclarait `players: []` mais ne le peuplait jamais — `GameController::state()` ne retournait pas la liste des joueurs. Les vues maintenaient leur propre copie locale via `PLAYERS_DATA` (injection Blade). Violation de la règle "game-state.js = seul store source de vérité pour players[]".
+
+**Cause / Alternatives :** Deux voies envisagées : (A) Supprimer `PLAYERS_DATA` et forcer la vue à attendre `_loadState()` avant d'afficher quoi que ce soit — risque de flash vide si l'appel XHR est lent. (B) Garder `PLAYERS_DATA` comme valeur d'amorçage initiale fournie par Blade (rendu serveur cohérent), et peupler le store via `_loadState()` pour que les futures vues puissent s'y brancher sans dupliquer leur logique.
+
+**Fix / Décision :** Option B retenue. `PLAYERS_DATA` reste l'amorçage de `dayScreen.players` : c'est le rendu serveur initial, cohérent avec la page HTML livrée, sans flash vide. Ce n'est pas une duplication de source de vérité car `PLAYERS_DATA` n'est lu qu'une seule fois en bootstrap — toutes les mises à jour ultérieures passent par les mêmes CustomEvents (`player-eliminated`, `mayor-elected`, `mayor-succession-done`) que ceux qui mettent à jour `gameState.players`. L'audit a confirmé que `day.blade.php` écoute déjà ces events via `window.addEventListener` — aucune logique de mise à jour dupliquée. `GameController::state()` retourne maintenant `players` dans son payload, et `_loadState()` peuple `this.players` pour toute future vue qui voudra s'y brancher sans PLAYERS_DATA (ex. spectator.blade.php). `night.blade.php` et `spectator.blade.php` restent hors périmètre de cette tâche — voir ROADMAP.
+
+**Leçon :** Le bootstrap Blade (PLAYERS_DATA) et le store central (gameState.players) ne sont pas en conflit si : (1) le bootstrap n'est lu qu'une fois en init(), (2) toutes les mises à jour en cours de vie passent par les CustomEvents du store central, (3) le store est également peuplé côté XHR pour les futures vues qui veulent s'y brancher directement.
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [RÉSOLU] Double abonnement Echo — mayor-election.blade.php et role-reveal.blade.php
 
 **Contexte :** `fix/double-echo-subscription-election-views` — `resources/js/game-state.js`, `resources/views/game/mayor-election.blade.php`, `resources/views/game/role-reveal.blade.php`
