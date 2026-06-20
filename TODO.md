@@ -354,6 +354,14 @@
 
 ---
 
+---
+
+## Phase 24 — Bugfix double abonnement Echo vues élection (2026-06-20)
+
+- [x] **Fix** — Suppression double abonnement `window.Echo.channel()` dans `mayor-election.blade.php` et `role-reveal.blade.php`. Trois CustomEvents ajoutés dans `game-state.js` (`mayor-vote-cast`, `mayor-elected`, `mayor-election-started`). Listener `.player.ready` + handler `_handlePlayerReady` ajoutés au canal public. Guard `_initialized` dans les deux `init()`. Redirection `.night.started` supprimée de la vue élection. (`fix/double-echo-subscription-election-views`)
+
+---
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`

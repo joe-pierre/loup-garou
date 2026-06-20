@@ -204,6 +204,9 @@
             },
 
             init() {
+                if (this._initialized) return;
+                this._initialized = true;
+
                 gsap.fromTo('#me-header', { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' });
                 gsap.fromTo('#me-timer', { opacity: 0 }, { opacity: 1, duration: 0.5, delay: 0.05, ease: 'power2.out' });
                 gsap.fromTo('#me-candidates', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, delay: 0.15, ease: 'power2.out' });
@@ -219,21 +222,18 @@
                     if (this.timerSeconds <= 0) clearInterval(tick);
                 }, 1000);
 
-                window.Echo.channel(`game.${this.gameId}`)
-                    .listen('.mayor.vote.cast', (data) => {
-                        const updated = {};
-                        (data.votes ?? []).forEach(v => { updated[v.target_player_id] = v; });
-                        this.votes = updated;
-                    })
-                    .listen('.mayor.elected', (data) => {
-                        this.electedMayor = data.pseudo;
-                        this.wasRandom    = data.was_random;
-                        this.showResult   = true;
-                        setTimeout(() => { window.location.href = `/game/${this.gameCode}/night`; }, 6000);
-                    })
-                    .listen('.night.started', () => {
-                        window.location.href = `/game/${this.gameCode}/night`;
-                    });
+                window.addEventListener('mayor-vote-cast', (ev) => {
+                    const updated = {};
+                    (ev.detail.votes ?? []).forEach(v => { updated[v.target_player_id] = v; });
+                    this.votes = updated;
+                });
+
+                window.addEventListener('mayor-elected', (ev) => {
+                    this.electedMayor = ev.detail.pseudo;
+                    this.wasRandom    = ev.detail.was_random;
+                    this.showResult   = true;
+                    setTimeout(() => { window.location.href = `/game/${this.gameCode}/night`; }, 6000);
+                });
             },
 
             async castVote(targetId) {
