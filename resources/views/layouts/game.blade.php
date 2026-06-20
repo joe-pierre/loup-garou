@@ -135,6 +135,10 @@
         aria-hidden="true"
     ></div>
     @endisset
+
+    {{-- Overlay d'annonce de phase — au-dessus de tout (SPEC_TRANSITIONS.md §5.5) --}}
+    <x-announcement-overlay />
+
     <main class="pt-14 min-h-screen pb-16 md:pb-0" role="main" id="main-content">
         @yield('content')
     </main>

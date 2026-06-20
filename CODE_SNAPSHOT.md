@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 01h18
+Generated at: 01h33
 
 ## PHP Analysis (Core Logic)
 
@@ -339,6 +339,17 @@ PlayerJoined.php
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'player.joined'
       - broadcastWith() → return ['pseudo' => $this->player->pseudo, 'players' => $players, 'slots_remaining' => $this->game->max_players - count($players)]
+
+// app/Events/Game/PhaseAnnouncement.php
+PhaseAnnouncement.php
+    attributes:
+      - Dispatchable
+      - InteractsWithSockets
+      - SerializesModels
+    functions:
+      - __construct(int $gameId, string $type, string $messagePublic, int $durationMs) {}
+      - broadcastOn() → return [new Channel("game.{$this->gameId}")]
+      - broadcastAs() → return 'phase.announcement'
 
 // app/Events/Game/PlayerReady.php
 PlayerReady.php
@@ -1052,6 +1063,16 @@ ExcludePlayerTest.php
       - test_motif_vide_retourne_422() → void
       - test_joueur_exclu_ne_peut_plus_rejoindre() → void
       - test_player_excluded_broadcasté_après_exclusion() → void
+
+// tests/Feature/Game/PhaseAnnouncementTest.php
+PhaseAnnouncementTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - makeDayGame() → return Game::factory()->create(['status' => 'processing_day', 'max_players' => 6, 'round' => 1])
+      - test_night_fall_broadcasted_on_start_night() → void
+      - test_seer_turn_not_broadcasted_publicly() → void
+      - test_public_phase_duration_is_constant() → void
 
 // tests/Feature/Game/TimerSettingsTest.php
 TimerSettingsTest.php

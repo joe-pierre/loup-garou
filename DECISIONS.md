@@ -1,3 +1,23 @@
+## [CHOIX] PhaseAnnouncement — adaptation `.announcement-text` et point d'ancrage startDay()
+
+**Contexte :** `feat/phase-announcement-overlay` — `app/Events/Game/PhaseAnnouncement.php`, `app/Services/PhaseManager.php`, `resources/js/game-state.js`, `resources/views/components/announcement-overlay.blade.php`
+
+**Symptôme / Problème :** Deux écarts mineurs entre la spec littérale (SPEC_TRANSITIONS.md) et le code réel.
+
+**Cause / Alternatives :**
+1. La spec §5.4 montre `gsap.fromTo('.announcement-text', ...)` mais le `<p>` du composant n'a pas la classe `announcement-text`. Sans elle, le sélecteur GSAP ne trouve rien et l'animation est silencieusement ignorée.
+2. La spec §7 dit "broadcast `day_break` dans `PhaseManager::endNight()`" mais `DayStarted` est broadcasté dans `startDay()` (appelé par `endNight()`). Ajouter le broadcast dans `endNight()` aurait séparé `PhaseAnnouncement` de `DayStarted` par l'appel `startDay()`, risquant une inversion d'ordre selon les timings.
+
+**Fix / Décision :**
+1. `announcement-text` ajouté sur le `<p>` du composant overlay pour que GSAP trouve son sélecteur.
+2. `PhaseAnnouncement(day_break)` ajouté dans `startDay()` juste avant `broadcast(new DayStarted(...))` — respecte la règle HORS transaction et l'ordre garanti PhaseAnnouncement → DayStarted.
+
+**Leçon :** Quand la spec nomme une méthode comme point d'ancrage mais que le broadcast réel est dans une méthode appelée, toujours suivre l'emplacement réel du broadcast dans le code.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] PLAYERS_DATA conservé comme amorçage initial dans day.blade.php
 
 **Contexte :** `fix/game-state-players-source-of-truth` — `resources/js/game-state.js`, `app/Http/Controllers/Game/GameController.php`, `resources/views/game/day.blade.php`

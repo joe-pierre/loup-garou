@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Events\Game\GameFinished;
+use App\Events\Game\PhaseAnnouncement;
 use App\Models\Game;
 use App\Notifications\GameFinishedNotification;
 use Illuminate\Support\Facades\Log;
@@ -60,6 +61,11 @@ class WinConditionChecker
 
         $allPlayers = $game->players()->with('user')->get();
         $lastAction = $this->buildLastAction($game);
+
+        $announcementMessage = $winnerTeam === 'villagers'
+            ? 'Le village a triomphé !'
+            : 'Les loups ont dévoré le village !';
+        broadcast(new PhaseAnnouncement($game->id, 'game_finished', $announcementMessage, 4000));
         broadcast(new GameFinished($game, $allPlayers, $winnerTeam, $lastAction));
 
         try {
