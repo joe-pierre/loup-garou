@@ -390,6 +390,47 @@ class WitchTest extends TestCase
     }
 
     /**
+     * Atomicité : witch_kill et hunter_pending doivent être créés dans la même transaction.
+     * Si l'un est absent, le chasseur perd silencieusement son tour de tir.
+     */
+    public function test_hunter_pending_dans_transaction_witch_kill(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game    = $this->makeNightGame();
+        $user    = User::factory()->create();
+        $witch   = GamePlayer::factory()->witch()->create([
+            'game_id' => $game->id, 'user_id' => $user->id,
+        ]);
+        $hunter  = GamePlayer::factory()->hunter()->create(['game_id' => $game->id]);
+        GamePlayer::factory()->count(3)->villager()->create(['game_id' => $game->id]);
+
+        $response = $this->actingAs($user)->postJson("/game/{$game->id}/witch/act", [
+            'action'           => 'kill',
+            'target_player_id' => $hunter->id,
+        ]);
+
+        $response->assertStatus(200);
+
+        $this->assertDatabaseHas('game_actions', [
+            'game_id'          => $game->id,
+            'player_id'        => $witch->id,
+            'type'             => 'witch_kill',
+            'target_player_id' => $hunter->id,
+            'round'            => 1,
+        ]);
+
+        $this->assertDatabaseHas('game_actions', [
+            'game_id'   => $game->id,
+            'player_id' => $hunter->id,
+            'type'      => 'hunter_pending',
+            'round'     => 1,
+            'phase'     => 'night',
+        ]);
+    }
+
+    /**
      * Guard #3 (variante AutoAction) : même sans victime des loups,
      * ProcessWitchAutoAction doit résoudre le tour (witch_pass) et
      * dispatcher ProcessNightEnd sans bloquer.

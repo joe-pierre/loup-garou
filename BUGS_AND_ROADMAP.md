@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-20 — hunter_pending créé hors transaction dans witchAct('kill')
+
+- **Symptôme :** si le process PHP crashait entre le commit de la transaction `witch_kill` et le `GameAction::create('hunter_pending')` hors transaction, le chasseur empoisonné par la sorcière perdait silencieusement son tour de tir — aucune trace en base, aucune erreur visible.
+- **Cause :** la création du `GameAction hunter_pending` était positionnée après la fermeture du `DB::transaction()` contenant `witch_kill`, hors de toute protection atomique.
+- **Fix :** création de `hunter_pending` déplacée à l'intérieur du `DB::transaction()`, dans la branche `elseif ($action === 'kill')`, juste après la création de `witch_kill` — les deux GameAction sont désormais atomiques.
+
+---
+
 ### [x] 2026-06-19 — Victime loups et sorcière potentiellement différentes (égalité vote)
 
 - **Symptôme :** En cas d'égalité parfaite entre deux cibles du vote nocturne, `ProcessNightActions` et `ProcessWitchTurn` appelaient chacun `resolveNightVote()` indépendamment — deux tirages aléatoires pouvaient désigner deux victimes différentes.
