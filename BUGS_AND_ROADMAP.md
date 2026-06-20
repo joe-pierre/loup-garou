@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-20 — /disconnect et /reconnect non throttlés (spam d'écritures DB)
+
+- **Symptôme :** les endpoints `/quit`, `/disconnect` et `/reconnect` étaient hors de tout groupe `throttle`, permettant un spam sans limite — notamment sur `/reconnect` qui déclenche des écritures DB et broadcasts `PlayerReconnected`.
+- **Cause :** les trois routes étaient déclarées dans le groupe `auth` mais en dehors du groupe `throttle:60,1` réservé aux actions de gameplay.
+- **Fix :** déplacement des trois routes dans un nouveau sous-groupe `throttle:30,1` dédié dans `routes/web.php`, sans modifier aucun nom de route ni comportement applicatif.
+
+---
+
 ### [x] 2026-06-20 — DayVoteRequest ne validait pas que la cible est vivante et dans la partie
 
 - **Symptôme :** voter pour un joueur mort ou appartenant à une autre partie retournait une 404/500 depuis `firstOrFail()` dans `VoteService::castDayVote()` au lieu d'un 422 propre avec message d'erreur de validation.

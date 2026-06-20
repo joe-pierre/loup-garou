@@ -78,11 +78,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/game/{code}/history', [GameController::class, 'history'])->name('game.history'); // Guard: GamePolicy::viewHistory (joueur de la partie uniquement)
 
     // ══════════════════════════════════════════════════════
-    // DÉCONNEXION / RECONNEXION
+    // DÉCONNEXION / RECONNEXION (throttle dédié)
     // ══════════════════════════════════════════════════════
-    Route::post('/game/{id}/quit', [GameController::class, 'quit'])->name('game.quit');
-    Route::post('/game/{id}/disconnect', [GameController::class, 'disconnect'])->name('game.disconnect');
-    Route::post('/game/{code}/reconnect', [GameController::class, 'reconnect'])->name('game.reconnect');
+    Route::middleware('throttle:30,1')->group(function () {
+        Route::post('/game/{id}/quit', [GameController::class, 'quit'])->name('game.quit');
+        Route::post('/game/{id}/disconnect', [GameController::class, 'disconnect'])->name('game.disconnect');
+        Route::post('/game/{code}/reconnect', [GameController::class, 'reconnect'])->name('game.reconnect');
+    });
 
     // ══════════════════════════════════════════════════════
     // PUSH NOTIFICATIONS (WebPush)
