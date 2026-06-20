@@ -873,3 +873,19 @@ une const locale d'une vue Blade.
 **Leçon :** Règle absolue : aucun `broadcast()`, `notify()` ou `dispatch()->delay(0)` dans un `DB::transaction()` qui contient un `lockForUpdate()`. Les dispatches avec `delay > 0` sont tolérés (ils ne s'exécutent pas pendant la transaction). Pour les jobs avec guard de double-fire, l'opération "lire + détruire" doit elle-même être atomique (transaction + lockForUpdate).
 
 **Statut :** ✅ Résolu
+
+---
+
+## [CHOIX] applyTransition() interdit sur les statuts intermédiaires hors Workflow
+
+**Contexte :** `docs/apply-transition-guard-warning` — `app/Models/Game.php`, `app/Jobs/ProcessNightEnd.php`
+
+**Symptôme / Problème :** Le Workflow Symfony ne couvre que 5 places canoniques (`waiting`, `electing_mayor`, `night`, `day`, `finished`). Les statuts intermédiaires (`processing_night`, `processing_day`, `wolves_turn`, `role_reveal`) sont gérés manuellement hors Workflow via `$game->update(['status' => '...'])`. Appeler `Game::applyTransition()` depuis l'un de ces statuts lève une `LogicException` Symfony (`"The marking does not contain a place 'processing_night'."`) catchée silencieusement par le queue worker Laravel — le job est marqué `failed` sans message clair dans les logs applicatifs.
+
+**Cause / Alternatives :** L'existence de statuts intermédiaires hors Workflow est un choix d'architecture v1.2 (granularité nécessaire pour les phases nocturnes séquentielles). Alternative — les intégrer comme places Workflow — rejetée : complexité disproportionnée et couplage fort aux Jobs internes.
+
+**Fix / Décision :** Tâche purement documentaire. PHPDoc complet ajouté sur `Game::applyTransition()` listant les statuts interdits, le symptôme exact d'une erreur, et le pattern autorisé (retour au dernier statut canonique via `update()`, puis `applyTransition()`). Commentaire de rappel ajouté dans `ProcessNightEnd::handle()` au-dessus du bloc qui bypasse intentionnellement `canTransition()` pour `processing_night`.
+
+**Leçon :** Ne jamais appeler `applyTransition()` si `$game->status` est l'un de : `processing_night`, `processing_day`, `wolves_turn`, `role_reveal`. Ces statuts sont écrits manuellement (`$game->update(['status' => '...'])`). Pour revenir dans le graphe Workflow, écrire d'abord le statut canonique source, puis appeler `applyTransition()`. Voir aussi Guard #5 de RISK_GUARDS.md pour la règle `lockForUpdate()` associée.
+
+**Statut :** 🔵 Choix assumé
