@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 01h40
+Generated at: 01h55
 
 ## PHP Analysis (Core Logic)
 
@@ -999,6 +999,18 @@ ChatService.php
       - sendMessage(GamePlayer $player, string $message, string $channel) → return ChatMessage::create(['game_id' => $game->id, 'player_id' => $player->id, 'message' => $message, 'channel' => $channel, 'round' => $game->round, 'phase' => $this->mapStatusToPhase($game->status)])
       - mapStatusToPhase(string $status) → return match ($status) { 'electing_mayor' => 'election', 'night' => 'night', default => 'day', }
 
+// tests/Feature/Console/CleanOldGamesTest.php
+CleanOldGamesTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_supprime_parties_terminees_depuis_plus_de_7_jours() → void
+      - test_conserve_parties_terminees_depuis_moins_de_7_jours() → void
+      - test_conserve_parties_terminees_exactement_7_jours_ago() → void
+      - test_conserve_parties_en_cours() → void
+      - test_ne_supprime_pas_parties_en_waiting() → void
+      - test_supprime_plusieurs_vieilles_parties_et_preserve_les_recentes() → void
+
 // tests/Feature/Auth/GoogleAuthTest.php
 GoogleAuthTest.php
     attributes:
@@ -1010,12 +1022,28 @@ GoogleAuthTest.php
       - test_authentifie_le_joueur_après_callback() → void
       - test_exception_socialite_redirige_vers_login_avec_erreur() → void
 
+// tests/Feature/ChannelAuthorizationTest.php
+ChannelAuthorizationTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - authChannel(User $user, string $channelName) → return $this->actingAs($user)->postJson('/broadcasting/auth', ['channel_name' => $channelName, 'socket_id' => '1234.5678'])
+      - test_canal_werewolves_accessible_aux_loups() → void
+      - test_canal_werewolves_inaccessible_aux_villageois() → void
+      - test_canal_werewolves_inaccessible_aux_voyantes() → void
+      - test_canal_werewolves_inaccessible_si_pas_dans_la_partie() → void
+      - test_canal_player_prive_accessible_a_son_proprietaire() → void
+      - test_canal_player_prive_inaccessible_a_un_autre_joueur() → void
+      - test_canal_public_accessible_aux_joueurs_de_la_partie() → void
+      - test_canal_public_inaccessible_a_un_non_joueur() → void
+
 // tests/Feature/Game/GameHistoryServiceTest.php
 GameHistoryServiceTest.php
     attributes:
       - RefreshDatabase
     functions:
       - test_build_timeline_retourne_election_plus_finish_pour_partie_sans_rounds() → void
+      - test_history_with_multiple_successions_and_rounds() → void
 
 // tests/Feature/Game/ReconnectionTest.php
 ReconnectionTest.php
@@ -1030,6 +1058,19 @@ ReconnectionTest.php
       - test_state_retourne_404_si_partie_inexistante() → void
       - test_reconnect_remet_is_inactive_a_false() → void
       - test_reconnect_invalide_token_cache() → void
+      - test_reconnect_throttle_ne_cree_pas_jobs_multiples() → void
+
+// tests/Feature/Game/CancelGameTest.php
+CancelGameTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_annulation_si_plus_50_pourcent_inactifs_via_cancel_game_direct() → void
+      - test_annulation_si_plus_50_pourcent_inactifs_via_check_reconnection_timeout() → void
+      - test_game_finished_ne_revele_pas_roles_si_annule() → void
+      - test_game_finished_revele_roles_si_victoire_normale() → void
+      - test_cancel_game_no_op_si_partie_deja_terminee() → void
+      - test_cancel_game_no_op_si_partie_en_attente() → void
 
 // tests/Feature/Game/HunterTest.php
 HunterTest.php
@@ -1066,6 +1107,11 @@ ChatTest.php
       - test_message_loup_broadcasté_pendant_wolves_turn() → void
       - test_villageois_ne_peut_pas_écrire_sur_channel_werewolves_retourne_403() → void
       - test_message_après_mort_retourne_403() → void
+      - test_mort_peut_ecrire_sur_canal_dead_en_phase_day() → void
+      - test_mort_ne_peut_pas_ecrire_sur_canal_dead_en_phase_night() → void
+      - test_mort_ne_peut_pas_ecrire_sur_canal_dead_en_phase_electing_mayor() → void
+      - test_vivant_ne_peut_pas_ecrire_sur_canal_dead() → void
+      - test_mort_pendant_electing_mayor_ne_peut_ecrire_sur_aucun_canal() → void
 
 // tests/Feature/Game/ExcludePlayerTest.php
 ExcludePlayerTest.php
@@ -1122,6 +1168,17 @@ RoleSettingsTest.php
       - test_deux_sorcieres_impossibles() → void
       - test_villageois_residuels_toujours_positifs() → void
 
+// tests/Feature/Game/QuitGameTest.php
+QuitGameTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_quit_pendant_partie_en_cours_marque_joueur_mort_et_inactif() → void
+      - test_quit_pendant_phase_night_marque_joueur_mort_et_inactif() → void
+      - test_quit_ne_reevalue_pas_automatiquement_lannulation() → void
+      - test_quit_depuis_waiting_room_nest_pas_traite_par_cette_route() → void
+      - test_quit_retourne_403_si_joueur_absent_de_la_partie() → void
+
 // tests/Feature/Game/CreateGameTest.php
 CreateGameTest.php
     attributes:
@@ -1160,6 +1217,7 @@ AutoActionTest.php
       - test_seer_check_endpoint_dispatches_wolves_immediately() → void
       - test_seer_check_rejected_if_already_acted() → void
       - test_seer_check_rejected_if_self_target() → void
+      - test_seer_check_sur_loup_retourne_role_werewolf() → void
 
 // tests/Feature/Game/NightPhaseTest.php
 NightPhaseTest.php

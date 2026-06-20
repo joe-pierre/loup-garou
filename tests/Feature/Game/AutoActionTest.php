@@ -186,4 +186,33 @@ class AutoActionTest extends TestCase
 
         $response->assertStatus(422);
     }
+
+    public function test_seer_check_sur_loup_retourne_role_werewolf(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game = $this->makeNightGame();
+        $user = User::factory()->create();
+        $seer = GamePlayer::factory()->seer()->create([
+            'game_id' => $game->id, 'user_id' => $user->id,
+        ]);
+        $wolf = GamePlayer::factory()->werewolf()->create(['game_id' => $game->id]);
+        GamePlayer::factory()->count(3)->villager()->create(['game_id' => $game->id]);
+
+        $response = $this->actingAs($user)->postJson("/game/{$game->id}/seer/check", [
+            'target_player_id' => $wolf->id,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'data'    => [
+                'target_player_id' => $wolf->id,
+                'role'             => 'werewolf',
+            ],
+        ]);
+
+        Event::assertDispatched(SeerResult::class, fn ($e) => $e->target->role === 'werewolf');
+    }
 }

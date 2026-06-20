@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class ReconnectionTest extends TestCase
@@ -180,5 +181,34 @@ class ReconnectionTest extends TestCase
 
         $response->assertStatus(200);
         $this->assertFalse(Cache::has($cacheKey));
+    }
+
+    /**
+     * Guard Cache::has() dans GameService::handleDisconnection() :
+     * 5 appels /disconnect successifs sur le même joueur ne doivent dispatcher
+     * qu'un seul CheckReconnectionTimeout (le token cache bloque les suivants).
+     *
+     * Ce test couvre le guard existant sans dépendre d'un throttle HTTP éventuel
+     * (cf. AUDIT.md "test_reconnect_throttle_ne_cree_pas_jobs_multiples").
+     */
+    public function test_reconnect_throttle_ne_cree_pas_jobs_multiples(): void
+    {
+        Queue::fake();
+        Event::fake();
+
+        $game = Game::factory()->create(['status' => 'day', 'max_players' => 6, 'round' => 1]);
+        $user = User::factory()->create();
+        GamePlayer::factory()->villager()->create([
+            'game_id' => $game->id, 'user_id' => $user->id,
+        ]);
+
+        // 5 appels POST /disconnect successifs sur le même joueur
+        for ($i = 0; $i < 5; $i++) {
+            $this->actingAs($user)->postJson("/game/{$game->id}/disconnect");
+        }
+
+        // Le guard Cache::has("player_disconnected.{playerId}") dans handleDisconnection()
+        // doit bloquer les 4 appels suivants : un seul job dispatché, jamais 5.
+        Queue::assertPushed(\App\Jobs\CheckReconnectionTimeout::class, 1);
     }
 }
