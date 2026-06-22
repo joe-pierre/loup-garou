@@ -1,5 +1,21 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-22 — Succession maire déclenchée avant que la sorcière ait pu agir
+
+- **Symptôme :** si les loups tuaient le maire et que la sorcière avait sa potion de soin, `ProcessNightActions` dispatchait `MayorSuccessionStarted` avant le tour de la sorcière — la succession partait même si la sorcière sauvait ensuite le maire.
+- **Cause :** le bloc maire dans `ProcessNightActions` n'avait pas de guard symétrique au guard sorcière (`$victimIsWitchWithHeal`).
+- **Fix :** `$witch` résolu avant le bloc victime ; flag `$victimIsMayorWithWitchAvailable` (maire + sorcière avec soin) ; mort + succession différées. `WitchAction` : dans `kill` et `pass`, marque le maire mort et déclenche la succession hors transaction.
+
+---
+
+### [x] 2026-06-22 — Élimination aléatoire absente de l'historique côté client
+
+- **Symptôme :** quand `VoteService::resolveDayVote()` éliminait un joueur par tirage au sort (0 votes), aucun toast et aucune entrée dans la liste des joueurs éliminés n'apparaissaient.
+- **Cause :** `RandomElimination::broadcastWith()` n'exposait pas `role` ni `google_name` ; aucun listener `.random.elimination` dans `game-state.js`.
+- **Fix :** `broadcastWith()` enrichi (`role`, `google_name`) ; listener `.random.elimination` ajouté dans `initWebSocket()` — réutilise `handlePlayerEliminated` + dispatche `CustomEvent('random-elimination')`.
+
+---
+
 ### [x] 2026-06-22 — Sorcière ne pouvait pas se sauver elle-même
 
 - **Symptôme :** quand les loups ciblaient la sorcière, elle était marquée morte avant de voir son panel, et l'action `heal` retournait 403 si elle tentait de s'auto-sauver.

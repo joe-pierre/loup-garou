@@ -2,7 +2,9 @@
 
 namespace App\Services\RoleActions;
 
+use App\Events\Game\MayorSuccessionStarted;
 use App\Events\Game\PlayerEliminated;
+use App\Jobs\ProcessMayorSuccession;
 use App\Models\Game;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
@@ -44,8 +46,9 @@ class WitchAction
         }
 
         $witchDiedFromWolves = false;
+        $mayorVictim         = null;
 
-        $result = DB::transaction(function () use ($witch, $action, $targetId, $game, &$witchDiedFromWolves) {
+        $result = DB::transaction(function () use ($witch, $action, $targetId, $game, &$witchDiedFromWolves, &$mayorVictim) {
             $alreadyActed = GameAction::where('game_id', $game->id)
                 ->where('player_id', $witch->id)
                 ->where('round', $game->round)
@@ -138,6 +141,17 @@ class WitchAction
                     $witch->update(['is_alive' => false]);
                     $witchDiedFromWolves = true;
                 }
+
+                // Si la victime résolue est le maire en sursis (ni la sorcière, ni déjà mort)
+                if ($nightResolveForKill && $nightResolveForKill->target_player_id !== $witch->id) {
+                    $mayorCandidate = GamePlayer::where('id', $nightResolveForKill->target_player_id)
+                        ->lockForUpdate()
+                        ->first();
+                    if ($mayorCandidate?->is_mayor && $mayorCandidate->is_alive) {
+                        $mayorCandidate->update(['is_alive' => false]);
+                        $mayorVictim = $mayorCandidate;
+                    }
+                }
             } else {
                 // Si la sorcière était la victime des loups et qu'elle passe, la marquer morte maintenant
                 $nightResolveForPass = GameAction::where('game_id', $game->id)
@@ -149,6 +163,17 @@ class WitchAction
                     && $witch->is_alive) {
                     $witch->update(['is_alive' => false]);
                     $witchDiedFromWolves = true;
+                }
+
+                // Si la victime résolue est le maire en sursis (ni la sorcière, ni déjà mort)
+                if ($nightResolveForPass && $nightResolveForPass->target_player_id !== $witch->id) {
+                    $mayorCandidate = GamePlayer::where('id', $nightResolveForPass->target_player_id)
+                        ->lockForUpdate()
+                        ->first();
+                    if ($mayorCandidate?->is_mayor && $mayorCandidate->is_alive) {
+                        $mayorCandidate->update(['is_alive' => false]);
+                        $mayorVictim = $mayorCandidate;
+                    }
                 }
 
                 GameAction::create([
@@ -168,6 +193,25 @@ class WitchAction
         if ($witchDiedFromWolves) {
             $witch->load('user');
             broadcast(new PlayerEliminated($game, $witch, 'night_kill'));
+
+            // Si la sorcière était aussi le maire, déclencher la succession maintenant
+            if ($witch->is_mayor) {
+                $successionDelay = $witch->is_inactive ? 0 : $game->timer('mayor_succession');
+                broadcast(new MayorSuccessionStarted($game, $witch->pseudo));
+                ProcessMayorSuccession::dispatch($game->id, $game->round, shouldStartNight: true)
+                    ->delay(now()->addSeconds($successionDelay));
+            }
+        }
+
+        // Broadcast hors transaction : le maire était en sursis et n'a pas été soigné
+        if ($mayorVictim) {
+            $mayorVictim->load('user');
+            broadcast(new PlayerEliminated($game, $mayorVictim, 'night_kill'));
+
+            $successionDelay = $mayorVictim->is_inactive ? 0 : $game->timer('mayor_succession');
+            broadcast(new MayorSuccessionStarted($game, $mayorVictim->pseudo));
+            ProcessMayorSuccession::dispatch($game->id, $game->round, shouldStartNight: true)
+                ->delay(now()->addSeconds($successionDelay));
         }
 
         return $result;
