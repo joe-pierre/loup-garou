@@ -433,6 +433,12 @@
                     </span>
                 </template>
             </p>
+            <template x-if="witchVictim && witchVictim.id === {{ $player->id }}">
+                <div class="mb-3 px-4 py-2 rounded-lg text-sm text-center"
+                     style="background:rgba(139,0,0,0.2);border:1px solid rgba(139,0,0,0.5);color:#fca5a5;">
+                    ☠️ Les loups t'ont ciblée cette nuit. Tu peux te sauver avec ta potion de soin.
+                </div>
+            </template>
             <div class="night-timer-bar mb-5">
                 <div id="witch-timer-bar" class="timer-fill" style="width:100%;background-color:#16a34a;"></div>
             </div>

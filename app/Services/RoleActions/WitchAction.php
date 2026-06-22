@@ -2,6 +2,7 @@
 
 namespace App\Services\RoleActions;
 
+use App\Events\Game\PlayerEliminated;
 use App\Models\Game;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
@@ -14,9 +15,9 @@ class WitchAction
     public function __construct(private VoteService $voteService) {}
 
     /**
-     * Action de la Sorcière : sauver la victime des loups, empoisonner un joueur, ou passer son tour.
+     * Action de la Sorcière : sauver la victime des loups (y compris elle-même), empoisonner un joueur, ou passer son tour.
      * Guard atomique : impossible d'agir deux fois dans le même round (witch_heal/witch_kill/witch_pass).
-     * La sorcière ne peut pas s'auto-sauver (action 'heal' refusée si la victime est la sorcière elle-même).
+     * Si la sorcière est la victime des loups et passe ou empoisonne, elle est marquée morte en fin d'action.
      * Si la cible d'un 'kill' est le chasseur, un enregistrement 'hunter_pending' est créé en DB.
      *
      * @param  GamePlayer  $witch    La sorcière (rôle 'witch' requis, doit être vivante)
@@ -42,7 +43,9 @@ class WitchAction
             abort(409, 'L\'action de la sorcière n\'est pas disponible hors phase nuit.');
         }
 
-        $result = DB::transaction(function () use ($witch, $action, $targetId, $game) {
+        $witchDiedFromWolves = false;
+
+        $result = DB::transaction(function () use ($witch, $action, $targetId, $game, &$witchDiedFromWolves) {
             $alreadyActed = GameAction::where('game_id', $game->id)
                 ->where('player_id', $witch->id)
                 ->where('round', $game->round)
@@ -60,7 +63,7 @@ class WitchAction
             if ($action === 'heal') {
                 $victim = $this->voteService->resolveNightVoteFromAction($game);
 
-                if (! $victim || $victim->id === $witch->id) {
+                if (! $victim) {
                     abort(403, 'Aucune victime à sauver ce round.');
                 }
 
@@ -123,7 +126,31 @@ class WitchAction
                         'phase'     => 'night',
                     ]);
                 }
+
+                // Si la sorcière était la victime des loups et n'a pas utilisé son soin, la marquer morte
+                $nightResolveForKill = GameAction::where('game_id', $game->id)
+                    ->where('type', 'night_resolve')
+                    ->where('round', $game->round)
+                    ->first();
+                if ($nightResolveForKill
+                    && $nightResolveForKill->target_player_id === $witch->id
+                    && $witch->is_alive) {
+                    $witch->update(['is_alive' => false]);
+                    $witchDiedFromWolves = true;
+                }
             } else {
+                // Si la sorcière était la victime des loups et qu'elle passe, la marquer morte maintenant
+                $nightResolveForPass = GameAction::where('game_id', $game->id)
+                    ->where('type', 'night_resolve')
+                    ->where('round', $game->round)
+                    ->first();
+                if ($nightResolveForPass
+                    && $nightResolveForPass->target_player_id === $witch->id
+                    && $witch->is_alive) {
+                    $witch->update(['is_alive' => false]);
+                    $witchDiedFromWolves = true;
+                }
+
                 GameAction::create([
                     'game_id'          => $game->id,
                     'player_id'        => $witch->id,
@@ -136,6 +163,12 @@ class WitchAction
 
             return ['action' => $action, 'target' => $target];
         });
+
+        // Broadcast hors transaction : la sorcière était la victime des loups et n'a pas utilisé son soin
+        if ($witchDiedFromWolves) {
+            $witch->load('user');
+            broadcast(new PlayerEliminated($game, $witch, 'night_kill'));
+        }
 
         return $result;
     }

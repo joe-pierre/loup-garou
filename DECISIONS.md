@@ -1,3 +1,21 @@
+## [CHOIX] Sorcière en sursis — ne pas marquer morte immédiatement si potion de soin disponible
+
+**Contexte :** `feat/witch-self-heal-and-notifications` — `ProcessNightActions.php`, `ProcessWitchTurn.php`, `WitchAction.php`, `WitchActedPublic.php`, `PlayerEliminated.php`, `HunterShot.php`, `ActionController.php`, `night.blade.php`, `game-state.js`.
+
+**Symptôme / Problème :** Règle officielle Loup-Garou : la sorcière PEUT se sauver elle-même si les loups la ciblent. L'implémentation précédente la marquait morte dans `ProcessNightActions` avant qu'elle voie son panel, et `WitchAction` refusait le `heal` quand la victime était la sorcière elle-même (`abort(403)`).
+
+**Cause / Alternatives :**
+1. Marquer la sorcière morte puis la ressusciter si elle utilise son soin — rejeté : enverrait un `PlayerEliminated` avant le tour sorcière, côté client le joueur serait affiché mort pendant qu'il joue.
+2. Ne pas marquer la sorcière morte immédiatement si elle a encore son soin — retenu : elle est "en sursis". La mort est reportée à l'action `pass` ou `kill` dans `WitchAction`.
+
+**Fix / Décision :** `ProcessNightActions` vérifie `victimIsWitchWithHeal` (is_alive + isWitch + heal non utilisée) avant de marquer morte. Si vrai : skip mort + skip `PlayerEliminated` + skip `hunter_pending` + skip notification push — mais `night_resolve` est créé dans tous les cas. `ProcessWitchTurn` autorise `healAvailable = true` quand `victim.id === witch.id` (suppression du guard `victim->id !== $witch->id`). `WitchAction::act()` : guard `abort(403)` supprimé pour l'auto-heal ; dans `pass` et `kill`, la sorcière est marquée morte si elle était la victime (`night_resolve.target_player_id === witch.id`), broadcast `PlayerEliminated` hors transaction via référence `&$witchDiedFromWolves`. `game-state.js` : guard dans `handlePlayerEliminated` pour ne pas traiter l'élimination personnelle si `nightPhase === 'witch_turn' && myRole === 'witch'` (elle sera gérée via `DayStarted`).
+
+**Leçon :** Quand un joueur peut choisir de mourir ou survivre (action volontaire), ne jamais marquer le statut final dans le job de résolution automatique — reporter la mort à l'action du joueur lui-même. Le pattern `night_resolve` (persisté dans tous les cas) permet aux jobs suivants de reconnaître la victime sans re-calculer. Broadcast `PlayerEliminated` toujours hors transaction (`&$flag` + `broadcast` après `DB::transaction`).
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] Extraction SeerAction / WitchAction / HunterAction de GameService (God Service)
 
 **Contexte :** `refactor/extract-role-actions-from-game-service` — `app/Services/GameService.php`, `app/Services/RoleActions/SeerAction.php`, `app/Services/RoleActions/WitchAction.php`, `app/Services/RoleActions/HunterAction.php`

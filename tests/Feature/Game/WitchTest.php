@@ -74,7 +74,7 @@ class WitchTest extends TestCase
         ]);
     }
 
-    public function test_sorciere_ne_peut_pas_sauver_si_elle_est_la_victime(): void
+    public function test_sorciere_peut_sauver_si_elle_est_la_victime(): void
     {
         Event::fake();
         Queue::fake();
@@ -87,12 +87,8 @@ class WitchTest extends TestCase
         $wolf = GamePlayer::factory()->werewolf()->create(['game_id' => $game->id]);
         GamePlayer::factory()->count(3)->villager()->create(['game_id' => $game->id]);
 
-        GameAction::factory()->create([
-            'game_id' => $game->id, 'player_id' => $wolf->id, 'type' => 'night_vote',
-            'target_player_id' => $witch->id, 'round' => 1, 'phase' => 'night',
-        ]);
-
         // Simule la résolution persistée par ProcessNightActions : la sorcière est la victime.
+        // ProcessNightActions ne l'a PAS marquée morte (victimIsWitchWithHeal = true).
         GameAction::factory()->create([
             'game_id' => $game->id, 'player_id' => $witch->id, 'type' => 'night_resolve',
             'target_player_id' => $witch->id, 'round' => 1, 'phase' => 'night',
@@ -103,10 +99,21 @@ class WitchTest extends TestCase
             'target_player_id' => $witch->id,
         ]);
 
-        $response->assertStatus(403);
-        $this->assertDatabaseMissing('game_actions', [
-            'game_id' => $game->id, 'type' => 'witch_heal',
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+
+        // La sorcière reste vivante (auto-soin)
+        $this->assertTrue($witch->fresh()->is_alive);
+        $this->assertTrue($witch->fresh()->settings['witch_heal_used'] ?? false);
+
+        // L'action est enregistrée
+        $this->assertDatabaseHas('game_actions', [
+            'game_id' => $game->id, 'player_id' => $witch->id, 'type' => 'witch_heal',
+            'target_player_id' => $witch->id, 'round' => 1,
         ]);
+
+        // Aucun PlayerEliminated pour la sorcière (elle a survécu)
+        Event::assertNotDispatched(PlayerEliminated::class, fn ($e) => $e->player->id === $witch->id);
     }
 
     public function test_sorciere_peut_empoisonner_un_joueur(): void

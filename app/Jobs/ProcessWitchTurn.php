@@ -92,7 +92,8 @@ class ProcessWitchTurn implements ShouldQueue
             return;
         }
 
-        $healAvailable = ! $healUsed && $victim !== null && $victim->id !== $witch->id;
+        // La sorcière peut se soigner elle-même si elle est la victime des loups.
+        $healAvailable = ! $healUsed && $victim !== null;
         $killAvailable = ! $killUsed;
 
         // Pas de victime ET pas de poison disponible -> skip silencieux. Idem.

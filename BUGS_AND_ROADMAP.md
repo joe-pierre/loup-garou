@@ -1,5 +1,29 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-22 — Sorcière ne pouvait pas se sauver elle-même
+
+- **Symptôme :** quand les loups ciblaient la sorcière, elle était marquée morte avant de voir son panel, et l'action `heal` retournait 403 si elle tentait de s'auto-sauver.
+- **Cause :** `ProcessNightActions` marquait toutes les victimes mortes immédiatement ; `WitchAction` avait un guard `$victim->id === $witch->id → abort(403)`.
+- **Fix :** `ProcessNightActions` détecte si la victime est la sorcière avec soin disponible (`victimIsWitchWithHeal`) et reporte la mort ; `WitchAction` supprime le guard, marque la sorcière morte dans les actions `pass` et `kill` si elle était la victime des loups, et broadcast `PlayerEliminated` hors transaction.
+
+---
+
+### [x] 2026-06-22 — Toast empoisonnement générique n'indiquait pas la cible
+
+- **Symptôme :** le toast "🧙 La sorcière a agi cette nuit." ne révélait pas l'identité de la cible du poison.
+- **Cause :** `WitchActedPublic` avait un payload intentionnellement vide.
+- **Fix :** `WitchActedPublic` accepte un `?string $targetPseudo` (fourni uniquement pour `kill`) ; le listener JS affiche "La sorcière a empoisonné [pseudo]" si présent.
+
+---
+
+### [x] 2026-06-22 — Toasts d'élimination affichaient seulement le pseudo sans nom Google
+
+- **Symptôme :** les toasts "💀 Pseudo a été éliminé — Rôle" ne montraient pas le vrai nom du joueur.
+- **Cause :** `PlayerEliminated` ne transmettait pas le champ `google_name` ; `HunterShot` ne transmettait pas `target_google_name`.
+- **Fix :** les deux events ajoutent `user?->name` dans leur payload ; le JS construit "Jean aka Pseudo était le Rôle" / "Le Chasseur a tué Jean aka Pseudo".
+
+---
+
 ### [x] 2026-06-20 — playerAvatarColor() dupliquée dans day.blade.php et waiting-room.blade.php
 
 - **Symptôme :** la même fonction utilitaire JS était définie en double dans deux vues Blade avec un commentaire TODO pointant vers `config/game_ui.php`.
