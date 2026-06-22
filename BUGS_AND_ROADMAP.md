@@ -40,6 +40,14 @@
 
 ---
 
+### [x] 2026-06-22 — Tirage au sort sans joueur ni rôle dans l'historique
+
+- **Symptôme :** dans `history.blade.php`, le cas tirage au sort (0 votes) affichait uniquement "Personne n'a voté — tirage au sort." sans indiquer le joueur éliminé ni son rôle.
+- **Cause :** `VoteService::resolveDayVote()` ne persistait pas d'action `random_elimination` ; `HistoryService` retournait `'no_vote'` (faute de frappe, la vue testait `'no_votes'`) avec `random_victim = null` ; la vue n'avait aucun rendu pour ce cas.
+- **Fix :** `VoteService` persiste une `GameAction` de type `random_elimination` ; `GameController::history()` inclut ce type dans le `whereIn` ; `HistoryService` corrige `'no_vote'` → `'no_votes'` et résout `random_victim` via l'action persistée ; `history.blade.php` affiche pseudo + badge de rôle comme pour les autres cas d'élimination.
+
+---
+
 ### [x] 2026-06-22 — Toast empoisonnement générique n'indiquait pas la cible
 
 - **Symptôme :** le toast "🧙 La sorcière a agi cette nuit." ne révélait pas l'identité de la cible du poison.

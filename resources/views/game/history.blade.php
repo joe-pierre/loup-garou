@@ -377,7 +377,20 @@
                         @elseif($entry['result'] === 'equality')
                             <p class="text-sm" style="color:rgba(232,224,208,0.6);">Égalité — personne éliminé.</p>
                         @else
-                            <p class="text-sm" style="color:rgba(232,224,208,0.6);">Personne n'a voté — tirage au sort.</p>
+                            <p class="text-sm" style="color:rgba(232,224,208,0.6);">
+                                Personne n'a voté — tirage au sort.
+                                @if(!empty($entry['random_victim']))
+                                    <span class="font-semibold ml-1" style="color:#f97316;">
+                                        {{ $entry['random_victim']['pseudo'] }}
+                                    </span>
+                                    @if($entry['random_victim']['role'])
+                                        <span class="text-xs ml-1 px-1.5 py-0.5 rounded-full {{ $roleClass($entry['random_victim']['role']) }}">
+                                            {{ $roleLabel($entry['random_victim']['role']) }}
+                                        </span>
+                                    @endif
+                                    a été éliminé.
+                                @endif
+                            </p>
                         @endif
 
                         @if(!empty($entry['vote_totals']))

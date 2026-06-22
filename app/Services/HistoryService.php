@@ -124,8 +124,18 @@ class HistoryService
                     $dayEntry['eliminated'] = $this->playerSnapshot($players, (int) $topIds[0]);
                 }
             } else {
-                $dayEntry['result']     = 'no_vote';
-                $dayEntry['eliminated'] = null;
+                $randomAction = $actions
+                    ->where('type', 'random_elimination')
+                    ->where('round', $round)
+                    ->first();
+
+                $randomVictim = $randomAction?->target_player_id
+                    ? $this->playerSnapshot($players, $randomAction->target_player_id)
+                    : null;
+
+                $dayEntry['result']        = 'no_votes';
+                $dayEntry['eliminated']    = null;
+                $dayEntry['random_victim'] = $randomVictim;
             }
 
             // Succession maire (phase jour uniquement — la nuit est dans nightEntry)

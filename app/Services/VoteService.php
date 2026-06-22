@@ -342,6 +342,15 @@ class VoteService
                     $victim->update(['is_alive' => false]);
                     $randomVictim = $victim;
 
+                    GameAction::create([
+                        'game_id'          => $locked->id,
+                        'player_id'        => $victim->id,
+                        'type'             => 'random_elimination',
+                        'target_player_id' => $victim->id,
+                        'round'            => $locked->round,
+                        'phase'            => 'day',
+                    ]);
+
                     if ($victim->isHunter()) {
                         GameAction::create([
                             'game_id'   => $locked->id,
