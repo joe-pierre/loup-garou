@@ -605,6 +605,18 @@
                         p.revealed_role_label = roleLabels[e.detail?.role] ?? '';
                     }
                 });
+                window.addEventListener('mayor-elected', (e) => {
+                    this.players = this.players.map(p => ({
+                        ...p,
+                        is_mayor: p.id === e.detail?.player_id,
+                    }));
+                });
+                window.addEventListener('mayor-succession-done', (e) => {
+                    this.players = this.players.map(p => ({
+                        ...p,
+                        is_mayor: p.id === e.detail?.new_mayor_id,
+                    }));
+                });
 
                 this._startDayTimer();
             },
