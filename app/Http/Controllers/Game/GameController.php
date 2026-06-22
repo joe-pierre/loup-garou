@@ -179,7 +179,7 @@ class GameController extends Controller
 
         $actions = GameAction::where('game_id', $game->id)
             ->anonymized()
-            ->whereIn('type', ['mayor_vote', 'night_vote', 'day_vote', 'mayor_succession', 'witch_heal', 'witch_kill', 'hunter_shot', 'random_elimination'])
+            ->whereIn('type', ['mayor_vote', 'night_vote', 'day_vote', 'mayor_succession', 'witch_heal', 'witch_kill', 'hunter_shot'])
             ->orderBy('round')
             ->get();
 

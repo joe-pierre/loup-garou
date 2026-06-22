@@ -53,14 +53,14 @@ class WinConditionChecker
             return false;
         }
 
-        $allPlayers = $game->players()->with('user')->get();
-        $lastAction = $this->buildLastAction($game);
-
         $game->update([
             'status'      => 'finished',
             'winner_team' => $winnerTeam,
             'finished_at' => now(),
         ]);
+
+        $allPlayers = $game->players()->with('user')->get();
+        $lastAction = $this->buildLastAction($game);
 
         $announcementMessage = $winnerTeam === 'villagers'
             ? 'Le village a triomphé !'
@@ -84,14 +84,10 @@ class WinConditionChecker
         $round = $game->round;
 
         if ($game->isNightPhase()) {
-            $nightResolve = $game->actions()
-                ->where('type', 'night_resolve')
-                ->where('round', $round)
+            $recentKill = $game->players()
+                ->where('is_alive', false)
+                ->latest('updated_at')
                 ->first();
-
-            $recentKill = $nightResolve
-                ? $game->players()->find($nightResolve->target_player_id)
-                : null;
 
             $witchActed = $game->actions()
                 ->whereIn('type', ['witch_kill', 'witch_heal'])

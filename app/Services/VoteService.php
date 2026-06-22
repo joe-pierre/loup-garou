@@ -15,9 +15,7 @@ use App\Models\Game;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
 use App\Notifications\PlayerEliminatedDayNotification;
-use App\Notifications\PlayerEliminatedPublicNotification;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -342,15 +340,6 @@ class VoteService
                     $victim->update(['is_alive' => false]);
                     $randomVictim = $victim;
 
-                    GameAction::create([
-                        'game_id'          => $locked->id,
-                        'player_id'        => $victim->id,
-                        'type'             => 'random_elimination',
-                        'target_player_id' => $victim->id,
-                        'round'            => $locked->round,
-                        'phase'            => 'day',
-                    ]);
-
                     if ($victim->isHunter()) {
                         GameAction::create([
                             'game_id'   => $locked->id,
@@ -397,26 +386,6 @@ class VoteService
 
         if ($randomVictim) {
             broadcast(new RandomElimination($game, $randomVictim));
-
-            try {
-                $randomVictim->load('user');
-                $randomVictim->user->notify(new PlayerEliminatedDayNotification($randomVictim->role));
-            } catch (\Throwable) {}
-
-            try {
-                $otherUsers = $game->alivePlayers()
-                    ->where('id', '!=', $randomVictim->id)
-                    ->with('user')
-                    ->get()
-                    ->map->user
-                    ->filter();
-
-                Notification::send(
-                    $otherUsers,
-                    new PlayerEliminatedPublicNotification($randomVictim->pseudo, $randomVictim->role, 'random')
-                );
-            } catch (\Throwable) {}
-
             if ($this->winConditionChecker->check($game)) {
                 return;
             }
@@ -441,20 +410,6 @@ class VoteService
 
         try {
             $eliminated->user->notify(new PlayerEliminatedDayNotification($eliminated->role));
-        } catch (\Throwable) {}
-
-        try {
-            $otherUsers = $game->alivePlayers()
-                ->where('id', '!=', $eliminated->id)
-                ->with('user')
-                ->get()
-                ->map->user
-                ->filter();
-
-            Notification::send(
-                $otherUsers,
-                new PlayerEliminatedPublicNotification($eliminated->pseudo, $eliminated->role, 'day')
-            );
         } catch (\Throwable) {}
 
         if ($this->winConditionChecker->check($game)) {

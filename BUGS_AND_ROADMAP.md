@@ -1,21 +1,5 @@
 # BUGS CORRIGÉS
 
-### [x] 2026-06-22 — Notifications push élimination envoyées à la victime uniquement
-
-- **Symptôme :** Seule la victime recevait une notification push à chaque élimination (nuit, vote jour, tirage au sort). Les autres joueurs vivants ne recevaient rien.
-- **Cause :** `ProcessNightActions` et `VoteService::resolveDayVote()` appelaient uniquement `$victim->user->notify(...)` sans diffuser à l'ensemble des joueurs. De plus, l'élimination aléatoire n'envoyait aucune notification à la victime.
-- **Fix :** Création de `PlayerEliminatedPublicNotification` (contextes `night`, `day`, `random`). Ajout de `Notification::send($otherUsers, ...)` après chaque élimination dans `ProcessNightActions` et `VoteService::resolveDayVote()`. Ajout de la notification victime pour le tirage au sort avec `$randomVictim->load('user')`.
-
----
-
-### [x] 2026-06-22 — buildLastAction() appelé après update() → isNightPhase() faux + victime incorrecte
-
-- **Symptôme :** `GameFinished` broadcasté avec `last_action.phase = 'day'` et `eliminated = null` même quand la partie se terminait la nuit — le client affichait le fallback "La partie vient de se terminer".
-- **Cause :** `buildLastAction()` appelé après `$game->update(['status' => 'finished'])` — `isNightPhase()` vérifie le statut du modèle Eloquent, qui était déjà `'finished'`, retournait donc `false` quel que soit le contexte réel. De plus, la lecture de victime nuit utilisait `->latest('updated_at')->first()` qui pouvait remonter un mort d'un round précédent.
-- **Fix :** `buildLastAction()` déplacé avant `$game->update()` (status encore `processing_night`/`night`) ; victime nuit lue depuis `night_resolve` du round courant au lieu de `->latest('updated_at')`.
-
----
-
 ### [x] 2026-06-22 — Succession maire déclenchée avant que la sorcière ait pu agir
 
 - **Symptôme :** si les loups tuaient le maire et que la sorcière avait sa potion de soin, `ProcessNightActions` dispatchait `MayorSuccessionStarted` avant le tour de la sorcière — la succession partait même si la sorcière sauvait ensuite le maire.
@@ -37,14 +21,6 @@
 - **Symptôme :** quand les loups ciblaient la sorcière, elle était marquée morte avant de voir son panel, et l'action `heal` retournait 403 si elle tentait de s'auto-sauver.
 - **Cause :** `ProcessNightActions` marquait toutes les victimes mortes immédiatement ; `WitchAction` avait un guard `$victim->id === $witch->id → abort(403)`.
 - **Fix :** `ProcessNightActions` détecte si la victime est la sorcière avec soin disponible (`victimIsWitchWithHeal`) et reporte la mort ; `WitchAction` supprime le guard, marque la sorcière morte dans les actions `pass` et `kill` si elle était la victime des loups, et broadcast `PlayerEliminated` hors transaction.
-
----
-
-### [x] 2026-06-22 — Tirage au sort sans joueur ni rôle dans l'historique
-
-- **Symptôme :** dans `history.blade.php`, le cas tirage au sort (0 votes) affichait uniquement "Personne n'a voté — tirage au sort." sans indiquer le joueur éliminé ni son rôle.
-- **Cause :** `VoteService::resolveDayVote()` ne persistait pas d'action `random_elimination` ; `HistoryService` retournait `'no_vote'` (faute de frappe, la vue testait `'no_votes'`) avec `random_victim = null` ; la vue n'avait aucun rendu pour ce cas.
-- **Fix :** `VoteService` persiste une `GameAction` de type `random_elimination` ; `GameController::history()` inclut ce type dans le `whereIn` ; `HistoryService` corrige `'no_vote'` → `'no_votes'` et résout `random_victim` via l'action persistée ; `history.blade.php` affiche pseudo + badge de rôle comme pour les autres cas d'élimination.
 
 ---
 

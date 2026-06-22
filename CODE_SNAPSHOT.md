@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 21h20
+Generated at: 15h03
 
 ## PHP Analysis (Core Logic)
 
@@ -870,15 +870,6 @@ RoleAssignedNotification.php
       - __construct(string $role) {}
       - via($notifiable) → return [WebPushChannel::class]
       - toWebPush($notifiable, $notification) → return (new WebPushMessage())->title('La partie commence !')->body("Votre rôle : {$label}")->icon('/images/icon-192.png')->badge('/images/badge-72.png')
-
-// app/Notifications/PlayerEliminatedPublicNotification.php
-PlayerEliminatedPublicNotification.php
-    attributes:
-      - Queueable
-    functions:
-      - __construct(string $pseudo, string $role, string $context) {}
-      - via($notifiable) → return [WebPushChannel::class]
-      - toWebPush($notifiable, $notification) → return (new WebPushMessage())->title($title)->body("{$this->pseudo} a été éliminé — il était {$roleLabel}.")->icon('/images/icon-192.png')->badge('/images/badge-72.png')
 
 // app/Notifications/PlayerExcludedNotification.php
 PlayerExcludedNotification.php
