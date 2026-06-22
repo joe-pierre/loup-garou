@@ -53,6 +53,8 @@ class WinConditionChecker
             return false;
         }
 
+        $lastAction = $this->buildLastAction($game);
+
         $game->update([
             'status'      => 'finished',
             'winner_team' => $winnerTeam,
@@ -60,7 +62,6 @@ class WinConditionChecker
         ]);
 
         $allPlayers = $game->players()->with('user')->get();
-        $lastAction = $this->buildLastAction($game);
 
         $announcementMessage = $winnerTeam === 'villagers'
             ? 'Le village a triomphé !'
