@@ -1,3 +1,22 @@
+## [RÉSOLU] buildLastAction() appelé après update() — phase et victime nuit incorrectes
+
+**Contexte :** `fix/win-condition-last-action-order` — `app/Services/WinConditionChecker.php`
+
+**Symptôme / Problème :** `buildLastAction()` appelé après `$game->update(['status' => 'finished'])`. `isNightPhase()` lit `$this->status` sur le modèle Eloquent déjà mis à jour en mémoire → retourne toujours `false` → `last_action` construit comme un contexte jour avec `eliminated = null` → côté client le fallback "La partie vient de se terminer" s'affiche. De plus, la recherche de victime nuit via `->latest('updated_at')->first()` pouvait remonter un mort d'un round précédent si aucune mort n'avait eu lieu ce round.
+
+**Cause / Alternatives :**
+1. Appeler `$game->refresh()` après `buildLastAction()` pour resynchroniser le modèle avant `update()` — rejeté : ne résout pas l'ordre logique, ajoute une requête inutile.
+2. Capturer `$game->isNightPhase()` dans une variable booléenne avant `update()` — partiellement correct mais ne résout pas le problème de victime.
+3. Déplacer `buildLastAction()` avant `$game->update()` — retenu : simple inversion, aucun effet de bord, le statut du modèle est encore le contexte réel au moment de l'appel.
+
+**Fix / Décision :** `buildLastAction()` et `$allPlayers` déplacés avant `$game->update()`. Lecture de victime nuit remplacée par une recherche sur `night_resolve` du round courant (pattern déjà établi dans `ProcessWitchTurn` et `HistoryService`), alignée sur la source de vérité persistée par `ProcessNightActions`.
+
+**Leçon :** Ne jamais lire un état dérivé du modèle (`isNightPhase()`) après avoir muté ce modèle. Toute donnée contextuelle nécessaire au broadcast doit être capturée **avant** l'`update()` qui change le statut. La lecture de la victime nuit doit toujours passer par `night_resolve` (pattern résolu) et non par `->latest('updated_at')`.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] Maire en sursis — succession différée si sorcière avec soin disponible
 
 **Contexte :** Phase 26 — `ProcessNightActions.php`, `WitchAction.php`.

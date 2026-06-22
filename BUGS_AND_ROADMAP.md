@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-22 — buildLastAction() appelé après update() → isNightPhase() faux + victime incorrecte
+
+- **Symptôme :** `GameFinished` broadcasté avec `last_action.phase = 'day'` et `eliminated = null` même quand la partie se terminait la nuit — le client affichait le fallback "La partie vient de se terminer".
+- **Cause :** `buildLastAction()` appelé après `$game->update(['status' => 'finished'])` — `isNightPhase()` vérifie le statut du modèle Eloquent, qui était déjà `'finished'`, retournait donc `false` quel que soit le contexte réel. De plus, la lecture de victime nuit utilisait `->latest('updated_at')->first()` qui pouvait remonter un mort d'un round précédent.
+- **Fix :** `buildLastAction()` déplacé avant `$game->update()` (status encore `processing_night`/`night`) ; victime nuit lue depuis `night_resolve` du round courant au lieu de `->latest('updated_at')`.
+
+---
+
 ### [x] 2026-06-22 — Succession maire déclenchée avant que la sorcière ait pu agir
 
 - **Symptôme :** si les loups tuaient le maire et que la sorcière avait sa potion de soin, `ProcessNightActions` dispatchait `MayorSuccessionStarted` avant le tour de la sorcière — la succession partait même si la sorcière sauvait ensuite le maire.
