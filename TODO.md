@@ -362,11 +362,37 @@
 
 ---
 
+---
+
+## Phase 25 — Réajustements fonctionnels sorcière + notifications (2026-06-22)
+
+- [x] **Mod 1** — Sorcière peut se sauver elle-même (`feat/witch-self-heal-and-notifications`)
+  - `ProcessNightActions` : victime en sursis si sorcière avec soin disponible
+  - `ProcessWitchTurn` : `healAvailable` = vrai même si victim = witch
+  - `WitchAction` : guard auto-soin supprimé ; mort reportée dans `pass`/`kill`
+  - `night.blade.php` : message d'avertissement "☠️ Les loups t'ont ciblée…"
+  - `game-state.js` : guard dans `handlePlayerEliminated` pour witch_turn
+  - Test `test_sorciere_peut_sauver_si_elle_est_la_victime` mis à jour
+- [x] **Mod 2** — Toast empoisonnement public avec nom de la cible
+  - `WitchActedPublic` : payload `target_pseudo` (null pour heal, pseudo pour kill)
+  - `ActionController::witchAct()` : passe `$targetPseudo` à `WitchActedPublic`
+  - `game-state.js` : listener `witch.acted.public` enrichi
+- [x] **Mod 3** — Toasts élimination avec nom Google
+  - `PlayerEliminated::broadcastWith()` : champ `google_name` ajouté
+  - `HunterShot::broadcastWith()` : champ `target_google_name` ajouté
+  - `ActionController::witchAct()` : `load('user')` avant broadcast kill
+  - `ActionController::hunterShoot()` : `load('user')` avant broadcasts
+  - `ProcessNightActions` : `load('user')` avant broadcast (nuit normale)
+  - `game-state.js` : toasts "Jean aka Pseudo était le Rôle" et "Le Chasseur a tué…"
+
+---
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
 - v1.2 ✅ Terminé — Étapes 2→5 + Phases 17→18 complètes
 - Étape 9 ✅ Terminée — Documentation routes + README technique
+- Phase 25 ✅ Terminée — Auto-soin sorcière + notifications enrichies
 - Étape 10 ✅ Terminée — Audit final de conformité CLAUDE.md
 - Roadmap Code Propre ✅ Complète (Étapes 1→10)
 - v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md

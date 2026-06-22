@@ -14,17 +14,19 @@ use Illuminate\Queue\SerializesModels;
  *
  * Canal : PUBLIC — game.{gameId}
  *
- * Déclencheur : GameService::witchAct() en parallèle de WitchActed (canal privé).
+ * Déclencheur : ActionController::witchAct() en parallèle de WitchActed (canal privé).
  *
- * Données sensibles : le payload est intentionnellement vide.
- *   La nature de l'action (soin ou poison) et l'identité de la cible
- *   sont exclusivement dans WitchActed (canal privé sorcière).
+ * target_pseudo est fourni uniquement pour l'action 'kill' (poison public), null pour 'heal'.
+ * La nature exacte de l'action reste dans WitchActed (canal privé sorcière).
  */
 class WitchActedPublic implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(public readonly Game $game) {}
+    public function __construct(
+        public readonly Game $game,
+        public readonly ?string $targetPseudo = null,
+    ) {}
 
     public function broadcastOn(): array
     {
@@ -37,10 +39,10 @@ class WitchActedPublic implements ShouldBroadcastNow
     }
 
     /**
-     * @return array{}  — payload intentionnellement vide, aucune info sur la potion ni la cible
+     * @return array{target_pseudo: string|null}  — pseudo de la cible empoisonnée, null pour heal
      */
     public function broadcastWith(): array
     {
-        return []; // intentionnellement vide — aucune info sur la potion ni la cible
+        return ['target_pseudo' => $this->targetPseudo];
     }
 }

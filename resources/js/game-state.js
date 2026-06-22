@@ -159,11 +159,17 @@ export function gameState(gameId, userId) {
                 .listen('.player.reconnected',         e => this._handlePlayerReconnected(e))
                 .listen('.player.inactive',            e => this._handlePlayerInactive(e))
                 .listen('.hunter.shot',                e => {
-                    this._dispatchToast(`🏹 ${e.hunter_pseudo} a tiré sur ${e.target_pseudo}`, 'info');
+                    const targetName = e.target_google_name && e.target_google_name !== e.target_pseudo
+                        ? `${e.target_google_name} aka ${e.target_pseudo}`
+                        : e.target_pseudo;
+                    this._dispatchToast(`🏹 Le Chasseur a tué ${targetName}`, 'info');
                     window.dispatchEvent(new CustomEvent('hunter-shot', { detail: e }));
                 })
-                .listen('.witch.acted.public',         () => {
-                    this._dispatchToast('🧙 La sorcière a agi cette nuit.', 'info');
+                .listen('.witch.acted.public',         e => {
+                    const msg = e.target_pseudo
+                        ? `🧙 La sorcière a empoisonné ${e.target_pseudo}.`
+                        : '🧙 La sorcière a agi cette nuit.';
+                    this._dispatchToast(msg, 'info');
                 })
                 .listen('.player.ready',               e => this._handlePlayerReady(e))
                 .listen('.game.finished',              e => this.handleGameFinished(e));
@@ -437,7 +443,11 @@ export function gameState(gameId, userId) {
                 hunter: 'Chasseur', villager: 'Villageois',
             };
             const roleLabel = roleLabels[e.role] ?? e.role ?? '';
-            const msg = `💀 ${e.pseudo} a été éliminé${roleLabel ? ' — ' + roleLabel : ''}`;
+            const googleName = e.google_name ?? e.pseudo;
+            const nameDisplay = googleName !== e.pseudo
+                ? `${googleName} aka ${e.pseudo}`
+                : e.pseudo;
+            const msg = `💀 ${nameDisplay} était le ${roleLabel || e.role}`;
             this._dispatchToast(msg, e.role === 'werewolf' ? 'success' : 'info');
 
             // Propager à toutes les vues pour mise à jour de leurs listes locales
@@ -454,6 +464,12 @@ export function gameState(gameId, userId) {
 
             // Si c'est le joueur courant
             if (myId && e.player_id === myId) {
+                // Ne pas traiter l'élimination personnelle si la sorcière voit encore son panel :
+                // elle vient de passer/empoisonner et sera redirigée vers /day via DayStarted.
+                if (this.nightPhase === 'witch_turn' && this.myRole === 'witch') {
+                    return;
+                }
+
                 this.isAlive = false;
                 if (e.reason === 'witch_kill') {
                     this._dispatchToast('☠️ La sorcière t\'a empoisonné cette nuit.', 'error');

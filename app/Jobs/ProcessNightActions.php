@@ -83,10 +83,18 @@ class ProcessNightActions implements ShouldQueue
         $victim = $voteService->resolveNightVote($game);
 
         if ($victim) {
-            $victim->update(['is_alive' => false]);
+            // Si la victime est la sorcière avec sa potion de soin disponible,
+            // ne pas la marquer morte immédiatement : elle gérera elle-même dans witchAct().
+            $victimIsWitchWithHeal = $victim->isWitch()
+                && $victim->is_alive
+                && ! ($victim->settings['witch_heal_used'] ?? false);
+
+            if (! $victimIsWitchWithHeal) {
+                $victim->update(['is_alive' => false]);
+            }
 
             // Persiste la victime résolue pour les jobs suivants (ProcessWitchTurn,
-            // witchAct). Pattern identique à hunter_pending.
+            // witchAct). Pattern identique à hunter_pending. Créé dans tous les cas.
             GameAction::create([
                 'game_id'          => $game->id,
                 'player_id'        => $victim->id,
@@ -96,22 +104,25 @@ class ProcessNightActions implements ShouldQueue
                 'phase'            => 'night',
             ]);
 
-            broadcast(new PlayerEliminated($game, $victim, 'night_kill'));
-
-            if ($victim->isHunter()) {
-                GameAction::create([
-                    'game_id'   => $game->id,
-                    'player_id' => $victim->id,
-                    'type'      => 'hunter_pending',
-                    'round'     => $game->round,
-                    'phase'     => 'night',
-                ]);
-            }
-
-            try {
+            if (! $victimIsWitchWithHeal) {
+                // Charger user avant le broadcast pour google_name dans PlayerEliminated
                 $victim->load('user');
-                $victim->user->notify(new PlayerKilledNightNotification());
-            } catch (\Throwable) {}
+                broadcast(new PlayerEliminated($game, $victim, 'night_kill'));
+
+                if ($victim->isHunter()) {
+                    GameAction::create([
+                        'game_id'   => $game->id,
+                        'player_id' => $victim->id,
+                        'type'      => 'hunter_pending',
+                        'round'     => $game->round,
+                        'phase'     => 'night',
+                    ]);
+                }
+
+                try {
+                    $victim->user->notify(new PlayerKilledNightNotification());
+                } catch (\Throwable) {}
+            }
         }
 
         if ($winChecker->check($game)) {

@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 14h31
+Generated at: 15h03
 
 ## PHP Analysis (Core Logic)
 
@@ -299,10 +299,10 @@ WitchActedPublic.php
       - InteractsWithSockets
       - SerializesModels
     functions:
-      - __construct(Game $game) {}
+      - __construct(Game $game, ?string $targetPseudo) {}
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'witch.acted.public'
-      - broadcastWith() → return []
+      - broadcastWith() → return ['target_pseudo' => $this->targetPseudo]
 
 // app/Events/Game/WitchActed.php
 WitchActed.php
@@ -461,7 +461,7 @@ PlayerEliminated.php
       - __construct(Game $game, GamePlayer $player, string $reason) {}
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'player.eliminated'
-      - broadcastWith() → return ['player_id' => $this->player->id, 'pseudo' => $this->player->pseudo, 'role' => $this->player->role, 'reason' => $this->reason]
+      - broadcastWith() → return ['player_id' => $this->player->id, 'pseudo' => $this->player->pseudo, 'google_name' => $this->player->user?->name ?? $this->player->pseudo, 'role' => $this->player->role, 'reason' => $this->reason]
 
 // app/Events/Game/HunterShot.php
 HunterShot.php
@@ -473,7 +473,7 @@ HunterShot.php
       - __construct(Game $game, GamePlayer $hunter, GamePlayer $target) {}
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'hunter.shot'
-      - broadcastWith() → return ['hunter_pseudo' => $this->hunter->pseudo, 'target_player_id' => $this->target->id, 'target_pseudo' => $this->target->pseudo]
+      - broadcastWith() → return ['hunter_pseudo' => $this->hunter->pseudo, 'target_player_id' => $this->target->id, 'target_pseudo' => $this->target->pseudo, 'target_google_name' => $this->target->user?->name ?? $this->target->pseudo]
 
 // app/Events/Game/SeerResult.php
 SeerResult.php
@@ -1281,7 +1281,7 @@ WitchTest.php
     functions:
       - makeNightGame() → return Game::factory()->create(['status' => 'night', 'max_players' => 6, 'round' => 1])
       - test_sorciere_peut_sauver_la_victime_des_loups() → void
-      - test_sorciere_ne_peut_pas_sauver_si_elle_est_la_victime() → void
+      - test_sorciere_peut_sauver_si_elle_est_la_victime() → void
       - test_sorciere_peut_empoisonner_un_joueur() → void
       - test_sorciere_ne_peut_pas_utiliser_deux_fois_la_meme_potion() → void
       - test_witch_turn_avec_poison_disponible_si_egalite_loups() → void

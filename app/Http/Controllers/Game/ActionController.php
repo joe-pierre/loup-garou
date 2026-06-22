@@ -78,12 +78,14 @@ class ActionController extends Controller
         broadcast(new WitchActed($witch->game, $witch, $result['action'], $result['target']));
 
         if ($result['action'] === 'kill' && $result['target']) {
+            $result['target']->load('user');
             broadcast(new PlayerEliminated($witch->game, $result['target'], 'witch_kill'));
         }
 
-        // Notification publique neutre — ne révèle ni la potion ni la cible
+        // Notification publique : révèle le pseudo de la cible pour l'empoisonnement
         if ($result['action'] !== 'pass') {
-            broadcast(new WitchActedPublic($witch->game));
+            $targetPseudo = $result['action'] === 'kill' ? $result['target']?->pseudo : null;
+            broadcast(new WitchActedPublic($witch->game, $targetPseudo));
         }
 
         // Délai de 2s pour garantir que la transaction witchAct() est committée avant la lecture du guard
@@ -105,6 +107,7 @@ class ActionController extends Controller
         $fromNight = PhaseGuard::isNightOrProcessing($hunter->game);
 
         $target = $this->gameService->hunterShoot($hunter, $request->validated('target_player_id'));
+        $target->load('user');
 
         broadcast(new PlayerEliminated($hunter->game, $target, 'hunter_shot'));
         broadcast(new HunterShot($hunter->game, $hunter, $target));
