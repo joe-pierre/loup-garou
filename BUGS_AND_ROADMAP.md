@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-22 — Notifications push élimination envoyées à la victime uniquement
+
+- **Symptôme :** Seule la victime recevait une notification push à chaque élimination (nuit, vote jour, tirage au sort). Les autres joueurs vivants ne recevaient rien.
+- **Cause :** `ProcessNightActions` et `VoteService::resolveDayVote()` appelaient uniquement `$victim->user->notify(...)` sans diffuser à l'ensemble des joueurs. De plus, l'élimination aléatoire n'envoyait aucune notification à la victime.
+- **Fix :** Création de `PlayerEliminatedPublicNotification` (contextes `night`, `day`, `random`). Ajout de `Notification::send($otherUsers, ...)` après chaque élimination dans `ProcessNightActions` et `VoteService::resolveDayVote()`. Ajout de la notification victime pour le tirage au sort avec `$randomVictim->load('user')`.
+
+---
+
 ### [x] 2026-06-22 — buildLastAction() appelé après update() → isNightPhase() faux + victime incorrecte
 
 - **Symptôme :** `GameFinished` broadcasté avec `last_action.phase = 'day'` et `eliminated = null` même quand la partie se terminait la nuit — le client affichait le fallback "La partie vient de se terminer".

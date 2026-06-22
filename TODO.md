@@ -398,6 +398,16 @@
 
 ---
 
+---
+
+## Phase 27 — Notifications push élimination publique (2026-06-22)
+
+- [x] **Correction 3** — `PlayerEliminatedPublicNotification` créée (contextes night/day/random)
+  - `ProcessNightActions` : notification victime conservée + `Notification::send()` aux autres joueurs vivants
+  - `VoteService::resolveDayVote()` : idem pour vote jour + ajout notification victime pour tirage au sort
+
+---
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`

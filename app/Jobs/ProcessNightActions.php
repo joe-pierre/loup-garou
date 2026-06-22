@@ -6,8 +6,10 @@ use App\Events\Game\MayorSuccessionStarted;
 use App\Events\Game\PlayerEliminated;
 use App\Models\Game;
 use App\Models\GameAction;
+use App\Notifications\PlayerEliminatedPublicNotification;
 use App\Notifications\PlayerKilledNightNotification;
 use App\Services\VoteService;
+use Illuminate\Support\Facades\Notification;
 use App\Services\WinConditionChecker;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -133,6 +135,20 @@ class ProcessNightActions implements ShouldQueue
 
                 try {
                     $victim->user->notify(new PlayerKilledNightNotification());
+                } catch (\Throwable) {}
+
+                try {
+                    $otherUsers = $game->alivePlayers()
+                        ->where('id', '!=', $victim->id)
+                        ->with('user')
+                        ->get()
+                        ->map->user
+                        ->filter();
+
+                    Notification::send(
+                        $otherUsers,
+                        new PlayerEliminatedPublicNotification($victim->pseudo, $victim->role, 'night')
+                    );
                 } catch (\Throwable) {}
             }
         }
