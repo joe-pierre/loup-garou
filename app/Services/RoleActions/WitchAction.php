@@ -108,6 +108,9 @@ class WitchAction
                 }
 
                 $target->update(['is_alive' => false]);
+                if ($target->is_mayor) {
+                    $mayorVictim = $target;
+                }
                 $settings['witch_kill_used'] = true;
                 $witch->update(['settings' => $settings]);
 
