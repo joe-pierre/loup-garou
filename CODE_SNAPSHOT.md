@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 15h03
+Generated at: 22h30
 
 ## PHP Analysis (Core Logic)
 
@@ -650,7 +650,7 @@ RandomElimination.php
       - __construct(Game $game, GamePlayer $player) {}
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'random.elimination'
-      - broadcastWith() → return ['player_id' => $this->player->id, 'pseudo' => $this->player->pseudo, 'reason' => 'no_votes']
+      - broadcastWith() → return ['player_id' => $this->player->id, 'pseudo' => $this->player->pseudo, 'role' => $this->player->role, 'google_name' => $this->player->user?->name ?? $this->player->pseudo, 'reason' => 'no_votes']
 
 // app/Events/Game/MayorElected.php
 MayorElected.php
