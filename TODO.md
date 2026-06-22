@@ -387,6 +387,17 @@
 
 ---
 
+## Phase 26 — Bugfix flux nocturne : sursis maire + historique aléatoire (2026-06-22)
+
+- [x] **Fix 1** — Sursis maire identique au sursis sorcière
+  - `ProcessNightActions` : `$witch` résolu avant le bloc victime ; flag `$victimIsMayorWithWitchAvailable` ; mort et `MayorSuccessionStarted` différés si sorcière avec soin disponible
+  - `WitchAction` : guard maire dans `kill` et `pass` (mort + succession depuis witchAct) ; cas spécial witch = maire dans `$witchDiedFromWolves`
+- [x] **Fix 2** — Historique pour l'élimination aléatoire
+  - `RandomElimination::broadcastWith()` : champs `role` et `google_name` ajoutés
+  - `game-state.js` : listener `.random.elimination` → `handlePlayerEliminated` + toast 🎲
+
+---
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
@@ -395,4 +406,5 @@
 - Phase 25 ✅ Terminée — Auto-soin sorcière + notifications enrichies
 - Étape 10 ✅ Terminée — Audit final de conformité CLAUDE.md
 - Roadmap Code Propre ✅ Complète (Étapes 1→10)
+- Phase 26 ✅ Terminée — Sursis maire + historique aléatoire
 - v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md

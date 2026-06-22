@@ -154,6 +154,20 @@ export function gameState(gameId, userId) {
                     );
                     window.dispatchEvent(new CustomEvent('no-elimination', { detail: e }));
                 })
+                .listen('.random.elimination',         e => {
+                    this.handlePlayerEliminated({
+                        player_id:   e.player_id,
+                        pseudo:      e.pseudo,
+                        role:        e.role ?? null,
+                        google_name: e.google_name ?? e.pseudo,
+                        reason:      'random_elimination',
+                    });
+                    this._dispatchToast(
+                        `🎲 ${e.pseudo} a été éliminé par tirage au sort (aucun vote).`,
+                        'info'
+                    );
+                    window.dispatchEvent(new CustomEvent('random-elimination', { detail: e }));
+                })
                 .listen('.chat.message.sent',          e => this._handleChatMessage(e))
                 .listen('.player.disconnected',        e => this._handlePlayerDisconnected(e))
                 .listen('.player.reconnected',         e => this._handlePlayerReconnected(e))

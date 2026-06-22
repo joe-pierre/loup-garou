@@ -1,3 +1,21 @@
+## [CHOIX] Maire en sursis — succession différée si sorcière avec soin disponible
+
+**Contexte :** Phase 26 — `ProcessNightActions.php`, `WitchAction.php`.
+
+**Symptôme / Problème :** Quand les loups tuaient le maire, `ProcessNightActions` broadcastait `MayorSuccessionStarted` et dispatchait `ProcessMayorSuccession` immédiatement après avoir marqué le maire mort — avant que la sorcière ait pu agir. Si la sorcière utilisait ensuite son soin, la succession était déjà partie et le maire était simultanément vivant et en cours de succession.
+
+**Cause / Alternatives :**
+1. Annuler la succession depuis `WitchAction::heal()` si en cours — rejeté : `ProcessMayorSuccession` est déjà en file, annulation complexe et non atomique.
+2. Différer la mort du maire dans `ProcessNightActions`, symétrique au sursis sorcière — retenu : pattern déjà validé, cohérent.
+
+**Fix / Décision :** `ProcessNightActions` résout `$witch` avant le bloc victime. Flag `$victimIsMayorWithWitchAvailable` (victime est maire + sorcière vivante avec soin). Si vrai : mort et succession différées (is_alive reste true, pas de broadcast). `WitchAction::kill()` et `::pass()` : après le check witch-as-victim, vérifier si le night_resolve cible un maire encore vivant (en sursis) ; si oui, marquer mort + broadcast `PlayerEliminated` + `MayorSuccessionStarted` + dispatch `ProcessMayorSuccession` hors transaction. `WitchAction::heal()` : rien de spécial — le maire est sauvé (`is_alive` reste true). Cas edge witch = maire : géré dans le bloc `$witchDiedFromWolves` (dispatch succession si `$witch->is_mayor`).
+
+**Leçon :** Tout joueur dont la mort peut être annulée par une action ultérieure doit être mis "en sursis" dans le job de résolution automatique. La règle est identique pour la sorcière elle-même et pour le maire — généraliser le pattern à tout rôle protégeable.
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] Sorcière en sursis — ne pas marquer morte immédiatement si potion de soin disponible
 
 **Contexte :** `feat/witch-self-heal-and-notifications` — `ProcessNightActions.php`, `ProcessWitchTurn.php`, `WitchAction.php`, `WitchActedPublic.php`, `PlayerEliminated.php`, `HunterShot.php`, `ActionController.php`, `night.blade.php`, `game-state.js`.

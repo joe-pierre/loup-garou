@@ -82,6 +82,12 @@ class ProcessNightActions implements ShouldQueue
 
         $victim = $voteService->resolveNightVote($game);
 
+        // Résoudre la sorcière maintenant pour les deux guards de sursis (sorcière et maire).
+        $witch = $game->players()->where('role', 'witch')->where('is_alive', true)->first();
+
+        $victimIsWitchWithHeal          = false;
+        $victimIsMayorWithWitchAvailable = false;
+
         if ($victim) {
             // Si la victime est la sorcière avec sa potion de soin disponible,
             // ne pas la marquer morte immédiatement : elle gérera elle-même dans witchAct().
@@ -89,7 +95,13 @@ class ProcessNightActions implements ShouldQueue
                 && $victim->is_alive
                 && ! ($victim->settings['witch_heal_used'] ?? false);
 
-            if (! $victimIsWitchWithHeal) {
+            // Si la victime est le maire et que la sorcière peut encore soigner,
+            // différer la mort et la succession — c'est witchAct() qui les déclenchera.
+            $victimIsMayorWithWitchAvailable = $victim->is_mayor
+                && $witch !== null
+                && ! ($witch->settings['witch_heal_used'] ?? false);
+
+            if (! $victimIsWitchWithHeal && ! $victimIsMayorWithWitchAvailable) {
                 $victim->update(['is_alive' => false]);
             }
 
@@ -104,7 +116,7 @@ class ProcessNightActions implements ShouldQueue
                 'phase'            => 'night',
             ]);
 
-            if (! $victimIsWitchWithHeal) {
+            if (! $victimIsWitchWithHeal && ! $victimIsMayorWithWitchAvailable) {
                 // Charger user avant le broadcast pour google_name dans PlayerEliminated
                 $victim->load('user');
                 broadcast(new PlayerEliminated($game, $victim, 'night_kill'));
@@ -129,12 +141,11 @@ class ProcessNightActions implements ShouldQueue
             return;
         }
 
-        $witch = $game->players()->where('role', 'witch')->where('is_alive', true)->first();
         if ($witch) {
             ProcessWitchTurn::dispatch($game->id, $game->round)->delay(0);
         }
 
-        if ($victim?->is_mayor) {
+        if ($victim?->is_mayor && ! $victimIsMayorWithWitchAvailable) {
             $successionDelay = $victim->is_inactive
                 ? 0
                 : $game->timer('mayor_succession');
