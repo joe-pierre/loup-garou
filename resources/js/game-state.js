@@ -162,10 +162,6 @@ export function gameState(gameId, userId) {
                         google_name: e.google_name ?? e.pseudo,
                         reason:      'random_elimination',
                     });
-                    this._dispatchToast(
-                        `🎲 ${e.pseudo} a été éliminé par tirage au sort (aucun vote).`,
-                        'info'
-                    );
                     window.dispatchEvent(new CustomEvent('random-elimination', { detail: e }));
                 })
                 .listen('.chat.message.sent',          e => this._handleChatMessage(e))
@@ -173,10 +169,6 @@ export function gameState(gameId, userId) {
                 .listen('.player.reconnected',         e => this._handlePlayerReconnected(e))
                 .listen('.player.inactive',            e => this._handlePlayerInactive(e))
                 .listen('.hunter.shot',                e => {
-                    const targetName = e.target_google_name && e.target_google_name !== e.target_pseudo
-                        ? `${e.target_google_name} aka ${e.target_pseudo}`
-                        : e.target_pseudo;
-                    this._dispatchToast(`🏹 Le Chasseur a tué ${targetName}`, 'info');
                     window.dispatchEvent(new CustomEvent('hunter-shot', { detail: e }));
                 })
                 .listen('.witch.acted.public',         e => {
@@ -190,10 +182,9 @@ export function gameState(gameId, userId) {
 
             // Présence (détection leaving)
             echo.join(`game.${this.gameId}.presence`)
-                .leaving(member => {
-                    if (member.id !== this.playerId) {
-                        this._dispatchToast(`${member.pseudo} s'est déconnecté`, 'info');
-                    }
+                .leaving(() => {
+                    // Toast géré exclusivement par _handlePlayerDisconnected via .player.disconnected
+                    // Le canal de présence fire .leaving() à chaque navigation — pas de toast ici.
                 });
 
             // ── Canal joueur individuel ──────────────────────────────────────
@@ -311,7 +302,7 @@ export function gameState(gameId, userId) {
                 this.nightVictim      = null;
 
                 const redirect = () => {
-                    if (this.gameCode) window.location.href = `/game/${this.gameCode}/night`;
+                    if (this.gameCode) this._navigateTo(`/game/${this.gameCode}/night`);
                 };
 
                 // Si une ou plusieurs successions sont en cours, attendre qu'elles soient
@@ -392,7 +383,7 @@ export function gameState(gameId, userId) {
             }
 
             const redirect = () => {
-                if (this.gameCode) window.location.href = `/game/${this.gameCode}/day`;
+                if (this.gameCode) this._navigateTo(`/game/${this.gameCode}/day`);
             };
 
             if (this._motion) {
@@ -513,9 +504,9 @@ export function gameState(gameId, userId) {
                 if (!this.gameCode) return;
                 if (e.winner_team !== null) {
                     sessionStorage.setItem('last_action', JSON.stringify(e.last_action ?? null));
-                    window.location.href = `/game/${this.gameCode}/summary`;
+                    this._navigateTo(`/game/${this.gameCode}/summary`);
                 } else {
-                    window.location.href = `/game/${this.gameCode}/cancelled`;
+                    this._navigateTo(`/game/${this.gameCode}/cancelled`);
                 }
             };
 
@@ -583,6 +574,7 @@ export function gameState(gameId, userId) {
         // HANDLERS — DÉCONNEXION
         // ════════════════════════════════════════════════════════════════════
         _handlePlayerDisconnected(e) {
+            if (window.__internalNavigation) return;
             this._dispatchToast(`${e.pseudo} se reconnecte…`, 'info');
             if (e.pseudo === this._myPseudo()) {
                 document.getElementById('reconnecting-overlay')
@@ -591,6 +583,7 @@ export function gameState(gameId, userId) {
         },
 
         _handlePlayerReconnected(e) {
+            if (window.__internalNavigation) return;
             this._dispatchToast(`${e.pseudo} est de retour !`, 'success');
             if (e.pseudo === this._myPseudo()) {
                 this._hideReconnectingOverlay();
@@ -598,6 +591,7 @@ export function gameState(gameId, userId) {
         },
 
         _handlePlayerInactive(e) {
+            if (window.__internalNavigation) return;
             this._dispatchToast(`${e.pseudo} est inactif`, 'warning');
             if (e.pseudo === this._myPseudo()) {
                 this._hideReconnectingOverlay();
@@ -651,8 +645,14 @@ export function gameState(gameId, userId) {
         // ════════════════════════════════════════════════════════════════════
         // UTILITAIRES INTERNES
         // ════════════════════════════════════════════════════════════════════
+        _navigateTo(url) {
+            window.__internalNavigation = true;
+            window.location.href = url;
+        },
+
         _setupBeforeUnload() {
             window.addEventListener('beforeunload', () => {
+                if (window.__internalNavigation) return;
                 const fd = new FormData();
                 fd.append('_token', this._csrf);
                 navigator.sendBeacon(`/game/${this.gameId}/disconnect`, fd);
@@ -667,6 +667,7 @@ export function gameState(gameId, userId) {
             this._pendingDayStarted   = null;
             this._pendingMayorElected = null;
 
+            if (window.__internalNavigation) return;
             if (!this.gameCode) return;
             fetch(`/game/${this.gameCode}/reconnect`, {
                 method:  'POST',
