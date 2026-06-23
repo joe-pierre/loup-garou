@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-23 — WinConditionChecker orderBy sur colonne updated_at inexistante
+
+- **Symptôme :** `SQLSTATE[42S22]: Unknown column 'updated_at' in 'ORDER BY'` sur `game_players` lors du calcul de la dernière action (nuit ou jour). Tests `DayPhaseTest > égalité vote jour` et `NightPhaseTest > mayor succession not triggered if victory occurs simultaneously` en échec.
+- **Cause :** `WinConditionChecker::buildLastAction()` utilisait `->latest('updated_at')` sur `game_players`, mais le modèle `GamePlayer` a `$timestamps = false` et la migration ne définit pas de colonne `updated_at`.
+- **Fix :** remplacement de `->latest('updated_at')` par `->latest('id')` dans `WinConditionChecker.php` ligne ~90. L'`id` auto-increment est un proxy fiable pour l'ordre d'insertion.
+
+---
+
 ### [x] 2026-06-23 — Voyante affichait "Innocent" pour Chasseur et Sorcière
 
 - **Symptôme :** quand la Voyante inspectait un Chasseur ou une Sorcière, le résultat affichait "🧑‍🌾 C'est un Innocent. Tu peux lui faire confiance." au lieu du rôle exact.
