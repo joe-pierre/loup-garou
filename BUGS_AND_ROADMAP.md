@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-23 — @show-toast.window ignoré par Alpine v3 (event name avec tiret)
+
+- **Symptôme :** `window.dispatchEvent(new CustomEvent('show-toast', ...))` ne déclenchait pas `add()` dans `toast.blade.php`, malgré le binding déclaratif `@show-toast.window="add($event.detail)"` présent sur le `<div>`.
+- **Cause :** Alpine v3 ne convertit pas correctement les event names contenant des tirets (`show-toast`) en listeners `window.addEventListener` via la syntaxe `@event.window` dans certains contextes de rendu Blade (composant chargé en tant que `<x-toast />`). Le binding est syntaxiquement valide mais le listener n'est jamais enregistré.
+- **Fix :** Suppression de `@show-toast.window="add($event.detail)"` du `<div>`. Ajout de `window.addEventListener('show-toast', (e) => this.add(e.detail))` dans `init()` après `window.__toastReady = true` — enregistrement impératif, fiable dans tous les contextes.
+
+---
+
 ### [x] 2026-06-23 — Votes maire non affichés en temps réel
 
 - **Symptôme :** pendant l'élection du Maire, les joueurs voyaient uniquement les totaux mis à jour — aucune indication de qui venait de voter pour qui.

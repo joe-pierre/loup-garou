@@ -10,6 +10,7 @@
                 window.__toastBuffer = [];
             }
             window.__toastReady = true;
+            window.addEventListener('show-toast', (e) => this.add(e.detail));
         },
         add(detail) {
             const id    = Date.now() + Math.random();
@@ -50,7 +51,6 @@
             return map[type] ?? map.info;
         },
     }"
-    @show-toast.window="add($event.detail)"
     class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-72 pointer-events-none"
     aria-live="polite"
     aria-atomic="false"

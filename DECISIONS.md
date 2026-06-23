@@ -1,3 +1,21 @@
+## [RÉSOLU] Alpine v3 @event.window non déclenché pour les event names avec tirets dans les composants Blade
+
+**Contexte :** `fix/bug-toast-show-toast-window-listener` — `resources/views/components/toast.blade.php`.
+
+**Symptôme / Problème :** `window.dispatchEvent(new CustomEvent('show-toast', { detail: ... }))` ne déclenchait jamais `add()` dans le composant toast, malgré la présence du binding `@show-toast.window="add($event.detail)"` sur le `<div x-data>`. Le composant était bien dans le DOM, Alpine l'initialisait correctement (`window.__toastReady = true` était positionné, le buffer était consommé), mais les toasts ultérieurs dispatchés via `_dispatchToast()` n'apparaissaient jamais.
+
+**Cause / Alternatives :** Alpine v3 traite les event names avec tirets dans la syntaxe `@event.window` de façon inconsistante lorsque le composant est rendu via un composant Blade anonyme (`<x-toast />`). La conversion camelCase/kebab-case peut échouer silencieusement — le listener `window.addEventListener` n'est jamais enregistré. Ce comportement ne se reproduit pas systématiquement avec des event names sans tiret (ex. `@keydown.window`).
+
+Alternative : renommer l'event en `showtoast` ou `toast` (sans tiret) et mettre à jour tous les appelants — rejeté, risque de régression sur `_dispatchToast()` dans `game-state.js`.
+
+**Fix / Décision :** Suppression de `@show-toast.window="add($event.detail)"` du `<div>`. Ajout de `window.addEventListener('show-toast', (e) => this.add(e.detail))` dans `init()` immédiatement après `window.__toastReady = true`. L'enregistrement impératif dans `init()` est garanti, indépendant du parser de syntaxe Alpine, et cohérent avec le pattern déjà utilisé dans `dayScreen.init()` / `nightScreen.init()` pour tous les CustomEvents.
+
+**Leçon :** En Alpine v3, ne pas utiliser `@event.window` pour les event names contenant des tirets sur des composants Blade. Toujours préférer `window.addEventListener('event-name', ...)` dans `init()` pour les CustomEvents cross-composants. Le binding déclaratif `@event` reste valide pour les events Alpine natifs (ex. `@click`, `@keydown`), pas pour les `CustomEvent` dispatchés via `window.dispatchEvent()`.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] Votes maire publics — voter_pseudo + target_pseudo dans MayorVoteCast
 
 **Contexte :** `fix/bug-votes-maire-temps-reel` — `app/Events/Game/MayorVoteCast.php`, `app/Http/Controllers/Game/VoteController.php`, `resources/js/game-state.js`, `tests/Unit/Events/EventPayloadTest.php`.
