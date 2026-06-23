@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 15h47
+Generated at: 17h44
 
 ## PHP Analysis (Core Logic)
 
@@ -382,10 +382,10 @@ MayorVoteCast.php
       - InteractsWithSockets
       - SerializesModels
     functions:
-      - __construct(Game $game, array $votes) {}
+      - __construct(Game $game, array $votes, string $voterPseudo, string $targetPseudo) {}
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'mayor.vote.cast'
-      - broadcastWith() → return ['votes' => $this->votes]
+      - broadcastWith() → return ['votes' => $this->votes, 'voter_pseudo' => $this->voterPseudo, 'target_pseudo' => $this->targetPseudo]
 
 // app/Events/Game/MayorSuccessionDone.php
 MayorSuccessionDone.php

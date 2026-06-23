@@ -288,6 +288,12 @@
 
 ---
 
+## Phase 29 — Bugfix toast @show-toast.window Alpine v3 (2026-06-23)
+
+- [x] **Fix** — `toast.blade.php` : suppression `@show-toast.window`, remplacement par `window.addEventListener('show-toast', ...)` dans `init()` (`fix/bug-toast-show-toast-window-listener`)
+
+---
+
 ## BUGS CONNUS
 
 → Voir `BUGS_AND_ROADMAP.md` (source de vérité unique pour les bugs)
