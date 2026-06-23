@@ -553,6 +553,14 @@ export function gameState(gameId, userId) {
             // e.votes = [{ target_player_id, vote_count }]
             this.votes = {};
             (e.votes ?? []).forEach(v => { this.votes[v.target_player_id] = v.vote_count; });
+
+            if (e.voter_pseudo && e.target_pseudo) {
+                const msg = e.voter_pseudo === e.target_pseudo
+                    ? `👑 ${e.voter_pseudo} a voté pour lui-même`
+                    : `👑 ${e.voter_pseudo} a voté pour ${e.target_pseudo}`;
+                this._dispatchToast(msg, 'info');
+            }
+
             window.dispatchEvent(new CustomEvent('mayor-vote-cast', { detail: e }));
         },
 

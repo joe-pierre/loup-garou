@@ -1,3 +1,21 @@
+## [CHOIX] Votes maire publics — voter_pseudo + target_pseudo dans MayorVoteCast
+
+**Contexte :** `fix/bug-votes-maire-temps-reel` — `app/Events/Game/MayorVoteCast.php`, `app/Http/Controllers/Game/VoteController.php`, `resources/js/game-state.js`, `tests/Unit/Events/EventPayloadTest.php`.
+
+**Symptôme / Problème :** Pendant l'élection du Maire, les joueurs voyaient les totaux par candidat mis à jour en temps réel mais n'avaient aucune indication de qui venait de voter pour qui. L'expérience était opaque : impossible de suivre la dynamique de l'élection au moment où elle se déroule.
+
+**Cause / Alternatives :**
+1. Continuer à n'exposer que les totaux (`votes[]`) — résout l'anonymat mais sacrifie la lisibilité de l'élection.
+2. Exposer `voter_pseudo` et `target_pseudo` dans `MayorVoteCast` (sans `player_id`) — choix retenu.
+
+**Fix / Décision :** Changement de spec assumé : les votes maire sont désormais **publics** (auteur + cible visibles via leurs pseudos). Les votes JOUR restent entièrement anonymes (`DayVoteCast` non touché). `MayorVoteCast` : deux nouveaux champs `voterPseudo`/`targetPseudo` dans le constructeur et `broadcastWith()`. `VoteController::mayor()` : `$targetPseudo` extrait des totaux retournés (`collect($votes)->firstWhere('target_player_id', $targetId)['pseudo']`) — aucune requête DB supplémentaire. `game-state.js` : toast "👑 X a voté pour Y" (ou "pour lui-même") dans `_handleMayorVoteCast()`. La règle anti-spoofing est préservée : `player_id` toujours absent du payload.
+
+**Leçon :** Le vote maire et le vote jour ont des régimes de visibilité distincts — ne jamais les traiter de manière identique. `MayorVoteCast` est public par nature (l'identité du maire est connue de tous), `DayVoteCast` est anonyme pour protéger les joueurs d'une pression sociale. La règle anti-spoofing (`player_id` toujours absent) s'applique aux deux : exposer un pseudo n'est pas la même chose qu'exposer un identifiant interne qui permettrait de manipuler les votes.
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [RÉSOLU] Conflit Alpine `:style` string / GSAP dans les barres de progression
 
 **Contexte :** `fix/bug-progress-bar-role-reveal-mayor-election` — `resources/views/game/role-reveal.blade.php`, `resources/views/game/mayor-election.blade.php`.
