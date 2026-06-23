@@ -261,7 +261,7 @@
                 clearInterval(this._gameTick);
                 gsap.killTweensOf('#game-timer-fill');
                 gsap.killTweensOf('#reveal-timer-bar');
-                window.__internalNavigation = true;
+                sessionStorage.setItem('__internalNavigation', '1');
                 window.location.href = '/game/{{ $game->code }}/mayor-election';
             },
 
@@ -285,7 +285,7 @@
                         'finished': '/game/{{ $game->code }}/finished',
                     };
                     const target = targets[data.phase];
-                    if (target && window.location.pathname !== target) { window.__internalNavigation = true; window.location.href = target; }
+                    if (target && window.location.pathname !== target) { sessionStorage.setItem('__internalNavigation', '1'); window.location.href = target; }
                 } catch { }
             },
 
