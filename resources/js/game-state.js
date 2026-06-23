@@ -574,7 +574,7 @@ export function gameState(gameId, userId) {
         // HANDLERS — DÉCONNEXION
         // ════════════════════════════════════════════════════════════════════
         _handlePlayerDisconnected(e) {
-            if (window.__internalNavigation) return;
+            if (sessionStorage.getItem('__internalNavigation')) return;
             this._dispatchToast(`${e.pseudo} se reconnecte…`, 'info');
             if (e.pseudo === this._myPseudo()) {
                 document.getElementById('reconnecting-overlay')
@@ -583,7 +583,7 @@ export function gameState(gameId, userId) {
         },
 
         _handlePlayerReconnected(e) {
-            if (window.__internalNavigation) return;
+            if (sessionStorage.getItem('__internalNavigation')) return;
             this._dispatchToast(`${e.pseudo} est de retour !`, 'success');
             if (e.pseudo === this._myPseudo()) {
                 this._hideReconnectingOverlay();
@@ -591,7 +591,7 @@ export function gameState(gameId, userId) {
         },
 
         _handlePlayerInactive(e) {
-            if (window.__internalNavigation) return;
+            if (sessionStorage.getItem('__internalNavigation')) return;
             this._dispatchToast(`${e.pseudo} est inactif`, 'warning');
             if (e.pseudo === this._myPseudo()) {
                 this._hideReconnectingOverlay();
@@ -646,13 +646,13 @@ export function gameState(gameId, userId) {
         // UTILITAIRES INTERNES
         // ════════════════════════════════════════════════════════════════════
         _navigateTo(url) {
-            window.__internalNavigation = true;
+            sessionStorage.setItem('__internalNavigation', '1');
             window.location.href = url;
         },
 
         _setupBeforeUnload() {
             window.addEventListener('beforeunload', () => {
-                if (window.__internalNavigation) return;
+                if (sessionStorage.getItem('__internalNavigation')) return;
                 const fd = new FormData();
                 fd.append('_token', this._csrf);
                 navigator.sendBeacon(`/game/${this.gameId}/disconnect`, fd);
@@ -667,7 +667,7 @@ export function gameState(gameId, userId) {
             this._pendingDayStarted   = null;
             this._pendingMayorElected = null;
 
-            if (window.__internalNavigation) return;
+            if (sessionStorage.getItem('__internalNavigation')) { sessionStorage.removeItem('__internalNavigation'); return; }
             if (!this.gameCode) return;
             fetch(`/game/${this.gameCode}/reconnect`, {
                 method:  'POST',
