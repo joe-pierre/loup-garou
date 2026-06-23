@@ -240,7 +240,7 @@
                     this.electedMayor = ev.detail.pseudo;
                     this.wasRandom    = ev.detail.was_random;
                     this.showResult   = true;
-                    setTimeout(() => { window.location.href = `/game/${this.gameCode}/night`; }, 6000);
+                    setTimeout(() => { window.__internalNavigation = true; window.location.href = `/game/${this.gameCode}/night`; }, 6000);
                 });
             },
 
