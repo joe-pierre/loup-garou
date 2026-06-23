@@ -1,3 +1,21 @@
+## [CHOIX] Persistance de random_elimination en DB plutôt que reconstruction depuis le broadcast
+
+**Contexte :** `fix/add-random-elimination-history` — `app/Services/VoteService.php`, `app/Http/Controllers/Game/GameController.php`, `app/Services/HistoryService.php`.
+
+**Symptôme / Problème :** L'historique de partie n'affichait pas la victime lors d'une élimination aléatoire (0 votes jour). `buildTimeline()` n'avait aucune source de données pour retrouver la victime dans ce cas — `random_elimination` n'était pas dans le `whereIn` et aucune `GameAction` ne représentait cet événement.
+
+**Cause / Alternatives :**
+1. Reconstruire la victime depuis le broadcast `RandomElimination` (événement WebSocket) — rejeté : les broadcasts ne sont pas persistés ; l'historique deviendrait dépendant de données éphémères non disponibles après rechargement ou reconnexion.
+2. Persister l'élimination aléatoire en DB via un `GameAction random_elimination` au moment de l'élimination — retenu : cohérent avec les patterns `hunter_pending`, `night_resolve`, `mayor_succession` déjà en place.
+
+**Fix / Décision :** `GameAction random_elimination` créé dans la branche 0-votes de `resolveDayVote()` avec `player_id = target_player_id = victim->id`. `random_elimination` ajouté au `whereIn` de `GameController::history()`. `HistoryService::buildTimeline()` lit l'action dans la branche `else` (aucun vote) et peuple `$dayEntry['eliminated']`.
+
+**Leçon :** Tout événement devant apparaître dans l'historique doit être persisté en `game_actions` au moment où il se produit. Ne jamais reconstruire l'historique depuis les broadcasts WebSocket — ils sont éphémères et ne survivent pas aux reconnexions ou rechargements de page.
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] Maire en sursis — succession différée si sorcière avec soin disponible
 
 **Contexte :** Phase 26 — `ProcessNightActions.php`, `WitchAction.php`.
