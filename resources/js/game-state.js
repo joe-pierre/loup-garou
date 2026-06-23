@@ -182,10 +182,9 @@ export function gameState(gameId, userId) {
 
             // Présence (détection leaving)
             echo.join(`game.${this.gameId}.presence`)
-                .leaving(member => {
-                    if (member.id !== this.playerId) {
-                        this._dispatchToast(`${member.pseudo} s'est déconnecté`, 'info');
-                    }
+                .leaving(() => {
+                    // Toast géré exclusivement par _handlePlayerDisconnected via .player.disconnected
+                    // Le canal de présence fire .leaving() à chaque navigation — pas de toast ici.
                 });
 
             // ── Canal joueur individuel ──────────────────────────────────────
@@ -668,6 +667,7 @@ export function gameState(gameId, userId) {
             this._pendingDayStarted   = null;
             this._pendingMayorElected = null;
 
+            if (window.__internalNavigation) return;
             if (!this.gameCode) return;
             fetch(`/game/${this.gameCode}/reconnect`, {
                 method:  'POST',
