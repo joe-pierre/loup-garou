@@ -87,7 +87,7 @@ class WinConditionChecker
         if ($game->isNightPhase()) {
             $recentKill = $game->players()
                 ->where('is_alive', false)
-                ->latest('updated_at')
+                ->latest('id')
                 ->first();
 
             $witchActed = $game->actions()
