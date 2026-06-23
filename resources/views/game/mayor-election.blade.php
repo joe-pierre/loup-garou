@@ -42,6 +42,9 @@
     .btn-primary { background-color: #c9a84c; color: #0a0f1e; transition: background-color .3s, transform .2s; }
     .btn-primary:hover { background-color: #e0c068; transform: translateY(-2px); }
     .btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+        #election-timer-fill { transition: none !important; }
+    }
 </style>
 @endpush
 
@@ -86,11 +89,10 @@
             <span x-text="timerSeconds > 0 ? 'Résolution dans ' + timerSeconds + 's' : 'Résolution en cours…'"></span>
             <span x-text="totalVotes + ' / {{ count($players) }} vote' + (totalVotes > 1 ? 's' : '')"></span>
         </div>
-        <div class="timer-track">
+        <div class="timer-track" aria-hidden="true">
             <div
                 id="election-timer-fill"
-                :style="'background-color:' + (timerSeconds <= 5 ? '#8b0000' : timerSeconds <= 10 ? '#f97316' : '#c9a84c')"
-                style="height: 100%; width: 100%; border-radius: 9999px; background-color: #c9a84c;"
+                style="height: 100%; width: 100%; border-radius: 9999px; background-color: #c9a84c; transition: background-color 0.3s;"
             ></div>
         </div>
     </div>
@@ -211,7 +213,9 @@
                 gsap.fromTo('#me-timer', { opacity: 0 }, { opacity: 1, duration: 0.5, delay: 0.05, ease: 'power2.out' });
                 gsap.fromTo('#me-candidates', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, delay: 0.15, ease: 'power2.out' });
 
-                if (this.phaseSeconds > 0) {
+                const noMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+                if (!noMotion && this.phaseSeconds > 0) {
                     gsap.to('#election-timer-fill', { width: '0%', duration: this.phaseSeconds, ease: 'none' });
                 } else {
                     document.getElementById('election-timer-fill').style.width = '0%';
@@ -219,6 +223,10 @@
 
                 const tick = setInterval(() => {
                     this.timerSeconds--;
+                    if (!noMotion) {
+                        if (this.timerSeconds === 10) gsap.to('#election-timer-fill', { backgroundColor: '#f97316', duration: 0.3 });
+                        if (this.timerSeconds === 5)  gsap.to('#election-timer-fill', { backgroundColor: '#8b0000', duration: 0.3 });
+                    }
                     if (this.timerSeconds <= 0) clearInterval(tick);
                 }, 1000);
 
