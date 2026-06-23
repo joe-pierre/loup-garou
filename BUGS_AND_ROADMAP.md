@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-23 — Voyante affichait "Innocent" pour Chasseur et Sorcière
+
+- **Symptôme :** quand la Voyante inspectait un Chasseur ou une Sorcière, le résultat affichait "🧑‍🌾 C'est un Innocent. Tu peux lui faire confiance." au lieu du rôle exact.
+- **Cause :** `night.blade.php` utilisait un booléen binaire `isWerewolf` pour déterminer l'emoji et le texte affiché — aucune distinction entre les rôles non-loup.
+- **Fix :** ajout de `roleEmoji(role)` et `roleLabel(role)` dans `nightScreen()` avec un switch sur les 5 rôles possibles (`werewolf`, `villager`, `seer`, `witch`, `hunter`). Le champ `role` était déjà exposé par `SeerResult::broadcastWith()` et stocké dans `seerResult.role` — aucune modification backend.
+
+---
+
 ### [x] 2026-06-23 — Progress bar absente dans role-reveal et mayor-election
 
 - **Symptôme :** aucune barre de progression visible sur les écrans role-reveal et mayor-election.

@@ -244,11 +244,11 @@
             <p class="font-medieval text-xl font-bold mb-5" style="color:#a78bfa;">🔮 Résultat de l'inspection</p>
             <div id="seer-result-card" class="seer-result-card mb-5"
                  :class="seerResult?.isWerewolf ? 'seer-result-werewolf' : 'seer-result-innocent'">
-                <p class="text-4xl mb-2" x-text="seerResult?.isWerewolf ? '🐺' : '🧑‍🌾'"></p>
+                <p class="text-4xl mb-2" x-text="roleEmoji(seerResult?.role)"></p>
                 <p class="font-medieval text-sm font-semibold mb-2" style="color:#e8e0d0;" x-text="seerResult?.pseudo"></p>
                 <p class="text-xs"
                    :style="seerResult?.isWerewolf ? 'color:#f87171' : 'color:#4ade80'"
-                   x-text="seerResult?.isWerewolf ? 'Méfie-toi. C\'est un Loup-Garou.' : 'C\'est un Innocent. Tu peux lui faire confiance.'">
+                   x-text="roleLabel(seerResult?.role)">
                 </p>
             </div>
             <button
@@ -1011,6 +1011,28 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     },
                 }).then(() => { window.location.href = '/'; });
+            },
+
+            roleEmoji(role) {
+                const emojis = {
+                    werewolf: '🐺',
+                    villager: '🧑‍🌾',
+                    seer:     '🔮',
+                    witch:    '🧙‍♀️',
+                    hunter:   '🏹',
+                };
+                return emojis[role] ?? '❓';
+            },
+
+            roleLabel(role) {
+                const labels = {
+                    werewolf: 'Méfie-toi. C\'est un Loup-Garou.',
+                    villager: 'Villageois — Innocent.',
+                    seer:     'Voyante — Innocente.',
+                    witch:    'Sorcière — Innocente.',
+                    hunter:   'Chasseur — Innocent.',
+                };
+                return labels[role] ?? 'Rôle inconnu.';
             },
         };
     }
