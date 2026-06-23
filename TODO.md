@@ -407,6 +407,8 @@
   - `GameController::history()` : `random_elimination` ajouté au `whereIn`
   - `HistoryService::buildTimeline()` : lecture de l'action pour peupler `eliminated` (résultat `no_votes`)
 - [x] **P3** — Couronne affichée sur le nouveau maire en phase jour (`fix: afficher une couronne sur le nouveau maire`)
+- [x] **P4** — ENUM MySQL manquant pour `random_elimination` dans `game_actions.type` (`fix/random-elimination-enum`)
+  - Migration `2026_06_23_000000_add_random_elimination_to_game_actions_type_enum.php` ajoutée et appliquée
   - `day.blade.php` : listeners `mayor-elected` et `mayor-succession-done` remappent `is_mayor` dans `this.players`
 
 ---

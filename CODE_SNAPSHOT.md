@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 11h48
+Generated at: 12h32
 
 ## PHP Analysis (Core Logic)
 
@@ -1426,6 +1426,12 @@ TestCase.php
 
 // database/migrations/2026_06_03_000002_create_game_players_table.php
 2026_06_03_000002_create_game_players_table.php
+    functions:
+      - up() → void
+      - down() → void
+
+// database/migrations/2026_06_23_000000_add_random_elimination_to_game_actions_type_enum.php
+2026_06_23_000000_add_random_elimination_to_game_actions_type_enum.php
     functions:
       - up() → void
       - down() → void

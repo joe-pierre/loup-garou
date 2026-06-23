@@ -16,6 +16,14 @@
 
 ---
 
+### [x] 2026-06-23 — ENUM MySQL manquant pour `random_elimination` dans `game_actions.type`
+
+- **Symptôme :** insertion d'une `GameAction` de type `random_elimination` échouait avec `SQLSTATE[01000]: Data truncated for column 'type'` — la valeur n'était pas dans l'ENUM MySQL.
+- **Cause :** la migration `2026_06_19_000000_add_night_resolve_to_game_actions_type_enum.php` (dernière migration modifiant cet ENUM) ne listait pas `random_elimination`, qui n'existait pas encore à ce stade (créé dans `fix/add-random-elimination-history`).
+- **Fix :** migration `2026_06_23_000000_add_random_elimination_to_game_actions_type_enum.php` ajoutant `random_elimination` à l'ENUM complet des 14 valeurs.
+
+---
+
 ### [x] 2026-06-23 — Couronne absente sur le nouveau maire après une succession (day.blade.php)
 
 - **Symptôme :** après une succession du maire, la couronne 👑 n'apparaissait pas sur la carte du nouveau maire dans la liste des joueurs en phase jour.
