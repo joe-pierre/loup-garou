@@ -1,3 +1,22 @@
+## [RÉSOLU] Conflit Alpine `:style` string / GSAP dans les barres de progression
+
+**Contexte :** `fix/bug-progress-bar-role-reveal-mayor-election` — `resources/views/game/role-reveal.blade.php`, `resources/views/game/mayor-election.blade.php`.
+
+**Symptôme / Problème :** Les barres de progression (`#game-timer-fill`, `#election-timer-fill`) restaient pleines et ne s'animaient pas, même si GSAP était correctement appelé.
+
+**Cause / Alternatives :**
+En Alpine.js v3, un binding `:style` avec une valeur de type *string* (ex. `':style="'background-color:' + color"`) appelle `el.style.cssText = value` en interne. Cela remplace l'*intégralité* du style inline — y compris la propriété `width` animée par GSAP — à chaque tick réactif (toutes les secondes ici). GSAP animait la largeur, Alpine la remettait à 100% une seconde plus tard.
+
+Alternative envisagée : utiliser le composant `<x-game-timer>` — rejeté car ce composant a le même défaut (`:style="'width:100%; background-color:' + barColor"` inclut `width` dans la chaîne).
+
+**Fix / Décision :** Suppression du binding `:style` Alpine sur les éléments de remplissage (`#reveal-timer-bar`, `#game-timer-fill`, `#election-timer-fill`). GSAP prend en charge à la fois `width` (via `gsap.to(bar, { width: '0%', ... })`) et `backgroundColor` (via `gsap.to(bar, { backgroundColor: '...', duration: 0.3 })`). Guard `prefers-reduced-motion` ajouté avant tout appel GSAP sur les barres. Pattern identique à `night.blade.php` (`#seer-timer-bar`).
+
+**Leçon :** Ne jamais inclure `width` dans un binding `:style` Alpine sur un élément dont la largeur est animée par GSAP. Pour les changements de couleur conditionnels sur une barre de timer, utiliser `gsap.to(bar, { backgroundColor: ... })` dans le `setInterval` au passage des seuils (ex. 10s, 5s), pas un binding réactif Alpine.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] Persistance de random_elimination en DB plutôt que reconstruction depuis le broadcast
 
 **Contexte :** `fix/add-random-elimination-history` — `app/Services/VoteService.php`, `app/Http/Controllers/Game/GameController.php`, `app/Services/HistoryService.php`.

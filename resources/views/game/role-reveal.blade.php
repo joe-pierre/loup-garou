@@ -9,6 +9,10 @@
     #rr-timer  { opacity: 0; }
     #card-wrap { perspective: 1200px; opacity: 0; }
     body { background: radial-gradient(ellipse at 50% 20%, #1a0a2e 0%, #030712 75%); font-family: 'EB Garamond', serif; }
+    .reveal-timer-track { background-color: rgba(124,58,237,0.15); border-radius: 9999px; height: 4px; overflow: hidden; }
+    @media (prefers-reduced-motion: reduce) {
+        #reveal-timer-bar, #game-timer-fill { transition: none !important; }
+    }
 
     #role-card {
         width: 240px; height: 340px;
@@ -84,6 +88,12 @@
             <span x-show="!revealed">Retournement dans <span x-text="countdown"></span>s…</span>
             <span x-show="revealed" x-text="roleName"></span>
         </h1>
+        {{-- Barre de progression mayor_reveal (violet) --}}
+        <div x-show="!revealed" class="mt-3 w-full max-w-xs mx-auto" aria-hidden="true">
+            <div class="reveal-timer-track">
+                <div id="reveal-timer-bar" style="height:100%; width:100%; border-radius:9999px; background-color:#7c3aed; transition: background-color 0.3s;"></div>
+            </div>
+        </div>
     </div>
 
     {{-- Timer 60s + compteur joueurs prêts --}}
@@ -92,11 +102,10 @@
             <span x-text="'Démarrage dans ' + gameTimer + 's'"></span>
             <span x-text="nbReady + '/' + total + ' prêts'"></span>
         </div>
-        <div style="background-color: rgba(201,168,76,0.12); border-radius: 9999px; height: 5px; overflow: hidden;">
+        <div style="background-color: rgba(201,168,76,0.12); border-radius: 9999px; height: 5px; overflow: hidden;" aria-hidden="true">
             <div
                 id="game-timer-fill"
-                :style="'background-color:' + (gameTimer <= 5 ? '#8b0000' : gameTimer <= 10 ? '#f97316' : '#c9a84c')"
-                style="height: 100%; width: 100%; border-radius: 9999px; background-color: #c9a84c;"
+                style="height: 100%; width: 100%; border-radius: 9999px; background-color: #c9a84c; transition: background-color 0.3s;"
             ></div>
         </div>
         <p x-show="nbReady === total && total > 0" class="text-center text-xs mt-2 font-medieval" style="color: #c9a84c;">
@@ -181,15 +190,17 @@
 
 @push('scripts')
 <script>
-    const GAME_ID    = {{ $game->id }};
-    const ROLE_NAMES = { villager: 'Villageois', werewolf: 'Loup-Garou', seer: 'Voyante', witch: 'Sorcière', hunter: 'Chasseur' };
+    const GAME_ID      = {{ $game->id }};
+    const REVEAL_TIMER = {{ $game->timer('mayor_reveal') }};
+    const READY_TIMER  = {{ $game->timer('ready_timeout') }};
+    const ROLE_NAMES   = { villager: 'Villageois', werewolf: 'Loup-Garou', seer: 'Voyante', witch: 'Sorcière', hunter: 'Chasseur' };
 
     function roleReveal() {
         return {
             confirmQuit: false,
             revealed:   false,
-            countdown:  5,
-            gameTimer:  60,
+            countdown:  REVEAL_TIMER,
+            gameTimer:  READY_TIMER,
             role:       '{{ $player->role }}',
             roleName:   ROLE_NAMES['{{ $player->role }}'] ?? '{{ $player->role }}',
             nbReady:    {{ $nbReady }},
@@ -202,6 +213,8 @@
                 if (this._initialized) return;
                 this._initialized = true;
 
+                const noMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
                 gsap.fromTo('#rr-title', { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' });
                 gsap.fromTo('#rr-timer', { opacity: 0 }, { opacity: 1, duration: 0.5, delay: 0.05, ease: 'power2.out' });
                 gsap.fromTo('#card-wrap', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.7, delay: 0.1, ease: 'power2.out' });
@@ -210,15 +223,26 @@
                     { opacity: 1, y: 0, duration: .7, ease: 'power3.out', stagger: .15, delay: 0.2 }
                 );
 
-                gsap.to('#game-timer-fill', { width: '0%', duration: 60, ease: 'none' });
+                if (!noMotion) {
+                    gsap.to('#reveal-timer-bar', { width: '0%', duration: REVEAL_TIMER, ease: 'none' });
+                    gsap.to('#game-timer-fill',   { width: '0%', duration: READY_TIMER,  ease: 'none' });
+                }
 
                 this._gameTick = setInterval(() => {
                     this.gameTimer--;
+                    if (!noMotion) {
+                        if (this.gameTimer === 10) gsap.to('#game-timer-fill', { backgroundColor: '#f97316', duration: 0.3 });
+                        if (this.gameTimer === 5)  gsap.to('#game-timer-fill', { backgroundColor: '#8b0000', duration: 0.3 });
+                    }
                     if (this.gameTimer <= 0) { clearInterval(this._gameTick); this.redirect(); }
                 }, 1000);
 
                 const tick = setInterval(() => {
                     this.countdown--;
+                    if (!noMotion) {
+                        if (this.countdown === Math.floor(REVEAL_TIMER / 2)) gsap.to('#reveal-timer-bar', { backgroundColor: '#f97316', duration: 0.3 });
+                        if (this.countdown === 2) gsap.to('#reveal-timer-bar', { backgroundColor: '#8b0000', duration: 0.3 });
+                    }
                     if (this.countdown <= 0) { clearInterval(tick); this.flipCard(); }
                 }, 1000);
 
@@ -236,6 +260,7 @@
             redirect() {
                 clearInterval(this._gameTick);
                 gsap.killTweensOf('#game-timer-fill');
+                gsap.killTweensOf('#reveal-timer-bar');
                 window.location.href = '/game/{{ $game->code }}/mayor-election';
             },
 

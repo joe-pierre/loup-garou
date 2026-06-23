@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-23 — Progress bar absente dans role-reveal et mayor-election
+
+- **Symptôme :** aucune barre de progression visible sur les écrans role-reveal et mayor-election.
+- **Cause :** conflit Alpine.js / GSAP — le binding `:style` avec une chaîne appelle `el.style.cssText = value` en interne, ce qui écrase l'animation `width` de GSAP à chaque mise à jour réactive (chaque seconde).
+- **Fix :** suppression du binding `:style` Alpine sur les éléments de remplissage ; GSAP gère `width` (animation) et `backgroundColor` (transitions de couleur). Barre violet `#reveal-timer-bar` ajoutée dans role-reveal pour `mayor_reveal` ; barre or `#election-timer-fill` corrigée dans mayor-election pour `mayor_election`. Guard `prefers-reduced-motion` ajouté dans les deux vues.
+
+---
+
 ### [x] 2026-06-23 — Succession maire non déclenchée si le maire est empoisonné par la sorcière
 
 - **Symptôme :** si la sorcière utilisait son poison sur le maire, aucune succession n'était déclenchée — le maire mourait sans désigner de successeur.
