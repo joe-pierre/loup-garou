@@ -566,7 +566,7 @@
                         this.animateProgress(this.players.length);
                         this.pulseEmptySlots();
                         if (data.slots_remaining === 0) {
-                            setTimeout(() => { window.__internalNavigation = true; window.location.href = `/game/${this.gameCode}/role-reveal`; }, 1500);
+                            setTimeout(() => { sessionStorage.setItem('__internalNavigation', '1'); window.location.href = `/game/${this.gameCode}/role-reveal`; }, 1500);
                         }
                     })
                     .listen('.player.excluded', (data) => {
@@ -575,7 +575,7 @@
                         this.pulseEmptySlots();
                     })
                     .listen('.game.started', () => {
-                        window.__internalNavigation = true;
+                        sessionStorage.setItem('__internalNavigation', '1');
                         window.location.href = `/game/${this.gameCode}/role-reveal`;
                     });
 
@@ -603,7 +603,7 @@
                     const json = await res.json();
                     if (!json.success) return;
                     if (json.data.status !== 'waiting') {
-                        window.__internalNavigation = true;
+                        sessionStorage.setItem('__internalNavigation', '1');
                         window.location.href = `/game/${this.gameCode}/role-reveal`;
                         return;
                     }
@@ -611,7 +611,7 @@
                     this.animateProgress(this.players.length);
                     this.pulseEmptySlots();
                     if (json.data.slots_remaining === 0) {
-                        window.__internalNavigation = true;
+                        sessionStorage.setItem('__internalNavigation', '1');
                         window.location.href = `/game/${this.gameCode}/role-reveal`;
                     }
                 } catch { }
