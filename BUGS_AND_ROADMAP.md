@@ -829,6 +829,7 @@
 - [ ] Révision timers par défaut config/game.php (day_vote, seer, werewolves)
       et valeurs minimales — prompt séparé après validation prod
 - [ ] Étendre players[] du store central à night.blade.php et spectator.blade.php
+- [ ] `ProcessWitchAutoAction` ne passe pas par `WitchAction::act()` : la victime ordinaire déférée par `ProcessNightActions` (quand `$witchCanSaveVictim=true`) n'est pas tuée ni broadcastée si le timer sorcière expire sans action manuelle. Ajouter dans `ProcessWitchAutoAction::handle()` le même bloc de résolution de victime ordinaire qu'en fin de `WitchAction::act()` (kill/pass).
 
 ## Refactoring architectural planifié
 

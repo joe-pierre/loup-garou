@@ -217,6 +217,42 @@ class WitchAction
                 ->delay(now()->addSeconds($successionDelay));
         }
 
+        // Broadcast hors transaction : élimination de la victime nocturne ordinaire différée
+        // depuis ProcessNightActions (ni sorcière, ni maire, et soin non utilisé sur elle).
+        if ($action !== 'heal') {
+            $nightResolve = GameAction::where('game_id', $game->id)
+                ->where('type', 'night_resolve')
+                ->where('round', $game->round)
+                ->first();
+
+            $ordinaryVictim = null;
+            if ($nightResolve) {
+                $candidate = GamePlayer::find($nightResolve->target_player_id);
+                if ($candidate
+                    && $candidate->is_alive
+                    && ! $candidate->isWitch()
+                    && ! $candidate->is_mayor) {
+                    $ordinaryVictim = $candidate;
+                }
+            }
+
+            if ($ordinaryVictim) {
+                $ordinaryVictim->update(['is_alive' => false]);
+                $ordinaryVictim->load('user');
+                broadcast(new PlayerEliminated($game, $ordinaryVictim, 'night_kill'));
+
+                if ($ordinaryVictim->isHunter()) {
+                    GameAction::create([
+                        'game_id'   => $game->id,
+                        'player_id' => $ordinaryVictim->id,
+                        'type'      => 'hunter_pending',
+                        'round'     => $game->round,
+                        'phase'     => 'night',
+                    ]);
+                }
+            }
+        }
+
         return $result;
     }
 }

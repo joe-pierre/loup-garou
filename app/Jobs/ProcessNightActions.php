@@ -101,7 +101,12 @@ class ProcessNightActions implements ShouldQueue
                 && $witch !== null
                 && ! ($witch->settings['witch_heal_used'] ?? false);
 
-            if (! $victimIsWitchWithHeal && ! $victimIsMayorWithWitchAvailable) {
+            // Si la sorcière peut encore soigner (quelle que soit la victime),
+            // différer PlayerEliminated — la sorcière décide au moment de son action.
+            $witchCanSaveVictim = $witch !== null
+                && ! ($witch->settings['witch_heal_used'] ?? false);
+
+            if (! $victimIsWitchWithHeal && ! $victimIsMayorWithWitchAvailable && ! $witchCanSaveVictim) {
                 $victim->update(['is_alive' => false]);
             }
 
@@ -116,7 +121,7 @@ class ProcessNightActions implements ShouldQueue
                 'phase'            => 'night',
             ]);
 
-            if (! $victimIsWitchWithHeal && ! $victimIsMayorWithWitchAvailable) {
+            if (! $victimIsWitchWithHeal && ! $victimIsMayorWithWitchAvailable && ! $witchCanSaveVictim) {
                 // Charger user avant le broadcast pour google_name dans PlayerEliminated
                 $victim->load('user');
                 broadcast(new PlayerEliminated($game, $victim, 'night_kill'));
