@@ -1066,3 +1066,22 @@ une const locale d'une vue Blade.
 **Leçon :** Ne jamais appeler `applyTransition()` si `$game->status` est l'un de : `processing_night`, `processing_day`, `wolves_turn`, `role_reveal`. Ces statuts sont écrits manuellement (`$game->update(['status' => '...'])`). Pour revenir dans le graphe Workflow, écrire d'abord le statut canonique source, puis appeler `applyTransition()`. Voir aussi Guard #5 de RISK_GUARDS.md pour la règle `lockForUpdate()` associée.
 
 **Statut :** 🔵 Choix assumé
+
+---
+
+## [RÉSOLU] PlayerEliminated broadcasté trop tôt pendant la nuit quand la sorcière a son soin
+
+**Contexte :** `fix/bug-toast-elimination-premature-nuit` — `app/Jobs/ProcessNightActions.php`, `app/Services/RoleActions/WitchAction.php`.
+
+**Symptôme / Problème :** `ProcessNightActions` broadcastait `PlayerEliminated` pour la victime ordinaire des loups dès la résolution du vote, avant que la sorcière ait eu le temps d'agir. Côté front, le toast d'élimination apparaissait pendant la nuit alors que la sorcière pouvait encore sauver la victime — ce qui créait un spoil prématuré de l'issue.
+
+**Cause / Alternatives :** Les guards existants (`$victimIsWitchWithHeal`, `$victimIsMayorWithWitchAvailable`) différaient la mort et le broadcast pour deux cas précis (sorcière victime d'elle-même, maire en sursis), mais pas pour la victime ordinaire face à une sorcière avec soin disponible. La troisième condition manquante : "la sorcière est vivante et son soin n'a pas encore été utilisé".
+
+**Fix / Décision :**
+- `ProcessNightActions` : ajout d'un troisième flag `$witchCanSaveVictim` (`$witch !== null && !witch_heal_used`). Les deux conditions (mort en base + broadcast `PlayerEliminated`) incluent désormais `! $witchCanSaveVictim`.
+- `WitchAction::act()` (kill/pass) : après les broadcasts `$witchDiedFromWolves` et `$mayorVictim`, bloc hors transaction qui détecte la victime ordinaire encore vivante (not witch, not mayor, `is_alive = true`), la marque morte et broadcast `PlayerEliminated`. Guarded par `$action !== 'heal'` pour ne pas tuer une victime que la sorcière vient de soigner.
+- La mort et le broadcast sont donc différés ensemble : soit `ProcessNightActions` les gère (sorcière morte ou soin déjà épuisé), soit `WitchAction` les gère (sorcière agit dans ce round).
+
+**Leçon :** Quand un événement doit être conditionné à l'action d'un autre joueur, différer les deux (mort DB + broadcast) ensemble — pas seulement le broadcast. Et prévoir le cas `ProcessWitchAutoAction` (timer expiré sans action manuelle) comme chemin de résolution alternatif qui n'appelle pas `WitchAction::act()` — c'est un gap résiduel à traiter dans un ticket dédié.
+
+**Statut :** ✅ Résolu
