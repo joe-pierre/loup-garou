@@ -173,6 +173,25 @@ Village gagne : nb_loups_vivants == 0
 - Déclenché si le maire meurt (nuit OU jour)
 - Timer 15s pour que le maire mort désigne son successeur
 - Si inactif ou timer expiré → successeur aléatoire parmi vivants
+- Si le maire est aussi Chasseur : tir du Chasseur d'abord, succession ensuite
+
+### Rôles — comportements spéciaux
+
+**Voyante**
+- Voit le rôle précis du joueur inspecté (pas uniquement le camp)
+- Résultat affiché : emoji + label du rôle exact (Villageois, Sorcière, Chasseur, Loup-Garou…)
+
+**Sorcière — messages différenciés au matin**
+- La sorcière s'est sauvée elle-même → elle voit "Tu t'es sauvée cette nuit." (toast personnel sur /day)
+- Un autre joueur a été sauvé → il voit "La sorcière t'a sauvé cette nuit." (toast personnel sur /day)
+- Tous les autres → "La sorcière a utilisé sa potion de guérison." (toast générique)
+- La sorcière a empoisonné → elle voit "Tu as empoisonné [pseudo]." (toast personnel sur /day)
+- Un autre joueur a été empoisonné → il voit "La sorcière t'a empoisonné cette nuit." (toast personnel sur /day)
+- Tous les autres → "La sorcière a utilisé son poison." (toast générique, sans pseudo de la cible)
+
+**Chasseur**
+- Si éliminé le jour ET maire : tir d'abord, succession du maire ensuite
+- Si éliminé la nuit ET maire : même ordre — tir d'abord, succession ensuite
 
 ### Chat — règles de visibilité
 ```
@@ -182,10 +201,16 @@ werewolves: écriture = loups vivants, phase night uniquement
             lecture  = loups (vivants + morts ex-loups)
 ```
 
-### Anonymat des votes
-- `game_actions` stocke `player_id` (nécessaire pour la logique serveur)
-- `GET /game/{code}/history` → utiliser `scope anonymized()` sur `GameAction`
-- Events WS `DayVoteCast` et `MayorVoteCast` → uniquement totaux par cible, jamais l'auteur
+### Visibilité des votes
+
+**Vote jour** — anonyme :
+- `DayVoteCast` → uniquement totaux par cible, jamais l'auteur
+- `GET /game/{code}/history` → `scope anonymized()` sur `GameAction` pour les `day_vote`
+
+**Vote maire** — public :
+- `MayorVoteCast` → payload enrichi avec `voter_pseudo` et `target_pseudo`
+- Toast temps réel : "👑 Joueur X a voté pour Joueur Y" (ou "pour lui-même")
+- `GET /game/{code}/history` → votes maire **non anonymisés** : détail auteur + cible visible
 
 ### Déconnexion / Inactivité
 - Déconnexion détectée → broadcaster `PlayerDisconnected`, dispatcher `CheckReconnectionTimeout` avec delay 30s

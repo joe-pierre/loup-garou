@@ -413,6 +413,35 @@
 
 ---
 
+---
+
+## Phase 28 — Bugfixes identifiés (2026-06-23)
+
+- [ ] **Bug 1** — Progress bar manquante dans role-reveal et mayor-election
+  - Ajouter `<x-game-timer>` dans les deux vues
+- [ ] **Bug 2** — Voyante voit "Innocent" pour Chasseur et Sorcière
+  - `night.blade.php` : afficher le rôle précis via `roleLabel(seerResult?.role)` au lieu de "Innocent"
+- [ ] **Bug 3** — Messages sorcière non différenciés au matin
+  - `DayStarted` : ajouter `witch_player_id` et `poisoned_player_pseudo` dans `broadcastWith()`
+  - `PhaseManager::endNight()` : passer les deux nouvelles valeurs
+  - `DayStarted` : ajouter aussi `poisoned_player_id` pour cibler le toast personnel du joueur empoisonné
+  - `game-state.js` : logique différenciée dans `_applyDayStarted()` (sorcière / sauvé / empoisonné / autres)
+- [ ] **Bug 4** — Chasseur Maire : succession avant le tir
+  - `VoteService::resolveDayVote()` : priorité `hunter_pending` sur `is_mayor`
+  - `ProcessHunterTurn` + `ProcessHunterAutoAction` : param `bool $isMayor`, déclenche succession après tir
+  - `ActionController::hunterShoot()` : lire `is_mayor` avant la mort, déclencher succession si vrai
+  - Vérifier même bug dans `ProcessNightEnd` (chasseur tué la nuit)
+- [ ] **Bug 5** — Votes maire non affichés en temps réel
+  - `MayorVoteCast` : ajouter `voter_pseudo` + `target_pseudo` dans `broadcastWith()`
+  - `VoteService::castMayorVote()` : passer les deux pseudos au broadcast
+  - `game-state.js` : toast dans `_handleMayorVoteCast()`
+- [ ] **Bug 6** — Historique élection : détail votes manquant
+  - `GameController::history()` : `mayor_vote` sans `anonymized()`
+  - `HistoryService::buildTimeline()` : ajouter `vote_details` dans l'entrée `election`
+  - `history.blade.php` : afficher `vote_details`
+
+---
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`

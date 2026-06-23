@@ -169,7 +169,7 @@ Sans ce guard, Alpine peut déclencher `init()` plusieurs fois et empiler les li
 - Un joueur ne vote pas pour lui-même (sauf élection maire)
 - Les loups ne votent pas pour un autre loup
 - La voyante ne s'inspecte pas elle-même
-- La sorcière ne peut pas s'auto-sauver (v1.2)
+- La sorcière peut se sauver elle-même (auto-soin autorisé depuis Phase 25)
 - Vérifier la phase côté serveur avant toute action
 - Vote maire : weight = 2 dans game_actions (day_vote uniquement)
 - Égalité vote jour → personne éliminé
