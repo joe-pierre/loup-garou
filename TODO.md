@@ -431,10 +431,10 @@
   - `ProcessHunterTurn` + `ProcessHunterAutoAction` : param `bool $isMayor`, déclenche succession après tir
   - `ActionController::hunterShoot()` : lire `is_mayor` avant la mort, déclencher succession si vrai
   - Vérifier même bug dans `ProcessNightEnd` (chasseur tué la nuit)
-- [ ] **Bug 5** — Votes maire non affichés en temps réel
+- [x] **Bug 5** — Votes maire non affichés en temps réel
   - `MayorVoteCast` : ajouter `voter_pseudo` + `target_pseudo` dans `broadcastWith()`
-  - `VoteService::castMayorVote()` : passer les deux pseudos au broadcast
-  - `game-state.js` : toast dans `_handleMayorVoteCast()`
+  - `VoteController::mayor()` : récupérer `$targetPseudo` depuis les totaux retournés, passer les deux pseudos à `MayorVoteCast`
+  - `game-state.js` : toast "👑 X a voté pour Y" dans `_handleMayorVoteCast()`
 - [ ] **Bug 6** — Historique élection : détail votes manquant
   - `GameController::history()` : `mayor_vote` sans `anonymized()`
   - `HistoryService::buildTimeline()` : ajouter `vote_details` dans l'entrée `election`

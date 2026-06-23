@@ -24,9 +24,12 @@ class VoteController extends Controller
             ->where('user_id', $request->user()->id)
             ->firstOrFail();
 
-        $votes = $this->voteService->castMayorVote($player, $request->validated('target_player_id'));
+        $targetId = $request->validated('target_player_id');
+        $votes    = $this->voteService->castMayorVote($player, $targetId);
 
-        broadcast(new MayorVoteCast($player->game, $votes));
+        $targetPseudo = collect($votes)->firstWhere('target_player_id', $targetId)['pseudo'] ?? '';
+
+        broadcast(new MayorVoteCast($player->game, $votes, $player->pseudo, $targetPseudo));
 
         return response()->json(['success' => true, 'data' => ['votes' => $votes]]);
     }

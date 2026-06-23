@@ -16,9 +16,9 @@ use Illuminate\Queue\SerializesModels;
  *
  * Déclencheur : VoteController::mayor() après enregistrement d'un vote en base.
  *
- * Anonymisation : le payload ne contient PAS de player_id (qui a voté).
- *   Seuls les totaux par candidat sont exposés. Le vote du maire est secret,
- *   seul le résultat agrégé est rendu public.
+ * Visibilité : le vote maire est PUBLIC — l'auteur et la cible sont exposés via leurs pseudos.
+ *   ⚠️ Ne PAS ajouter player_id (anti-spoofing) — seuls les pseudos sont autorisés.
+ *   Contrairement au vote jour (DayVoteCast), qui reste entièrement anonyme.
  */
 class MayorVoteCast implements ShouldBroadcastNow
 {
@@ -27,6 +27,8 @@ class MayorVoteCast implements ShouldBroadcastNow
     public function __construct(
         public readonly Game $game,
         public readonly array $votes,
+        public readonly string $voterPseudo,
+        public readonly string $targetPseudo,
     ) {}
 
     public function broadcastOn(): array
@@ -45,12 +47,18 @@ class MayorVoteCast implements ShouldBroadcastNow
      *     target_player_id: int,  // identifiant du candidat
      *     pseudo: string,         // pseudo du candidat
      *     vote_count: int,        // nombre de votes reçus
-     *   }>
+     *   }>,
+     *   voter_pseudo: string,  // pseudo de l'auteur du vote
+     *   target_pseudo: string, // pseudo de la cible du vote
      * }
-     * ⚠️ Pas de player_id dans le payload — qui a voté n'est pas exposé.
+     * ⚠️ Pas de player_id dans le payload — anti-spoofing, seuls les pseudos sont exposés.
      */
     public function broadcastWith(): array
     {
-        return ['votes' => $this->votes];
+        return [
+            'votes'        => $this->votes,
+            'voter_pseudo' => $this->voterPseudo,
+            'target_pseudo' => $this->targetPseudo,
+        ];
     }
 }

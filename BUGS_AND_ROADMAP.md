@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-23 — Votes maire non affichés en temps réel
+
+- **Symptôme :** pendant l'élection du Maire, les joueurs voyaient uniquement les totaux mis à jour — aucune indication de qui venait de voter pour qui.
+- **Cause :** `MayorVoteCast` n'exposait que les totaux agrégés (`votes[]`), sans `voter_pseudo` ni `target_pseudo`. Changement de spec assumé : les votes maire sont désormais publics (auteur visible), contrairement aux votes jour qui restent anonymes.
+- **Fix :** `MayorVoteCast` : ajout de `voterPseudo` et `targetPseudo` dans le constructeur et `broadcastWith()`. `VoteController::mayor()` : `$targetPseudo` extrait des totaux retournés par `castMayorVote()` (sans requête DB supplémentaire). `game-state.js::_handleMayorVoteCast()` : toast "👑 X a voté pour Y" (ou "pour lui-même"). Test `test_mayor_vote_cast_payload_ne_contient_pas_player_id` mis à jour pour vérifier la présence de `voter_pseudo`/`target_pseudo` et l'absence de `player_id`.
+
+---
+
 ### [x] 2026-06-23 — WinConditionChecker orderBy sur colonne updated_at inexistante
 
 - **Symptôme :** `SQLSTATE[42S22]: Unknown column 'updated_at' in 'ORDER BY'` sur `game_players` lors du calcul de la dernière action (nuit ou jour). Tests `DayPhaseTest > égalité vote jour` et `NightPhaseTest > mayor succession not triggered if victory occurs simultaneously` en échec.

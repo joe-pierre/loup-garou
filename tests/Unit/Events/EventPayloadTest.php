@@ -23,11 +23,20 @@ class EventPayloadTest extends TestCase
             ['target_player_id' => 1, 'pseudo' => 'Alice', 'vote_count' => 2],
         ];
 
-        $event   = new MayorVoteCast($game, $votes);
+        $event   = new MayorVoteCast($game, $votes, 'Bob', 'Alice');
         $payload = $event->broadcastWith();
 
+        // Anti-spoofing : player_id ne doit jamais apparaître dans le payload
         $this->assertArrayNotHasKey('player_id', $payload);
+
+        // Les totaux de votes sont présents
         $this->assertArrayHasKey('votes', $payload);
+
+        // Les pseudos auteur et cible sont exposés (vote maire public)
+        $this->assertArrayHasKey('voter_pseudo', $payload);
+        $this->assertArrayHasKey('target_pseudo', $payload);
+        $this->assertSame('Bob', $payload['voter_pseudo']);
+        $this->assertSame('Alice', $payload['target_pseudo']);
     }
 
     public function test_day_vote_cast_payload_ne_contient_pas_player_id(): void
