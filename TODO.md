@@ -398,6 +398,19 @@
 
 ---
 
+## Phase 27 — Corrections post-Phase 26 (2026-06-23)
+
+- [x] **P1** — Succession maire non déclenchée si empoisonné par la sorcière (`fix/mayor-succession-when-killed-by-witch-poison`)
+  - `WitchAction::kill()` : vérification `$target->is_mayor` → `$mayorVictim` pour déclencher broadcast `MayorSuccessionStarted` + dispatch `ProcessMayorSuccession` hors transaction
+- [x] **P2** — Persistance `random_elimination` en DB + historique (`fix/add-random-elimination-history`)
+  - `VoteService::resolveDayVote()` : création `GameAction random_elimination` dans la branche 0-votes
+  - `GameController::history()` : `random_elimination` ajouté au `whereIn`
+  - `HistoryService::buildTimeline()` : lecture de l'action pour peupler `eliminated` (résultat `no_votes`)
+- [x] **P3** — Couronne affichée sur le nouveau maire en phase jour (`fix: afficher une couronne sur le nouveau maire`)
+  - `day.blade.php` : listeners `mayor-elected` et `mayor-succession-done` remappent `is_mayor` dans `this.players`
+
+---
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
@@ -407,4 +420,5 @@
 - Étape 10 ✅ Terminée — Audit final de conformité CLAUDE.md
 - Roadmap Code Propre ✅ Complète (Étapes 1→10)
 - Phase 26 ✅ Terminée — Sursis maire + historique aléatoire
+- Phase 27 ✅ Terminée — P1 succession sorcière, P2 persistance random_elimination, P3 couronne maire jour
 - v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md

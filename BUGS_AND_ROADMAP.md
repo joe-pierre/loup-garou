@@ -1,5 +1,29 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-23 — Succession maire non déclenchée si le maire est empoisonné par la sorcière
+
+- **Symptôme :** si la sorcière utilisait son poison sur le maire, aucune succession n'était déclenchée — le maire mourait sans désigner de successeur.
+- **Cause :** `WitchAction::kill()` ne vérifiait pas si la victime était le maire (`is_mayor`) avant de la marquer morte ; aucun dispatch de `ProcessMayorSuccession` sur ce chemin.
+- **Fix :** `WitchAction::kill()` stocke `$mayorVictim = $target` si `$target->is_mayor`, ce qui déclenche broadcast `MayorSuccessionStarted` + dispatch `ProcessMayorSuccession` hors transaction après la mort de la victime.
+
+---
+
+### [x] 2026-06-23 — Élimination aléatoire absente de l'historique (persistance manquante)
+
+- **Symptôme :** quand 0 votes jour déclenchaient une élimination aléatoire, l'historique indiquait `result: 'no_votes'` avec `eliminated: null` — la victime n'était pas identifiée.
+- **Cause :** `VoteService::resolveDayVote()` éliminait le joueur mais ne créait pas de `GameAction random_elimination` ; `GameController::history()` ne l'incluait pas dans son `whereIn` ; `HistoryService::buildTimeline()` n'avait aucune source de données pour ce cas.
+- **Fix :** création d'un `GameAction random_elimination` dans la branche 0-votes de `resolveDayVote()` ; `random_elimination` ajouté au `whereIn` dans `history()` ; `buildTimeline()` lit l'action et peuple `$dayEntry['eliminated']`.
+
+---
+
+### [x] 2026-06-23 — Couronne absente sur le nouveau maire après une succession (day.blade.php)
+
+- **Symptôme :** après une succession du maire, la couronne 👑 n'apparaissait pas sur la carte du nouveau maire dans la liste des joueurs en phase jour.
+- **Cause :** `day.blade.php` ne mettait pas à jour le flag `is_mayor` dans sa liste locale `this.players` lors des events `mayor-elected` et `mayor-succession-done`.
+- **Fix :** ajout de `window.addEventListener('mayor-elected', ...)` et `window.addEventListener('mayor-succession-done', ...)` dans `dayScreen()` — les deux events remappent `is_mayor` sur le bon joueur.
+
+---
+
 ### [x] 2026-06-22 — Succession maire déclenchée avant que la sorcière ait pu agir
 
 - **Symptôme :** si les loups tuaient le maire et que la sorcière avait sa potion de soin, `ProcessNightActions` dispatchait `MayorSuccessionStarted` avant le tour de la sorcière — la succession partait même si la sorcière sauvait ensuite le maire.
