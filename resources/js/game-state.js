@@ -441,6 +441,12 @@ export function gameState(gameId, userId) {
         },
 
         handlePlayerEliminated(e) {
+            if (this.phase === 'finished') {
+                this._markPlayerDead(e.player_id);
+                window.dispatchEvent(new CustomEvent('player-eliminated', { detail: e }));
+                return;
+            }
+
             this._markPlayerDead(e.player_id);
 
             const roleLabels = {
@@ -494,11 +500,6 @@ export function gameState(gameId, userId) {
         handleGameFinished(e) {
             this.winnerTeam = e.winner_team;
             this.phase      = 'finished';
-
-            const msg = e.winner_team === 'villagers'  ? '🏆 Le village a gagné !'
-                    : e.winner_team === 'werewolves'  ? '🐺 Les loups ont gagné !'
-                    : '🏁 Partie annulée.';
-            this._dispatchToast(msg, e.winner_team ? 'success' : 'warning');
 
             const redirect = () => {
                 if (!this.gameCode) return;

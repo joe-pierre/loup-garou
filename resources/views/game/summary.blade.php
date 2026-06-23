@@ -193,6 +193,7 @@ if (!window._summaryScreenInitialized) {
             goToResults() {
                 clearInterval(this._interval);
                 sessionStorage.removeItem('last_action');
+                sessionStorage.setItem('__internalNavigation', '1');
                 window.location.href = '/game/{{ $game->code }}/finished';
             },
 
