@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 12h21
+Generated at: 13h05
 
 ## PHP Analysis (Core Logic)
 
@@ -144,7 +144,7 @@ ProcessWerewolvesTurn.php
       - Queueable
       - SerializesModels
     functions:
-      - __construct(int $gameId) {}
+      - __construct(int $gameId, int $round) {}
       - handle() → void
 
 // app/Jobs/ProcessNightActions.php

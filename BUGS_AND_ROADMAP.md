@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-24 — Rejets de guard silencieux dans ProcessNightActions et ProcessWerewolvesTurn
+
+- **Symptôme :** quand `ProcessNightActions` ou `ProcessWerewolvesTurn` était rejeté par leur guard (statut ou round incorrect), le job retournait sans laisser aucune trace — la nuit se terminait sans victime sans aucune entrée dans les logs. Observé sur la partie SXAKHE (game_id 138, nuit 5) : le loup a voté, aucun effet visible, aucun log.
+- **Cause :** les deux jobs avaient un `if (! $game) { return; }` silencieux après la transaction `lockForUpdate()`. Un rejet légitime (job stale) et une vraie anomalie étaient indiscernables sans log.
+- **Fix :** remplacement du `return` silencieux par `Log::warning(...)` avec `game_id` et `round` dans les deux jobs. Les rejets légitimes (inter-rounds) et les rejets anormaux sont désormais visibles dans les logs Laravel.
+
+---
+
 ### [x] 2026-06-24 — Vote nuit bloqué avec un seul loup (stale job ProcessWerewolvesTurn)
 
 - **Symptôme :** quand un seul loup restant votait, l'interface confirmait le vote mais aucune victime n'était désignée — la nuit se terminait silencieusement sans élimination.

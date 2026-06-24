@@ -1,3 +1,19 @@
+## [RÉSOLU] Rejets de guard silencieux dans ProcessNightActions et ProcessWerewolvesTurn
+
+**Contexte :** `fix/night-actions-guard-logging` — `app/Jobs/ProcessNightActions.php`, `app/Jobs/ProcessWerewolvesTurn.php`.
+
+**Symptôme / Problème :** Dans la partie SXAKHE (game_id 138, nuit 5), le loup unique a voté mais aucune victime n'a été éliminée et la nuit s'est terminée normalement. Aucun log, aucune `failed_job`, aucune trace — le rejet du job par le guard était totalement silencieux. Impossible de distinguer un rejet légitime (job stale d'un round précédent, attendu) d'un rejet anormal (bug de séquencement).
+
+**Cause / Alternatives :** Les deux jobs avaient un `if (! $game) { return; }` nu après la transaction `lockForUpdate()`. Ce pattern garantit l'idempotence (correct) mais masque toute anomalie (incorrect). Alternatives envisagées : (1) ne rien changer (rejet silencieux = comportement voulu pour un job stale) — rejeté, car le cas anormal (bug de statut, round désynchronisé) ne peut alors pas être diagnostiqué en prod ; (2) lever une exception — rejeté, un job stale qui échoue avec exception pollue la `failed_jobs` et déclenche des alertes injustifiées ; (3) `Log::warning()` uniquement — retenu, visible dans les logs sans bruit de faux positifs.
+
+**Fix / Décision :** Remplacement du `return` silencieux par `Log::warning('ProcessXxx: rejeté par le guard (statut ou round incorrect)', ['game_id' => ..., 'round' => ...])` dans `ProcessNightActions` et `ProcessWerewolvesTurn`. Le comportement reste identique (le job ne s'exécute pas), mais le rejet est désormais traçable.
+
+**Leçon :** Tout guard `if (! $game) { return; }` dans un job de phase doit être accompagné d'un `Log::warning()`. Le rejet légitime (job stale inter-rounds) et l'anomalie (bug de séquencement) sont identiques côté code — seul le log permet de les distinguer en post-mortem. Appliquer ce pattern à tout futur job de phase qui utilise `lockForUpdate()` avec rejet silencieux.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [RÉSOLU] ProcessWerewolvesTurn sans guard $round — nuit blanche loup unique
 
 **Contexte :** `fix/wolves-solo-vote-stale-job` — `app/Jobs/ProcessWerewolvesTurn.php`, `app/Jobs/ProcessSeerTurn.php`, `app/Http/Controllers/Game/ActionController.php`.
