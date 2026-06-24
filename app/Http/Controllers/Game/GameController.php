@@ -177,11 +177,19 @@ class GameController extends Controller
 
         $players = $game->players()->get()->keyBy('id');
 
-        $actions = GameAction::where('game_id', $game->id)
-            ->anonymized()
-            ->whereIn('type', ['mayor_vote', 'night_vote', 'day_vote', 'mayor_succession', 'witch_heal', 'witch_kill', 'hunter_shot', 'random_elimination'])
+        // mayor_vote sans anonymized() : player_id conservé (votes maire publics depuis Bug 5)
+        $mayorVoteActions = GameAction::where('game_id', $game->id)
+            ->where('type', 'mayor_vote')
             ->orderBy('round')
             ->get();
+
+        $otherActions = GameAction::where('game_id', $game->id)
+            ->anonymized()
+            ->whereIn('type', ['night_vote', 'day_vote', 'mayor_succession', 'witch_heal', 'witch_kill', 'hunter_shot', 'random_elimination'])
+            ->orderBy('round')
+            ->get();
+
+        $actions = $mayorVoteActions->merge($otherActions)->sortBy('round')->values();
 
         $duration = ($game->started_at && $game->finished_at)
             ? (int) $game->started_at->diffInMinutes($game->finished_at)

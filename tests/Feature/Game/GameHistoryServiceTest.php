@@ -278,5 +278,22 @@ class GameHistoryServiceTest extends TestCase
         $this->assertSame('Alice', $election['mayor']['pseudo']);
         $this->assertSame(3, $election['vote_count']);
         $this->assertFalse($election['was_random']);
+
+        // vote_details présent avec le détail individuel de chaque vote
+        $this->assertArrayHasKey('vote_details', $election, 'vote_details absent de l\'entrée election');
+        $voteDetails = $election['vote_details'];
+
+        // 6 votes au total : 3 (wolf→Alice) + 2 (Alice→Bob) + 1 (Bob→Charlie)
+        $this->assertCount(6, $voteDetails, 'vote_details doit contenir 6 entrées (3+2+1)');
+
+        // Alice a voté pour Bob
+        $aliceVotes = array_values(array_filter($voteDetails, fn ($vd) => $vd['voter_pseudo'] === 'Alice'));
+        $this->assertNotEmpty($aliceVotes, 'Aucun vote d\'Alice trouvé dans vote_details');
+        $this->assertSame('Bob', $aliceVotes[0]['target_pseudo'], 'Alice doit avoir voté pour Bob');
+
+        // Bob a voté pour Charlie
+        $bobVotes = array_values(array_filter($voteDetails, fn ($vd) => $vd['voter_pseudo'] === 'Bob'));
+        $this->assertNotEmpty($bobVotes, 'Aucun vote de Bob trouvé dans vote_details');
+        $this->assertSame('Charlie', $bobVotes[0]['target_pseudo'], 'Bob doit avoir voté pour Charlie');
     }
 }

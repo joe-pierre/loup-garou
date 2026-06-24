@@ -25,13 +25,21 @@ class HistoryService
                 return ['pseudo' => $snap['pseudo'], 'vote_count' => $count];
             })->values()->toArray();
 
+            $voteDetails = $mayorVotes->map(function ($action) use ($players) {
+                return [
+                    'voter_pseudo'  => $this->playerSnapshot($players, $action->player_id)['pseudo'],
+                    'target_pseudo' => $this->playerSnapshot($players, $action->target_player_id)['pseudo'],
+                ];
+            })->values()->toArray();
+
             $timeline[] = [
-                'type'        => 'election',
-                'label'       => 'Élection du Maire',
-                'was_random'  => count($topIds) > 1,
-                'mayor'       => $electedId ? $this->playerSnapshot($players, $electedId) : null,
-                'vote_count'  => $electedId ? $totals->get($topIds[0]) : null,
-                'vote_totals' => $electionVoteTotals,
+                'type'         => 'election',
+                'label'        => 'Élection du Maire',
+                'was_random'   => count($topIds) > 1,
+                'mayor'        => $electedId ? $this->playerSnapshot($players, $electedId) : null,
+                'vote_count'   => $electedId ? $totals->get($topIds[0]) : null,
+                'vote_totals'  => $electionVoteTotals,
+                'vote_details' => $voteDetails,
             ];
         }
 

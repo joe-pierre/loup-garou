@@ -441,7 +441,7 @@
   - `MayorVoteCast` : ajouter `voter_pseudo` + `target_pseudo` dans `broadcastWith()`
   - `VoteController::mayor()` : récupérer `$targetPseudo` depuis les totaux retournés, passer les deux pseudos à `MayorVoteCast`
   - `game-state.js` : toast "👑 X a voté pour Y" dans `_handleMayorVoteCast()`
-- [ ] **Bug 6** — Historique élection : détail votes manquant
+- [x] **Bug 6** — Historique élection : détail votes manquant
   - `GameController::history()` : `mayor_vote` sans `anonymized()`
   - `HistoryService::buildTimeline()` : ajouter `vote_details` dans l'entrée `election`
   - `history.blade.php` : afficher `vote_details`
