@@ -1,3 +1,19 @@
+## [CHOIX] Suppression du nom Google des payloads broadcast publics
+
+**Contexte :** `fix/remove-google-name-from-broadcast` — `app/Events/Game/PlayerEliminated.php`, `HunterShot.php`, `RandomElimination.php`, `resources/js/game-state.js`.
+
+**Symptôme / Problème :** Le champ `google_name` (issu de `users.name`, nom réel récupéré via OAuth Google) était inclus dans trois événements broadcast émis sur le canal public `game.{gameId}`. N'importe quel joueur connecté pouvait donc lire l'identité réelle de ses adversaires, y compris leur vrai nom.
+
+**Cause / Alternatives :** Le champ avait été ajouté pour construire un toast `"💀 Jean aka Pseudo était le Loup-Garou"` côté client. Deux alternatives envisagées : (1) hasher ou tronquer le nom — rejeté, trop complexe et toujours partiel ; (2) supprimer purement et simplement — retenu.
+
+**Fix / Décision :** Suppression de `google_name` et `target_google_name` des trois `broadcastWith()`. Toast réduit à `"💀 Pseudo était le Rôle"`. `users.name` reste stocké en base pour un futur dashboard admin (usage serveur uniquement).
+
+**Leçon :** Ne jamais émettre de données d'authentification (email, nom OAuth, avatar) dans un canal broadcast public. Les pseudos de jeu suffisent côté client — les données d'identité réelle n'ont leur place que côté serveur ou dans des canaux privés authentifiés.
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [RÉSOLU] Toast "Reconnecté !" parasite sur connexion WebSocket initiale
 
 **Contexte :** `fix/toast-reconnecte-ws-initial` — `resources/js/game-state.js`, section "Reconnexion WebSocket (Pusher/Reverb)".

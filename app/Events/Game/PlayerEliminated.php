@@ -42,21 +42,19 @@ class PlayerEliminated implements ShouldBroadcastNow
 
     /**
      * @return array{
-     *   player_id: int,      // identifiant du joueur éliminé
-     *   pseudo: string,      // pseudo du joueur éliminé
-     *   google_name: string, // nom Google de l'utilisateur (pour "Jean aka Pseudo")
-     *   role: string,        // rôle révélé à l'élimination
-     *   reason: string,      // raison de l'élimination (ex: 'day_vote')
+     *   player_id: int,   // identifiant du joueur éliminé
+     *   pseudo: string,   // pseudo du joueur éliminé
+     *   role: string,     // rôle révélé à l'élimination
+     *   reason: string,   // raison de l'élimination (ex: 'day_vote')
      * }
      */
     public function broadcastWith(): array
     {
         return [
-            'player_id'   => $this->player->id,
-            'pseudo'      => $this->player->pseudo,
-            'google_name' => $this->player->user?->name ?? $this->player->pseudo,
-            'role'        => $this->player->role,
-            'reason'      => $this->reason,
+            'player_id' => $this->player->id,
+            'pseudo'    => $this->player->pseudo,
+            'role'      => $this->player->role,
+            'reason'    => $this->reason,
         ];
     }
 }

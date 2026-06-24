@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 12h06
+Generated at: 12h21
 
 ## PHP Analysis (Core Logic)
 
@@ -461,7 +461,7 @@ PlayerEliminated.php
       - __construct(Game $game, GamePlayer $player, string $reason) {}
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'player.eliminated'
-      - broadcastWith() → return ['player_id' => $this->player->id, 'pseudo' => $this->player->pseudo, 'google_name' => $this->player->user?->name ?? $this->player->pseudo, 'role' => $this->player->role, 'reason' => $this->reason]
+      - broadcastWith() → return ['player_id' => $this->player->id, 'pseudo' => $this->player->pseudo, 'role' => $this->player->role, 'reason' => $this->reason]
 
 // app/Events/Game/HunterShot.php
 HunterShot.php
@@ -473,7 +473,7 @@ HunterShot.php
       - __construct(Game $game, GamePlayer $hunter, GamePlayer $target) {}
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'hunter.shot'
-      - broadcastWith() → return ['hunter_pseudo' => $this->hunter->pseudo, 'target_player_id' => $this->target->id, 'target_pseudo' => $this->target->pseudo, 'target_google_name' => $this->target->user?->name ?? $this->target->pseudo]
+      - broadcastWith() → return ['hunter_pseudo' => $this->hunter->pseudo, 'target_player_id' => $this->target->id, 'target_pseudo' => $this->target->pseudo]
 
 // app/Events/Game/SeerResult.php
 SeerResult.php
@@ -650,7 +650,7 @@ RandomElimination.php
       - __construct(Game $game, GamePlayer $player) {}
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'random.elimination'
-      - broadcastWith() → return ['player_id' => $this->player->id, 'pseudo' => $this->player->pseudo, 'role' => $this->player->role, 'google_name' => $this->player->user?->name ?? $this->player->pseudo, 'reason' => 'no_votes']
+      - broadcastWith() → return ['player_id' => $this->player->id, 'pseudo' => $this->player->pseudo, 'role' => $this->player->role, 'reason' => 'no_votes']
 
 // app/Events/Game/MayorElected.php
 MayorElected.php

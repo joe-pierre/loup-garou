@@ -41,19 +41,17 @@ class HunterShot implements ShouldBroadcastNow
 
     /**
      * @return array{
-     *   hunter_pseudo: string,      // pseudo du chasseur
-     *   target_player_id: int,      // identifiant du joueur abattu
-     *   target_pseudo: string,      // pseudo du joueur abattu
-     *   target_google_name: string, // nom Google de la cible (pour "Jean aka Pseudo")
+     *   hunter_pseudo: string,   // pseudo du chasseur
+     *   target_player_id: int,   // identifiant du joueur abattu
+     *   target_pseudo: string,   // pseudo du joueur abattu
      * }
      */
     public function broadcastWith(): array
     {
         return [
-            'hunter_pseudo'       => $this->hunter->pseudo,
-            'target_player_id'    => $this->target->id,
-            'target_pseudo'       => $this->target->pseudo,
-            'target_google_name'  => $this->target->user?->name ?? $this->target->pseudo,
+            'hunter_pseudo'    => $this->hunter->pseudo,
+            'target_player_id' => $this->target->id,
+            'target_pseudo'    => $this->target->pseudo,
         ];
     }
 }

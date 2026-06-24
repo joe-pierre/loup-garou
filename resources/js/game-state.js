@@ -156,11 +156,10 @@ export function gameState(gameId, userId) {
                 })
                 .listen('.random.elimination',         e => {
                     this.handlePlayerEliminated({
-                        player_id:   e.player_id,
-                        pseudo:      e.pseudo,
-                        role:        e.role ?? null,
-                        google_name: e.google_name ?? e.pseudo,
-                        reason:      'random_elimination',
+                        player_id: e.player_id,
+                        pseudo:    e.pseudo,
+                        role:      e.role ?? null,
+                        reason:    'random_elimination',
                     });
                     window.dispatchEvent(new CustomEvent('random-elimination', { detail: e }));
                 })
@@ -487,11 +486,7 @@ export function gameState(gameId, userId) {
                 hunter: 'Chasseur', villager: 'Villageois',
             };
             const roleLabel = roleLabels[e.role] ?? e.role ?? '';
-            const googleName = e.google_name ?? e.pseudo;
-            const nameDisplay = googleName !== e.pseudo
-                ? `${googleName} aka ${e.pseudo}`
-                : e.pseudo;
-            const msg = `💀 ${nameDisplay} était le ${roleLabel || e.role}`;
+            const msg = `💀 ${e.pseudo} était le ${roleLabel || e.role}`;
             this._dispatchToast(msg, e.role === 'werewolf' ? 'success' : 'info');
 
             // Propager à toutes les vues pour mise à jour de leurs listes locales
