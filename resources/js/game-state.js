@@ -495,10 +495,20 @@ export function gameState(gameId, userId) {
             // Lire playerId en lazy (window.MY_PLAYER_ID défini par la vue après game-state.js)
             const myId = this.playerId || window.MY_PLAYER_ID || null;
 
-            // Animation grayscale sur la carte joueur
+            // Animation d'élimination sur la carte joueur
             const card = document.querySelector(`[data-player-id="${e.player_id}"]`);
-            if (card && this._motion) {
-                gsap.to(card, { opacity: 0.3, filter: 'grayscale(100%)', duration: 0.8 });
+            if (card) {
+                if (this._motion) {
+                    gsap.to(card, {
+                        backgroundColor: 'rgba(139,0,0,0.10)',
+                        borderColor:     'rgba(139,0,0,0.25)',
+                        duration: 0.8,
+                        ease: 'power2.out',
+                    });
+                } else {
+                    card.style.backgroundColor = 'rgba(139,0,0,0.10)';
+                    card.style.borderColor     = 'rgba(139,0,0,0.25)';
+                }
             }
 
             // Si c'est le joueur courant

@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-24 — Cartes joueurs éliminés quasi illisibles (vue jour)
+
+- **Symptôme :** les cartes des joueurs morts affichaient `opacity: 0.3` + `filter: grayscale(100%)` sur fond `#111827`, rendant le pseudo barré et le rôle révélé pratiquement illisibles, surtout sur mobile.
+- **Cause :** le style `.v-dead` combinait opacité globale très faible et filtre niveaux de gris sur toute la carte — approche trop agressive pour un fond sombre. L'animation GSAP à l'élimination reproduisait le même résultat (`opacity: 0.3`, `grayscale(100%)`).
+- **Fix :** `.v-dead` remplacé par un fond rouge teinté (`rgba(139,0,0,0.10)`) et une bordure rouge subtile, sans toucher à `opacity` ni `filter` de la carte globale. Opacité de l'avatar réduite à `0.45` isolément. Contraste pseudo et rôle révélé amélioré (`0.4` → `0.6`). Animation GSAP mise à jour pour transitionner vers le fond rouge teinté avec `prefers-reduced-motion` géré.
+
+---
+
 ### [x] 2026-06-24 — Chats inaccessibles sur mobile en phase jour (overlay)
 
 - **Symptôme :** sur mobile, le chat général et le chat des fantômes s'affichaient sous la liste des joueurs dans le flux normal du document, obligeant le joueur à scroller vers le bas pendant le vote — rendant les deux zones de chat pratiquement inutilisables en phase jour.

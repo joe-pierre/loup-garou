@@ -1,3 +1,22 @@
+## [CHOIX] Lisibilité cartes joueurs éliminés — fond rouge teinté plutôt qu'opacité globale
+
+**Contexte :** `feat/dead-player-card-readability` — `resources/views/game/day.blade.php`, `resources/js/game-state.js`.
+
+**Symptôme / Problème :** `.v-dead` combinait `opacity: 0.3` et `filter: grayscale(100%)` sur fond `#111827`. Le pseudo et le rôle révélé devenaient quasi illisibles, surtout sur mobile en pleine lumière.
+
+**Cause / Alternatives :**
+1. Augmenter `opacity` de `0.3` à `0.6` — rejeté : masquerait moins bien le statut mort visuellement ; la carte serait trop proche d'une carte vivante.
+2. Conserver le grayscale, retirer uniquement l'opacité — rejeté : le grayscale seul sur fond très sombre reste mal contrasté.
+3. Fond rouge teinté + bordure rouge subtile, sans modifier opacité/filter globaux — retenu : différencie clairement mort/vivant, préserve la lisibilité du texte, cohérent avec la charte rouge sang déjà utilisée dans le bandeau mort et le canal fantômes.
+
+**Fix / Décision :** `.v-dead` → `background-color: rgba(139,0,0,0.10)` + `border-color: rgba(139,0,0,0.25) !important`, `opacity: 1`, `filter: none`. Opacité isolée sur l'avatar à `0.45`. Contraste pseudo/rôle : `rgba(232,224,208,0.4)` → `0.6`. Animation GSAP d'élimination : transition vers le fond rouge teinté (sans opacity/filter), avec fallback direct pour `prefers-reduced-motion`.
+
+**Leçon :** Sur fond très sombre, une opacité globale < 0.5 + grayscale dégrade le contraste au-delà du seuil d'accessibilité. Préférer un signal coloré isolé (fond teinté, bordure) qui préserve le contraste du texte tout en différenciant visuellement les états.
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] Chat overlay mobile — footerDayNav() séparé de dayScreen() via window events
 
 **Contexte :** `feat/chat-overlay-mobile` — `resources/views/game/day.blade.php`, `resources/views/components/announcement-overlay.blade.php`.
