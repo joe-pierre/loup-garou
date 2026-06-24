@@ -1,3 +1,26 @@
+## [RÉSOLU] Fausse déconnexion loup entre pages — beforeunload race condition + retry reconnect
+
+**Contexte :** `fix/reconnection-wolf-inactive` — `resources/js/game-state.js` (`_navigateTo`, `_reconnect`), `config/game.php`.
+
+**Symptôme / Problème :** Un joueur loup pouvait être marqué `is_inactive = true` et `is_alive = false` par `CheckReconnectionTimeout` alors qu'il était en train de jouer. Observé en prod : toast "Undu est de retour !" cyclique dans plusieurs parties, partie 139 : loup `is_inactive=1` sans aucun `night_vote` en base — la nuit s'est terminée sans vote loup, le jeu a continué vers la sorcière.
+
+**Cause / Alternatives :**
+Deux problèmes combinés :
+1. `_navigateTo()` appelait `window.location.href = url` de façon synchrone après `sessionStorage.setItem('__internalNavigation', '1')`. Sur Safari iOS et Chrome Android, `beforeunload` se déclenche avant que le moteur JS ait flushé le sessionStorage. Le handler lisait `null` au lieu de `'1'` et envoyait `/disconnect` — `CheckReconnectionTimeout` était dispatché avec 30s de délai.
+2. `_reconnect()` terminait par `.catch(() => {})`. Sur réseau instable (mobile 4G), le fetch `/reconnect` échouait silencieusement, le token cache n'était pas invalidé, et 30s plus tard `CheckReconnectionTimeout` marquait le joueur mort sans savoir qu'il était revenu.
+Alternative envisagée pour (1) : utiliser `pagehide` au lieu de `beforeunload` — rejeté, `pagehide` n'est pas fiable sur tous les navigateurs mobiles pour `sendBeacon`. Alternative pour (2) : vérifier le retour HTTP dans `_reconnect()` — insuffisant, le problème est l'absence de retry en cas d'échec réseau.
+
+**Fix / Décision :**
+1. `_navigateTo()` encapsule `window.location.href` dans `setTimeout(..., 0)` — garantit que la micro-task JS flush le sessionStorage avant que `beforeunload` soit déclenché, quel que soit le navigateur.
+2. `_reconnect()` : remplacement de `.catch(() => {})` par une fonction `attempt(retries)` avec retry sur échec réseau (3 tentatives, 2s d'intervalle). Le reste de la méthode (guard `__internalNavigation`, réinitialisation `announcements`) est inchangé.
+3. `config/game.php` : timer `reconnection` passé de 30s à 45s (valeur par défaut + limites min/max) pour absorber les retards réseau mobile entre le `/disconnect` et le `/reconnect` corrigé.
+
+**Leçon :** `sessionStorage.setItem` est synchrone sur desktop mais peut être battu par `beforeunload` sur mobile — tout guard sessionStorage utilisé dans `beforeunload` doit être posé via un `setTimeout(0)` avant la navigation. Tout `fetch` dans une fonction de reconnexion doit avoir un retry explicite — un `.catch(() => {})` nu est toujours une dette silencieuse dans un contexte réseau mobile.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] Lisibilité cartes joueurs éliminés — fond rouge teinté plutôt qu'opacité globale
 
 **Contexte :** `feat/dead-player-card-readability` — `resources/views/game/day.blade.php`, `resources/js/game-state.js`.
