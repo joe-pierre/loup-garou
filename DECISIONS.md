@@ -1,3 +1,19 @@
+## [RÉSOLU] Relation `targetPlayer` inexistante dans `PhaseManager::endNight()`
+
+**Contexte :** `fix/targetplayer-relation-phasemanager` — `app/Services/PhaseManager.php`.
+
+**Symptôme / Problème :** `ProcessNightEnd` levait `Call to undefined relationship [targetPlayer] on model [App\Models\GameAction]` à chaque exécution — partie 140 bloquée en `processing_night`.
+
+**Cause / Alternatives :** La relation vers la cible d'une action est définie dans `GameAction` sous le nom `target` (méthode `target(): BelongsTo`, FK `target_player_id`). `endNight()` utilisait `targetPlayer` (inexistant) dans `->with()` et deux fois en lecture du résultat. Aucune alternative : il fallait simplement utiliser le bon nom de relation.
+
+**Fix / Décision :** Remplacement des trois occurrences de `targetPlayer` par `target` dans `PhaseManager::endNight()`. Aucune autre occurrence dans `app/`.
+
+**Leçon :** La relation vers `target_player_id` dans `GameAction` s'appelle `target`, pas `targetPlayer`. Toujours vérifier le nom de méthode dans le modèle avant d'utiliser `->with()`.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [RÉSOLU] Fausse déconnexion loup entre pages — beforeunload race condition + retry reconnect
 
 **Contexte :** `fix/reconnection-wolf-inactive` — `resources/js/game-state.js` (`_navigateTo`, `_reconnect`), `config/game.php`.
