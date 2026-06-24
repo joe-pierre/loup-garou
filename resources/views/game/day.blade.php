@@ -34,7 +34,13 @@
         box-shadow: 0 0 18px rgba(201,168,76,0.5);
         background-color: rgba(201,168,76,0.07);
     }
-    .vote-player-card.v-dead { opacity: .3; filter: grayscale(100%); cursor: not-allowed; }
+    .vote-player-card.v-dead {
+        opacity: 1;
+        filter: none;
+        cursor: not-allowed;
+        background-color: rgba(139,0,0,0.10);
+        border-color: rgba(139,0,0,0.25) !important;
+    }
     .vote-player-card.v-dead:hover { transform: none; }
     .vote-player-card.v-clickable { cursor: pointer; }
     .vote-player-card.v-clickable:hover { transform: translateY(-3px); transition: transform 0.15s ease; }
@@ -145,13 +151,13 @@
                 >
                     <div class="avatar"
                          style="width:2.2rem;height:2.2rem;font-size:0.8rem;"
-                         :style="`background-color:${playerAvatarColor(p.id)}; color:#0a0f1e; border:none; font-weight:700;`">
+                         :style="`background-color:${playerAvatarColor(p.id)}; color:#0a0f1e; border:none; font-weight:700; ${!p.is_alive ? 'opacity:0.45;' : ''}`">
                         <span x-text="p.pseudo.charAt(0).toUpperCase()"></span>
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-1.5">
                             <span class="text-sm font-medium truncate"
-                                  :style="!p.is_alive ? 'text-decoration:line-through;color:rgba(232,224,208,0.4)' : ''"
+                                  :style="!p.is_alive ? 'text-decoration:line-through;color:rgba(232,224,208,0.6)' : ''"
                                   x-text="p.pseudo"></span>
                             <span x-show="p.is_mayor" class="text-xs flex-shrink-0">👑</span>
                             <span x-show="p.id === MY_PLAYER_ID" class="text-xs flex-shrink-0" style="color:rgba(232,224,208,0.3);">(toi)</span>
@@ -160,7 +166,7 @@
                         <span
                             x-show="!p.is_alive && p.revealed_role_label"
                             class="text-xs italic"
-                            style="color:rgba(232,224,208,0.4);"
+                            style="color:rgba(232,224,208,0.6);"
                             x-text="p.revealed_role_label"
                         ></span>
                         <div class="vote-bar-wrap" x-show="totalVoteWeight > 0">
