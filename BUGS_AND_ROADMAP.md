@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-24 — Fausse déconnexion loup entre pages (race condition + retry reconnect)
+
+- **Symptôme :** un joueur loup pouvait être marqué `is_inactive = true` et `is_alive = false` par `CheckReconnectionTimeout` alors qu'il était physiquement connecté et en train de jouer (toast "Undu est de retour !" cyclique observé en prod, partie 139 : loup `is_inactive=1` sans aucun `night_vote`).
+- **Cause :** deux problèmes combinés — (1) `_navigateTo()` appelait `window.location.href` de façon synchrone après `sessionStorage.setItem`, laissant `beforeunload` lire `null` sur mobile et envoyer `/disconnect` ; (2) `_reconnect()` avalait silencieusement les erreurs réseau sans retry, laissant le token cache non invalidé et `CheckReconnectionTimeout` marquer le joueur mort 30s plus tard.
+- **Fix :** `_navigateTo()` encapsule `window.location.href` dans `setTimeout(..., 0)` pour garantir le flush sessionStorage avant `beforeunload`. `_reconnect()` remplace `.catch(() => {})` par un retry exponentiel (`attempt(3)` avec 2s entre chaque tentative). Timer `reconnection` passé de 30s à 45s dans `config/game.php` (valeur par défaut et limites min/max) pour absorber les retards réseau mobile.
+
+---
+
 ### [x] 2026-06-24 — Cartes joueurs éliminés quasi illisibles (vue jour)
 
 - **Symptôme :** les cartes des joueurs morts affichaient `opacity: 0.3` + `filter: grayscale(100%)` sur fond `#111827`, rendant le pseudo barré et le rôle révélé pratiquement illisibles, surtout sur mobile.

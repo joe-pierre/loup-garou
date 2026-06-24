@@ -683,7 +683,9 @@ export function gameState(gameId, userId) {
         // ════════════════════════════════════════════════════════════════════
         _navigateTo(url) {
             sessionStorage.setItem('__internalNavigation', '1');
-            window.location.href = url;
+            // setTimeout(0) garantit que le sessionStorage est flushé avant que
+            // beforeunload soit déclenché — évite le faux /disconnect sur mobile.
+            setTimeout(() => { window.location.href = url; }, 0);
         },
 
         _setupBeforeUnload() {
@@ -705,10 +707,15 @@ export function gameState(gameId, userId) {
 
             if (sessionStorage.getItem('__internalNavigation')) { sessionStorage.removeItem('__internalNavigation'); return; }
             if (!this.gameCode) return;
-            fetch(`/game/${this.gameCode}/reconnect`, {
-                method:  'POST',
-                headers: this._headers(),
-            }).catch(() => {});
+            const attempt = (retries) => {
+                fetch(`/game/${this.gameCode}/reconnect`, {
+                    method:  'POST',
+                    headers: this._headers(),
+                }).catch(() => {
+                    if (retries > 0) setTimeout(() => attempt(retries - 1), 2000);
+                });
+            };
+            attempt(3);
         },
 
         _markPlayerDead(playerId) {
