@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-24 — Vote nuit bloqué avec un seul loup (stale job ProcessWerewolvesTurn)
+
+- **Symptôme :** quand un seul loup restant votait, l'interface confirmait le vote mais aucune victime n'était désignée — la nuit se terminait silencieusement sans élimination.
+- **Cause :** `ProcessWerewolvesTurn` n'avait pas de paramètre `$round` dans son constructeur, rendant impossible tout guard anti-stale-job inter-rounds. Le job fallback timer (dispatché au départ du tour) et le job immédiat (dispatché par le vote du loup ou par `seerCheck()`) entraient en race condition : le premier à passer la transaction changeait le statut en `processing_night`, le second était rejeté par le guard `whereIn('status', ['night', 'wolves_turn'])` de `ProcessNightActions` — silencieusement, sans victime.
+- **Fix :** ajout du paramètre `public readonly int $round` au constructeur de `ProcessWerewolvesTurn` et ajout de `->where('round', $this->round)` dans le `lockForUpdate()`. Mise à jour de tous les appelants : `ProcessSeerTurn` (2 dispatches), `ActionController::seerCheck()` (1 dispatch). `ProcessSeerAutoAction` ne dispatche pas ce job — non modifié.
+
+---
+
 ### [x] 2026-06-24 — Nom Google émis dans les payloads broadcast publics
 
 - **Symptôme :** `users.name` (nom Google OAuth) était inclus dans `PlayerEliminated`, `HunterShot` et `RandomElimination`, tous émis sur le canal public `game.{gameId}`, exposant ainsi l'identité réelle de chaque joueur à tous les participants.

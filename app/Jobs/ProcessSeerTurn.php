@@ -42,7 +42,7 @@ class ProcessSeerTurn implements ShouldQueue
      * Dispatche :
      *   - ProcessWerewolvesTurn(delay=0) si voyante morte/absente/inactive.
      *   - ProcessSeerAutoAction($gameId, $seerId, $round)::delay(ceil(seer/2)).
-     *   - ProcessWerewolvesTurn($gameId)::delay(seer+2).
+     *   - ProcessWerewolvesTurn($gameId, $round)::delay(seer+2).
      */
     public function handle(): void
     {
@@ -56,7 +56,7 @@ class ProcessSeerTurn implements ShouldQueue
 
         // Voyante morte/absente/inactive → loups immédiatement
         if (! $seer || $seer->is_inactive) {
-            ProcessWerewolvesTurn::dispatch($this->gameId);
+            ProcessWerewolvesTurn::dispatch($this->gameId, $this->round);
             return;
         }
 
@@ -73,7 +73,7 @@ class ProcessSeerTurn implements ShouldQueue
 
         // Après timer complet + 5s (pour laisser la voyante voir le résultat)
         // → loups démarrent
-        ProcessWerewolvesTurn::dispatch($this->gameId)
+        ProcessWerewolvesTurn::dispatch($this->gameId, $this->round)
             ->delay(now()->addSeconds($seerTimer + 2));
     }
 }

@@ -53,8 +53,8 @@ class ActionController extends Controller
         broadcast(new SeerResult($seer->game, $seer, $target));
 
         // La voyante a agi manuellement → passer immédiatement aux loups
-        // ProcessWerewolvesTurn a son propre guard status='night' → pas de double-fire
-        ProcessWerewolvesTurn::dispatch($seer->game_id);
+        // ProcessWerewolvesTurn a son propre guard status='night' + round → pas de double-fire
+        ProcessWerewolvesTurn::dispatch($seer->game_id, $seer->game->round);
 
         return response()->json([
             'success' => true,

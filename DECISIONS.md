@@ -1,3 +1,19 @@
+## [RÉSOLU] ProcessWerewolvesTurn sans guard $round — nuit blanche loup unique
+
+**Contexte :** `fix/wolves-solo-vote-stale-job` — `app/Jobs/ProcessWerewolvesTurn.php`, `app/Jobs/ProcessSeerTurn.php`, `app/Http/Controllers/Game/ActionController.php`.
+
+**Symptôme / Problème :** Avec un seul loup en vie, le loup votait, l'interface confirmait, mais aucune victime n'était éliminée. La nuit se terminait silencieusement sans élimination.
+
+**Cause / Alternatives :** `ProcessWerewolvesTurn` était le seul job de phase nuit sans paramètre `$round`. Son guard d'entrée (`status === 'night'`) ne permettait pas de rejeter un job stale d'une nuit précédente. Race condition entre le fallback timer (dispatché au départ du tour par `ProcessSeerTurn`) et le dispatch immédiat du vote (`castNightVote` → `ProcessNightActions::delay(1s)`) : le premier à exécuter la transaction passait `status → processing_night`. Le second `ProcessNightActions` — dispatché avec le bon round par le vote — était rejeté par son propre guard `whereIn('status', ['night', 'wolves_turn'])` sans aucun log, laissant la nuit sans victime.
+
+**Fix / Décision :** Paramètre `public readonly int $round` ajouté au constructeur de `ProcessWerewolvesTurn`, guard `->where('round', $this->round)` ajouté dans le `lockForUpdate()`. Mise à jour des 3 appelants : `ProcessSeerTurn::handle()` (dispatch voyante morte/inactive + dispatch delay), `ActionController::seerCheck()` (dispatch après action manuelle). `ProcessSeerAutoAction` ne dispatche pas ce job — non concerné.
+
+**Leçon :** Tout job de phase nuit dispatché avec un délai (timer) OU potentiellement doublonné doit recevoir `$round` et vérifier `round === $this->round` en entrée de transaction. C'est le seul moyen de rejeter un job stale sans masquer une vraie race condition dans les logs.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] Suppression du nom Google des payloads broadcast publics
 
 **Contexte :** `fix/remove-google-name-from-broadcast` — `app/Events/Game/PlayerEliminated.php`, `HunterShot.php`, `RandomElimination.php`, `resources/js/game-state.js`.
