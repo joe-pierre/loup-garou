@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 21h23
+Generated at: 21h34
 
 ## PHP Analysis (Core Logic)
 
@@ -866,8 +866,8 @@ AdminDashboardController.php
 // app/Http/Controllers/Admin/AdminUserController.php
 AdminUserController.php
     functions:
-      - index(Request $request) → return view('admin.users.index')
-      - show(Request $request, int $id) → return view('admin.users.show')
+      - index(Request $request) → return view('admin.users.index', compact('users'))
+      - show(Request $request, int $id) → return view('admin.users.show', compact('user'))
 
 // app/Notifications/PlayerKilledNightNotification.php
 PlayerKilledNightNotification.php
