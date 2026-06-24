@@ -30,6 +30,9 @@ class DayStarted implements ShouldBroadcastNow
         public readonly ?GamePlayer $victim,
         public readonly bool $witchActed = false,
         public readonly ?int $savedPlayerId = null,
+        public readonly ?int $witchPlayerId = null,
+        public readonly ?int $poisonedPlayerId = null,
+        public readonly ?string $poisonedPlayerPseudo = null,
     ) {}
 
     public function broadcastOn(): array
@@ -52,19 +55,25 @@ class DayStarted implements ShouldBroadcastNow
      *   }|null,                                  // null si personne n'a été tué (sorcière a sauvé, ou égalité loups)
      *   witch_acted: bool,                       // true si la sorcière a utilisé une potion cette nuit
      *   saved_player_id: int|null,               // identifiant du joueur sauvé par la sorcière, null sinon
+     *   witch_player_id: int|null,               // identifiant de la sorcière ayant agi, null sinon
+     *   poisoned_player_id: int|null,            // identifiant du joueur empoisonné, null si pas de poison
+     *   poisoned_player_pseudo: string|null,     // pseudo du joueur empoisonné, null si pas de poison
      * }
      */
     public function broadcastWith(): array
     {
         return [
-            'round'           => $this->game->round,
-            'killed'          => $this->victim ? [
+            'round'                  => $this->game->round,
+            'killed'                 => $this->victim ? [
                 'player_id' => $this->victim->id,
                 'pseudo'    => $this->victim->pseudo,
                 'role'      => $this->victim->role,
             ] : null,
-            'witch_acted'     => $this->witchActed,
-            'saved_player_id' => $this->savedPlayerId,
+            'witch_acted'            => $this->witchActed,
+            'saved_player_id'        => $this->savedPlayerId,
+            'witch_player_id'        => $this->witchPlayerId,
+            'poisoned_player_id'     => $this->poisonedPlayerId,
+            'poisoned_player_pseudo' => $this->poisonedPlayerPseudo,
         ];
     }
 }

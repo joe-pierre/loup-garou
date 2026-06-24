@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 10h55
+Generated at: 11h26
 
 ## PHP Analysis (Core Logic)
 
@@ -506,10 +506,10 @@ DayStarted.php
       - InteractsWithSockets
       - SerializesModels
     functions:
-      - __construct(Game $game, ?GamePlayer $victim, bool $witchActed, ?int $savedPlayerId) {}
+      - __construct(Game $game, ?GamePlayer $victim, bool $witchActed, ?int $savedPlayerId, ?int $witchPlayerId, ?int $poisonedPlayerId, ?string $poisonedPlayerPseudo) {}
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'day.started'
-      - broadcastWith() → return ['round' => $this->game->round, 'killed' => $this->victim ? ['player_id' => $this->victim->id, 'pseudo' => $this->victim->pseudo, 'role' => $this->victim->role] : null, 'witch_acted' => $this->witchActed, 'saved_player_id' => $this->savedPlayerId]
+      - broadcastWith() → return ['round' => $this->game->round, 'killed' => $this->victim ? ['player_id' => $this->victim->id, 'pseudo' => $this->victim->pseudo, 'role' => $this->victim->role] : null, 'witch_acted' => $this->witchActed, 'saved_player_id' => $this->savedPlayerId, 'witch_player_id' => $this->witchPlayerId, 'poisoned_player_id' => $this->poisonedPlayerId, 'poisoned_player_pseudo' => $this->poisonedPlayerPseudo]
 
 // app/Events/Game/WerewolvesVoteCast.php
 WerewolvesVoteCast.php
@@ -934,7 +934,7 @@ HistoryService.php
 // app/Services/PhaseManager.php
 PhaseManager.php
     functions:
-      - startDay(Game $game, ?GamePlayer $victim, bool $witchActed, ?int $savedPlayerId) → void
+      - startDay(Game $game, ?GamePlayer $victim, bool $witchActed, ?int $savedPlayerId, ?int $witchPlayerId, ?int $poisonedPlayerId, ?string $poisonedPlayerPseudo) → void
       - startNight(Game $game) → void
       - endNight(Game $game) → void
 

@@ -365,10 +365,6 @@ export function gameState(gameId, userId) {
                 this._markPlayerDead(e.killed.player_id);
             }
 
-            if (e.witch_acted) {
-                this._dispatchToast('🧙 La sorcière a agi cette nuit.', 'info');
-            }
-
             const myId = this.playerId || window.MY_PLAYER_ID || null;
             if (myId && e.saved_player_id === myId) {
                 // Le toast ne peut pas être affiché ici : handleDayStarted déclenche
@@ -380,6 +376,38 @@ export function gameState(gameId, userId) {
                     JSON.stringify({ message: '🧙 La sorcière t\'a sauvé cette nuit.', type: 'success' })
                 );
                 window.dispatchEvent(new CustomEvent('i-was-saved'));
+            }
+
+            if (e.witch_player_id || e.poisoned_player_id || e.saved_player_id) {
+                const pendingToastKey = 'pending_toast_' + myId;
+
+                if (myId && e.witch_player_id === myId) {
+                    // Je suis la sorcière
+                    if (e.saved_player_id === myId) {
+                        sessionStorage.setItem(pendingToastKey, JSON.stringify({
+                            message: '🧙 Tu t\'es sauvée cette nuit.',
+                            type: 'success',
+                        }));
+                    } else if (e.poisoned_player_pseudo) {
+                        sessionStorage.setItem(pendingToastKey, JSON.stringify({
+                            message: `☠️ Tu as empoisonné ${e.poisoned_player_pseudo}.`,
+                            type: 'error',
+                        }));
+                    }
+                } else if (myId && e.poisoned_player_id === myId) {
+                    // Je suis le joueur empoisonné
+                    sessionStorage.setItem(pendingToastKey, JSON.stringify({
+                        message: '☠️ La sorcière t\'a empoisonné cette nuit.',
+                        type: 'error',
+                    }));
+                } else {
+                    // Tous les autres joueurs — toast générique sur /day
+                    if (e.poisoned_player_pseudo) {
+                        this._dispatchToast(`🧙 La sorcière a empoisonné ${e.poisoned_player_pseudo}.`, 'info');
+                    } else if (e.saved_player_id) {
+                        this._dispatchToast('🧙 La sorcière a utilisé sa potion de guérison.', 'info');
+                    }
+                }
             }
 
             const redirect = () => {
@@ -482,9 +510,6 @@ export function gameState(gameId, userId) {
                 }
 
                 this.isAlive = false;
-                if (e.reason === 'witch_kill') {
-                    this._dispatchToast('☠️ La sorcière t\'a empoisonné cette nuit.', 'error');
-                }
                 this.playerId = myId;
 
                 const screen = document.querySelector('.game-screen');

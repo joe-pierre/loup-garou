@@ -427,7 +427,7 @@
   - Barre violet `#reveal-timer-bar` pour `mayor_reveal` dans role-reveal, barre or `#election-timer-fill` corrigée dans mayor-election. Conflit Alpine `:style` / GSAP résolu (pattern night.blade.php).
 - [x] **Bug 2** — Voyante voit "Innocent" pour Chasseur et Sorcière
   - `night.blade.php` : afficher le rôle précis via `roleLabel(seerResult?.role)` au lieu de "Innocent"
-- [ ] **Bug 3** — Messages sorcière non différenciés au matin
+- [x] **Bug 3** — Messages sorcière non différenciés au matin
   - `DayStarted` : ajouter `witch_player_id` et `poisoned_player_pseudo` dans `broadcastWith()`
   - `PhaseManager::endNight()` : passer les deux nouvelles valeurs
   - `DayStarted` : ajouter aussi `poisoned_player_id` pour cibler le toast personnel du joueur empoisonné
