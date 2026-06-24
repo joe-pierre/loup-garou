@@ -28,6 +28,15 @@ class AdminGameController extends Controller
 
     public function show(Request $request, int $id)
     {
-        return view('admin.games.show');
+        $game = Game::with([
+            'gamePlayers.user',
+            'actions.player',
+            'actions.target',
+            'messages.player',
+            'exclusions.user',
+            'exclusions.player',
+        ])->findOrFail($id);
+
+        return view('admin.games.show', compact('game'));
     }
 }
