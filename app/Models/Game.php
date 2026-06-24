@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\TimerCalculator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -192,5 +193,15 @@ class Game extends Model
         return $this->alivePlayers()
             ->whereNotIn('role', ['werewolf', 'white_wolf'])
             ->count();
+    }
+
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->whereNotIn('status', ['finished']);
+    }
+
+    public function gamePlayers(): HasMany
+    {
+        return $this->hasMany(GamePlayer::class);
     }
 }
