@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\DB;
  * Démarre le tour des loups-garous.
  *
  * Dispatché par ProcessSeerTurn après expiration du timer voyante (delay=seer+2),
- * ou immédiatement si la voyante est inactive.
+ * ou immédiatement si la voyante est inactive/morte, ou par ActionController
+ * quand la voyante agit manuellement.
  *
  * Change le statut night → wolves_turn dans une transaction DB avec lockForUpdate
  * pour éviter les doubles déclenchements, puis dispatche ProcessNightActions
@@ -28,8 +29,12 @@ class ProcessWerewolvesTurn implements ShouldQueue
 
     /**
      * @param int $gameId Identifiant de la partie.
+     * @param int $round  Round de référence (guard anti-stale-job inter-rounds).
      */
-    public function __construct(public readonly int $gameId) {}
+    public function __construct(
+        public readonly int $gameId,
+        public readonly int $round,
+    ) {}
 
     /**
      * Transition atomique night → wolves_turn, broadcast WerewolvesTurnStarted,
@@ -37,6 +42,7 @@ class ProcessWerewolvesTurn implements ShouldQueue
      *
      * Guards d'entrée (dans la transaction lockForUpdate) :
      *   - La partie existe avec status === 'night'.
+     *   - round === $this->round (rejette les jobs stale d'une nuit précédente).
      *
      * La transition status → wolves_turn est effectuée dans DB::transaction
      * avec lockForUpdate pour garantir l'idempotence.
@@ -53,6 +59,7 @@ class ProcessWerewolvesTurn implements ShouldQueue
         DB::transaction(function () use (&$game, &$wolvesTimer, &$round) {
             $locked = Game::where('id', $this->gameId)
                 ->where('status', 'night')
+                ->where('round', $this->round)
                 ->lockForUpdate()
                 ->first();
 
