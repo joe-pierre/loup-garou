@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-24 — Toast "Reconnecté !" affiché sur toute connexion WS initiale
+
+- **Symptôme :** le toast "Reconnecté !" apparaissait à chaque chargement de page (nuit→jour, jour→nuit…) alors que le joueur n'avait jamais été déconnecté.
+- **Cause :** `conn.bind('connected', ...)` dans `initWebSocket()` se déclenchait à toute connexion Echo/Reverb, y compris la connexion initiale au chargement — pas uniquement après une vraie coupure réseau.
+- **Fix :** flag `_wsEverConnected` posé à `true` au premier `connected` sans afficher de toast ; les connexions suivantes (vraies reconnexions) affichent le toast, sous réserve du guard `sessionStorage.__internalNavigation` déjà utilisé dans les autres handlers.
+
+---
+
 ### [x] 2026-06-24 — Chasseur Maire : succession déclenchée avant le tir
 
 - **Symptôme :** quand le Chasseur était aussi Maire et qu'il était éliminé (jour ou nuit), la succession du Maire était déclenchée immédiatement sans attendre que le Chasseur effectue (ou renonce à) son tir.

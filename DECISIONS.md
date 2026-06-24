@@ -1,3 +1,19 @@
+## [RÉSOLU] Toast "Reconnecté !" parasite sur connexion WebSocket initiale
+
+**Contexte :** `fix/toast-reconnecte-ws-initial` — `resources/js/game-state.js`, section "Reconnexion WebSocket (Pusher/Reverb)".
+
+**Symptôme / Problème :** À chaque navigation interne (nuit→jour, jour→nuit, etc.), le toast "Reconnecté !" s'affichait alors que le joueur n'avait jamais perdu la connexion. Le comportement survenait à chaque chargement de page, rendant le toast inutile et trompeur.
+
+**Cause / Alternatives :** `conn.bind('connected', ...)` se déclenche à toute connexion Pusher/Reverb — y compris la connexion initiale établie par Echo au chargement de la page. Il n'existe pas de distinction native entre "première connexion" et "reconnexion après coupure" dans l'API Pusher. Alternative envisagée : utiliser l'état `conn.state` avant la connexion pour détecter une reconnexion réelle — rejetée, l'état change de façon asynchrone et est peu fiable au moment du binding.
+
+**Fix / Décision :** Flag `_wsEverConnected` initialisé implicitement à `undefined` (falsy) sur `this`. Au premier `connected` : flag posé à `true`, return sans toast. Aux connexions suivantes : vérification du guard `sessionStorage.__internalNavigation` (cohérent avec `_handlePlayerDisconnected`, `_handlePlayerReconnected`, `_handlePlayerInactive`) puis toast affiché. Chaque page étant un nouveau contexte JS, `_wsEverConnected` est réinitialisé à chaque chargement — la première connexion par page est toujours silencieuse.
+
+**Leçon :** Tout handler sur `conn.bind('connected', ...)` doit distinguer la connexion initiale (silencieuse) des reconnexions réelles (toast utile). Le pattern `_wsEverConnected` est applicable à tout futur binding Pusher sur `connected`. Ne pas supposer que `connected` implique une coupure préalable.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [RÉSOLU] Chasseur Maire — tir avant succession du maire (inversion priorité hunter_pending > is_mayor)
 
 **Contexte :** `fix/bug-chasseur-maire-ordre-succession` — `app/Services/VoteService.php`, `app/Jobs/ProcessHunterTurn.php`, `app/Jobs/ProcessHunterAutoAction.php`, `app/Jobs/ProcessNightEnd.php`, `app/Http/Controllers/Game/ActionController.php`.
