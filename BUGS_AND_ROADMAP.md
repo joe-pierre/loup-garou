@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-24 — Chats inaccessibles sur mobile en phase jour (overlay)
+
+- **Symptôme :** sur mobile, le chat général et le chat des fantômes s'affichaient sous la liste des joueurs dans le flux normal du document, obligeant le joueur à scroller vers le bas pendant le vote — rendant les deux zones de chat pratiquement inutilisables en phase jour.
+- **Cause :** absence d'overlay mobile : les deux sections de chat étaient positionnées dans le flux HTML, sans `fixed` ni toggle accessible depuis la barre de navigation fixe.
+- **Fix :** ajout d'une barre de navigation footer (`@section('footer-nav')`) avec boutons dédiés 💬 et 💀 ; les deux wrappers de chat passent en `fixed bottom-14 z-50` sur mobile quand leur toggle est actif (`chatVisible`/`deadChatVisible`), restent dans le flux sur desktop (`md:static`). Composant `footerDayNav()` léger séparé de `dayScreen()` (scopes Alpine distincts), synchronisé via `window.dispatchEvent('day-chat-state')`. `z-index` de `announcement-overlay` monté de `z-50` à `z-60` pour rester par-dessus les chats overlay.
+
+---
+
 ### [x] 2026-06-24 — Rejets de guard silencieux dans ProcessNightActions et ProcessWerewolvesTurn
 
 - **Symptôme :** quand `ProcessNightActions` ou `ProcessWerewolvesTurn` était rejeté par leur guard (statut ou round incorrect), le job retournait sans laisser aucune trace — la nuit se terminait sans victime sans aucune entrée dans les logs. Observé sur la partie SXAKHE (game_id 138, nuit 5) : le loup a voté, aucun effet visible, aucun log.

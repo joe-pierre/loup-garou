@@ -1,3 +1,23 @@
+## [CHOIX] Chat overlay mobile — footerDayNav() séparé de dayScreen() via window events
+
+**Contexte :** `feat/chat-overlay-mobile` — `resources/views/game/day.blade.php`, `resources/views/components/announcement-overlay.blade.php`.
+
+**Symptôme / Problème :** Les chats général et fantômes devaient être accessibles depuis un bouton fixe dans le footer nav mobile (rendu dans `<nav>` par le layout), mais les directives Alpine (`@click="toggleChat()"`, `:style="chatVisible ? ..."`) dans ce slot n'ont pas accès au scope `x-data="dayScreen()"` défini dans `<main>` — ils sont dans des éléments siblings hors du scope Alpine de la vue.
+
+**Cause / Alternatives :**
+1. Modifier `layouts/game.blade.php` pour envelopper `<main>` et `<nav>` dans un même `x-data` — rejeté : changement transversal au layout, risque de régression sur toutes les vues.
+2. Utiliser `Alpine.store()` pour partager l'état — rejeté : refactor de `dayScreen()` significatif (remplacement de `this.chatVisible` par des proxies store dans tout le composant).
+3. Exposer l'instance sur `window.__dayScreen` et lire depuis le slot — rejeté : les getters lisant depuis `window` ne sont pas réactifs dans Alpine, le footer ne se mettrait pas à jour.
+4. Composant `footerDayNav()` séparé + communication par `window.dispatchEvent` — retenu : cohérent avec la convention du projet (`window.dispatchEvent` pour les events cross-composants, cf. CLAUDE.md et DECISIONS.md "Double abonnement Echo").
+
+**Fix / Décision :** `footerDayNav()` est un composant Alpine léger (`x-data="footerDayNav()"`) dans le `@section('footer-nav')`. Il maintient une copie locale de l'état nécessaire (`chatVisible`, `deadChatVisible`, `unreadMessages`, `isAlive`) et l'écoute via `window.addEventListener('day-chat-state', ...)`. Ses boutons dispatchent `request-day-toggle-chat` / `request-day-toggle-dead-chat`. `dayScreen()` écoute ces requêtes et exécute les toggles ; il émet `day-chat-state` après chaque changement (`toggleChat`, `toggleDeadChat`, `_checkChatAuto`, `_resetChatState`, réception d'un message non lu, `i-was-eliminated`).
+
+**Leçon :** Quand un slot de layout (footer-nav, header) doit réagir à l'état d'un composant Alpine défini dans `<main>`, la seule voie correcte sans modifier le layout est `window.dispatchEvent` + composant Alpine séparé dans le slot. Ne jamais tenter de lire des propriétés Alpine via `window.xxx` dans des bindings `:` ou `x-text` — les lectures non proxifiées par Alpine ne sont pas réactives. Le guard `_initialized` reste obligatoire uniquement dans `dayScreen().init()` (qui enregistre des listeners) ; `footerDayNav().init()` n'en a pas besoin car il n'est instancié qu'une fois par le slot.
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [RÉSOLU] Rejets de guard silencieux dans ProcessNightActions et ProcessWerewolvesTurn
 
 **Contexte :** `fix/night-actions-guard-logging` — `app/Jobs/ProcessNightActions.php`, `app/Jobs/ProcessWerewolvesTurn.php`.

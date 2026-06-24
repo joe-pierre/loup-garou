@@ -2,7 +2,7 @@
     x-data="announcementOverlay()"
     x-show="active"
     x-cloak
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
+    class="fixed inset-0 z-60 flex items-center justify-center bg-black/90 backdrop-blur-sm"
     style="pointer-events: all;"
 >
     <div class="text-center text-[#e8e0d0] px-6">
