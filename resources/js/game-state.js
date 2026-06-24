@@ -246,6 +246,11 @@ export function gameState(gameId, userId) {
                     this._dispatchToast('Connexion perdue. Reconnexion…', 'warning');
                 });
                 conn.bind('connected', () => {
+                    if (!this._wsEverConnected) {
+                        this._wsEverConnected = true;
+                        return;
+                    }
+                    if (sessionStorage.getItem('__internalNavigation')) return;
                     this._dispatchToast('Reconnecté !', 'success');
                 });
             } catch {}
