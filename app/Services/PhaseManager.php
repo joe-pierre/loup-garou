@@ -198,11 +198,11 @@ class PhaseManager
         $killAction = $game->actions()
             ->where('round', $game->round)
             ->where('type', 'witch_kill')
-            ->with('targetPlayer')
+            ->with('target')
             ->first();
-        if ($killAction?->targetPlayer) {
-            $poisonedPlayerId    = $killAction->targetPlayer->id;
-            $poisonedPlayerPseudo = $killAction->targetPlayer->pseudo;
+        if ($killAction?->target) {
+            $poisonedPlayerId    = $killAction->target->id;
+            $poisonedPlayerPseudo = $killAction->target->pseudo;
         }
 
         $this->startDay($game, $victim, $witchActed, $savedPlayerId, $witchPlayerId, $poisonedPlayerId, $poisonedPlayerPseudo);

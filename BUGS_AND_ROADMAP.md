@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-24 — Relation `targetPlayer` inexistante dans `PhaseManager::endNight()`
+
+- **Symptôme :** `ProcessNightEnd` échouait en boucle avec `Call to undefined relationship [targetPlayer]` — partie 140 bloquée en `processing_night` depuis 23:30.
+- **Cause :** `endNight()` utilisait `->with('targetPlayer')` et `$killAction->targetPlayer` alors que la relation dans `GameAction` est définie sous le nom `target` (FK `target_player_id`).
+- **Fix :** remplacement des trois occurrences de `targetPlayer` par `target` dans `PhaseManager::endNight()`.
+
+---
+
 ### [x] 2026-06-24 — Fausse déconnexion loup entre pages (race condition + retry reconnect)
 
 - **Symptôme :** un joueur loup pouvait être marqué `is_inactive = true` et `is_alive = false` par `CheckReconnectionTimeout` alors qu'il était physiquement connecté et en train de jouer (toast "Undu est de retour !" cyclique observé en prod, partie 139 : loup `is_inactive=1` sans aucun `night_vote`).
