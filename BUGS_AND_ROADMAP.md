@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-24 — Nom Google émis dans les payloads broadcast publics
+
+- **Symptôme :** `users.name` (nom Google OAuth) était inclus dans `PlayerEliminated`, `HunterShot` et `RandomElimination`, tous émis sur le canal public `game.{gameId}`, exposant ainsi l'identité réelle de chaque joueur à tous les participants.
+- **Cause :** Les trois événements construisaient un affichage "Jean aka Pseudo" côté client — nécessitant le nom Google dans le payload. Cette décision initiale ignorait la contrainte vie privée.
+- **Fix :** Suppression de `google_name` et `target_google_name` des trois `broadcastWith()`. Toast dans `handlePlayerEliminated()` réduit à `e.pseudo` uniquement. `users.name` reste en base pour un futur dashboard admin.
+
+---
+
 ### [x] 2026-06-24 — Toast "Reconnecté !" affiché sur toute connexion WS initiale
 
 - **Symptôme :** le toast "Reconnecté !" apparaissait à chaque chargement de page (nuit→jour, jour→nuit…) alors que le joueur n'avait jamais été déconnecté.

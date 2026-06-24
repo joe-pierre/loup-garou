@@ -42,18 +42,16 @@ class RandomElimination implements ShouldBroadcastNow
      *   player_id: int,
      *   pseudo: string,
      *   role: string,
-     *   google_name: string,
      *   reason: 'no_votes',
      * }
      */
     public function broadcastWith(): array
     {
         return [
-            'player_id'   => $this->player->id,
-            'pseudo'      => $this->player->pseudo,
-            'role'        => $this->player->role,
-            'google_name' => $this->player->user?->name ?? $this->player->pseudo,
-            'reason'      => 'no_votes',
+            'player_id' => $this->player->id,
+            'pseudo'    => $this->player->pseudo,
+            'role'      => $this->player->role,
+            'reason'    => 'no_votes',
         ];
     }
 }
