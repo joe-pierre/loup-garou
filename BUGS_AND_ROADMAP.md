@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-24 — Historique : détail des votes maire manquant (qui a voté pour qui)
+
+- **Symptôme :** l'entrée "Élection du Maire" dans l'historique de fin de partie affichait uniquement les totaux par candidat (`vote_totals`), sans indiquer qui avait voté pour qui.
+- **Cause :** `GameController::history()` appliquait `->anonymized()` sur toutes les actions y compris `mayor_vote` — ce scope supprime `player_id`, rendant impossible la construction d'un détail individuel par vote. Depuis le Bug 5, les votes maire sont publics, mais l'anonymisation n'avait pas été ajustée côté historique.
+- **Fix :** séparation de la query dans `history()` : `mayor_vote` chargé sans `anonymized()`, autres types avec `anonymized()`. `HistoryService::buildTimeline()` : construction de `vote_details` (liste de `{ voter_pseudo, target_pseudo }`) depuis `$mayorVotes`. `history.blade.php` : affichage sous les totaux, style atténué (opacity 0.35).
+
+---
+
 ### [x] 2026-06-23 — @show-toast.window ignoré par Alpine v3 (event name avec tiret)
 
 - **Symptôme :** `window.dispatchEvent(new CustomEvent('show-toast', ...))` ne déclenchait pas `add()` dans `toast.blade.php`, malgré le binding déclaratif `@show-toast.window="add($event.detail)"` présent sur le `<div>`.
