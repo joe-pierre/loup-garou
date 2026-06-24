@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 11h26
+Generated at: 11h44
 
 ## PHP Analysis (Core Logic)
 
@@ -199,7 +199,7 @@ ProcessHunterAutoAction.php
       - Queueable
       - SerializesModels
     functions:
-      - __construct(int $gameId, int $round, int $hunterId, bool $fromNight) {}
+      - __construct(int $gameId, int $round, int $hunterId, bool $fromNight, bool $isMayor) {}
       - handle(PhaseManager $phaseManager, WinConditionChecker $winChecker) → void
 
 // app/Jobs/ProcessSeerTurn.php
@@ -276,7 +276,7 @@ ProcessHunterTurn.php
       - Queueable
       - SerializesModels
     functions:
-      - __construct(int $gameId, int $round, int $hunterId) {}
+      - __construct(int $gameId, int $round, int $hunterId, bool $isMayor) {}
       - handle(PhaseManager $phaseManager, WinConditionChecker $winChecker) → void
 
 // app/Events/Game/PlayerInactive.php
@@ -1086,6 +1086,7 @@ HunterTest.php
       - test_chasseur_ne_peut_pas_tirer_sur_joueur_mort() → void
       - test_chasseur_ne_peut_pas_tirer_deux_fois() → void
       - test_hunter_auto_action_skipped_if_already_shot() → void
+      - test_chasseur_maire_elimine_jour_succession_apres_tir() → void
       - test_hunter_auto_action_no_elimination_if_inactive() → void
       - test_chasseur_tire_apres_resolution_complete_de_nuit() → void
       - test_chasseur_ne_tire_pas_avant_day_started() → void

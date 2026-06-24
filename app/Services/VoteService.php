@@ -403,8 +403,9 @@ class VoteService
                 ->where('round', $game->round)
                 ->first();
             if ($hunterPending) {
+                $isMayorRandom = $randomVictim->is_mayor;
                 $hunterPending->delete();
-                ProcessHunterTurn::dispatch($game->id, $game->round, $hunterPending->player_id)->delay(0);
+                ProcessHunterTurn::dispatch($game->id, $game->round, $hunterPending->player_id, $isMayorRandom)->delay(0);
                 return;
             }
             $this->phaseManager->startNight($game);
@@ -428,8 +429,20 @@ class VoteService
         // Le flag is_mayor a pu être modifié par une transaction concurrente
         // (ex. ProcessMayorSuccession) entre le chargement et ce point
         $eliminated->refresh();
+        $isMayor = $eliminated->is_mayor;
 
-        if ($eliminated->is_mayor) {
+        // Priorité chasseur > maire : si le chasseur est aussi maire, le tir doit avoir lieu
+        // AVANT la succession — ProcessHunterTurn reçoit $isMayor pour déclencher la succession
+        // après le tir (ou le renoncement). Voir DECISIONS.md "Chasseur Maire — ordre succession".
+        $hunterPending = GameAction::where('game_id', $game->id)
+            ->where('type', 'hunter_pending')
+            ->where('round', $game->round)
+            ->first();
+
+        if ($hunterPending) {
+            $hunterPending->delete();
+            ProcessHunterTurn::dispatch($game->id, $game->round, $hunterPending->player_id, $isMayor)->delay(0);
+        } elseif ($isMayor) {
             $successionDelay = $eliminated->is_inactive
                 ? 0
                 : $game->timer('mayor_succession');
@@ -437,9 +450,6 @@ class VoteService
             broadcast(new MayorSuccessionStarted($game, $eliminated->pseudo));
             ProcessMayorSuccession::dispatch($game->id, $game->round)
                 ->delay(now()->addSeconds($successionDelay));
-        } elseif ($hunterPending = GameAction::where('game_id', $game->id)->where('type', 'hunter_pending')->where('round', $game->round)->first()) {
-            $hunterPending->delete();
-            ProcessHunterTurn::dispatch($game->id, $game->round, $hunterPending->player_id)->delay(0);
         } else {
             $this->phaseManager->startNight($game);
         }

@@ -432,7 +432,7 @@
   - `PhaseManager::endNight()` : passer les deux nouvelles valeurs
   - `DayStarted` : ajouter aussi `poisoned_player_id` pour cibler le toast personnel du joueur empoisonné
   - `game-state.js` : logique différenciée dans `_applyDayStarted()` (sorcière / sauvé / empoisonné / autres)
-- [ ] **Bug 4** — Chasseur Maire : succession avant le tir
+- [x] **Bug 4** — Chasseur Maire : succession avant le tir
   - `VoteService::resolveDayVote()` : priorité `hunter_pending` sur `is_mayor`
   - `ProcessHunterTurn` + `ProcessHunterAutoAction` : param `bool $isMayor`, déclenche succession après tir
   - `ActionController::hunterShoot()` : lire `is_mayor` avant la mort, déclencher succession si vrai

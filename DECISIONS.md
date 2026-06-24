@@ -1,3 +1,25 @@
+## [RÉSOLU] Chasseur Maire — tir avant succession du maire (inversion priorité hunter_pending > is_mayor)
+
+**Contexte :** `fix/bug-chasseur-maire-ordre-succession` — `app/Services/VoteService.php`, `app/Jobs/ProcessHunterTurn.php`, `app/Jobs/ProcessHunterAutoAction.php`, `app/Jobs/ProcessNightEnd.php`, `app/Http/Controllers/Game/ActionController.php`.
+
+**Symptôme / Problème :** Quand le Chasseur était aussi Maire et qu'il était éliminé (jour OU nuit), la succession du Maire était déclenchée immédiatement avant que le Chasseur ait pu tirer (ou renoncer). L'ordre correct (SPEC.md) est : tir du Chasseur (ou renoncement/timer) → succession ensuite.
+
+**Cause / Alternatives :**
+Dans `VoteService::resolveDayVote()`, le bloc `if ($eliminated->is_mayor)` prenait la priorité absolue via un `if/elseif` : si `is_mayor === true`, la branche `hunter_pending` n'était jamais atteinte. `ProcessHunterTurn` et `ProcessHunterAutoAction` ne transmettaient pas l'information `$isMayor` et ne pouvaient donc pas déclencher la succession après le tir. `ProcessNightEnd` dispatche `ProcessHunterTurn` sans `$isMayor`, même bug pour la mort nocturne. Alternative envisagée : déclencher la succession depuis `ProcessHunterTurn` directement — rejeté, ce job ne sait pas quand le tir a lieu (il déclenche juste le tour du chasseur, pas la résolution).
+
+**Fix / Décision :**
+1. `VoteService::resolveDayVote()` : capturer `$isMayor = $eliminated->is_mayor` avant le bloc conditionnel. Inversion de priorité : `if ($hunterPending)` en premier, `elseif ($isMayor)` en fallback. `$isMayor` passé à `ProcessHunterTurn::dispatch`.
+2. `ProcessHunterTurn` : `bool $isMayor = false` ajouté au constructeur, transmis à `ProcessHunterAutoAction::dispatch`.
+3. `ProcessHunterAutoAction` : `bool $isMayor = false` ajouté au constructeur. Quand `$isMayor=true`, après le check victoire : guard `hunter_shot` en DB (tir volontaire → ActionController a déjà broadcasté la succession → return). Si pas de hunter_shot (timer expiré) → `broadcast(MayorSuccessionStarted)` + `ProcessMayorSuccession::dispatch`. Pour le cas nuit, dispatch supplémentaire de `ProcessNightEnd` (délai succession + 5s) pour terminer la nuit après la succession (ProcessMayorSuccession avec `shouldStartNight=true` ne termine pas la nuit lui-même).
+4. `ActionController::hunterShoot()` : lit `$isMayor = $hunter->is_mayor` avant le tir. Si `$isMayor=true` : broadcast `MayorSuccessionStarted` + dispatch `ProcessMayorSuccession` (+ `ProcessNightEnd` si contexte nuit). Passe `$isMayor` à `ProcessHunterAutoAction::dispatch` — ce dernier voit `hunter_shot` en DB et retourne sans re-déclencher (évite la double succession).
+5. `ProcessNightEnd` : après extraction de `$hunterId`, lit `$hunter->is_mayor` et passe `$isMayor` à `ProcessHunterTurn::dispatch`.
+
+**Leçon :** Quand un joueur cumule deux rôles avec des comportements post-mort (Chasseur tir + Maire succession), toujours traiter les deux comportements en séquence stricte : le plus actif (tir) d'abord, le passif (succession) ensuite. Ne jamais tester `is_mayor` avant `hunter_pending` dans un `if/elseif`. Transmettre le contexte `$isMayor` à travers tous les jobs de la chaîne pour éviter de perdre l'information entre les dispatches.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [RÉSOLU] Messages sorcière non différenciés au matin — DayStarted enrichi + logique sessionStorage
 
 **Contexte :** `fix/bug-messages-sorciere-matin` — `app/Events/Game/DayStarted.php`, `app/Services/PhaseManager.php`, `resources/js/game-state.js`.

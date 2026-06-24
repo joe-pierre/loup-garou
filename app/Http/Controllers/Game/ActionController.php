@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Game;
 
 use App\Events\Game\HunterShot;
 use App\Events\Game\MayorSuccessionDone;
+use App\Events\Game\MayorSuccessionStarted;
 use App\Events\Game\PlayerEliminated;
 use App\Events\Game\SeerResult;
 use App\Events\Game\WitchActed;
@@ -14,6 +15,8 @@ use App\Http\Requests\MayorSuccessionRequest;
 use App\Http\Requests\SeerCheckRequest;
 use App\Http\Requests\WitchActRequest;
 use App\Jobs\ProcessHunterAutoAction;
+use App\Jobs\ProcessMayorSuccession;
+use App\Jobs\ProcessNightEnd;
 use App\Jobs\ProcessWerewolvesTurn;
 use App\Jobs\ProcessWitchAutoAction;
 use App\Models\Game;
@@ -105,6 +108,8 @@ class ActionController extends Controller
             ->firstOrFail();
 
         $fromNight = PhaseGuard::isNightOrProcessing($hunter->game);
+        // Lire is_mayor AVANT le tir — la succession doit avoir lieu après, pas avant.
+        $isMayor = $hunter->is_mayor;
 
         $target = $this->gameService->hunterShoot($hunter, $request->validated('target_player_id'));
         $target->load('user');
@@ -112,8 +117,28 @@ class ActionController extends Controller
         broadcast(new PlayerEliminated($hunter->game, $target, 'hunter_shot'));
         broadcast(new HunterShot($hunter->game, $hunter, $target));
 
-        // Le tir est résolu immédiatement -> ProcessHunterAutoAction déclenche la transition sans attendre le timer
-        ProcessHunterAutoAction::dispatch($hunter->game_id, $hunter->game->round, $hunter->id, $fromNight)->delay(0);
+        // Chasseur-Maire : déclencher la succession APRÈS le tir, avant la transition de phase.
+        // ProcessHunterAutoAction::delay(0) verra hunter_shot en DB → guard l'empêche de re-déclencher.
+        if ($isMayor) {
+            $successionDelay = $hunter->is_inactive ? 0 : $hunter->game->timer('mayor_succession');
+            broadcast(new MayorSuccessionStarted($hunter->game, $hunter->pseudo));
+
+            if ($fromNight) {
+                // Nuit : shouldStartNight=true (ProcessNightEnd prend le relais).
+                ProcessMayorSuccession::dispatch($hunter->game_id, $hunter->game->round, true)
+                    ->delay(now()->addSeconds($successionDelay));
+                ProcessNightEnd::dispatch($hunter->game_id, $hunter->game->round)
+                    ->delay(now()->addSeconds($successionDelay + 5));
+            } else {
+                // Jour : ProcessMayorSuccession appelle startNight() après la succession.
+                ProcessMayorSuccession::dispatch($hunter->game_id, $hunter->game->round, false)
+                    ->delay(now()->addSeconds($successionDelay));
+            }
+        }
+
+        // Le tir est résolu immédiatement → ProcessHunterAutoAction voit hunter_shot en DB
+        // et retourne sans re-déclencher la succession (guard "alreadyShot").
+        ProcessHunterAutoAction::dispatch($hunter->game_id, $hunter->game->round, $hunter->id, $fromNight, $isMayor)->delay(0);
 
         return response()->json(['success' => true, 'data' => ['target_player_id' => $target->id]]);
     }
