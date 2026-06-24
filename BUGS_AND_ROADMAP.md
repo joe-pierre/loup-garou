@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-24 — Chasseur Maire : succession déclenchée avant le tir
+
+- **Symptôme :** quand le Chasseur était aussi Maire et qu'il était éliminé (jour ou nuit), la succession du Maire était déclenchée immédiatement sans attendre que le Chasseur effectue (ou renonce à) son tir.
+- **Cause :** dans `VoteService::resolveDayVote()`, le bloc `if ($eliminated->is_mayor)` avait la priorité absolue sur `elseif ($hunterPending = ...)` — si `is_mayor === true`, la branche chasseur était inaccessible. Idem potentiellement dans `ProcessNightEnd` (absence de `$isMayor` passé à `ProcessHunterTurn`).
+- **Fix :** inversion de la priorité dans `resolveDayVote()` (hunter_pending d'abord, is_mayor en fallback). `$isMayor` capturé et transmis à `ProcessHunterTurn` (jour et nuit via `ProcessNightEnd`). `ProcessHunterTurn` passe `$isMayor` à `ProcessHunterAutoAction`. `ProcessHunterAutoAction` : si `$isMayor=true`, déclenche `MayorSuccessionStarted` + `ProcessMayorSuccession` après le tir ou le renoncement (guard `hunter_shot` en DB pour éviter une double succession quand `ActionController` l'a déjà déclenché). `ActionController::hunterShoot()` : lit `$isMayor` avant le tir et déclenche la succession si vrai.
+
+---
+
 ### [x] 2026-06-24 — Messages sorcière non différenciés au matin
 
 - **Symptôme :** tous les joueurs recevaient un toast générique "La sorcière a agi cette nuit." au matin, sans distinction selon leur rôle (sorcière elle-même, joueur sauvé, joueur empoisonné, autres).

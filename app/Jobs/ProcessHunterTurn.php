@@ -29,14 +29,17 @@ class ProcessHunterTurn implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
-     * @param int $gameId   Identifiant de la partie.
-     * @param int $round    Round de référence (double-fire guard).
-     * @param int $hunterId Identifiant du joueur Chasseur.
+     * @param int  $gameId   Identifiant de la partie.
+     * @param int  $round    Round de référence (double-fire guard).
+     * @param int  $hunterId Identifiant du joueur Chasseur.
+     * @param bool $isMayor  true si le chasseur était également maire — transmis à ProcessHunterAutoAction
+     *                       pour déclencher la succession APRÈS le tir (ou le renoncement).
      */
     public function __construct(
         public readonly int $gameId,
         public readonly int $round,
         public readonly int $hunterId,
+        public readonly bool $isMayor = false,
     ) {}
 
     /**
@@ -83,7 +86,7 @@ class ProcessHunterTurn implements ShouldQueue
 
         broadcast(new HunterTurnStarted($game, $hunter));
 
-        ProcessHunterAutoAction::dispatch($this->gameId, $this->round, $this->hunterId, $fromNight)
+        ProcessHunterAutoAction::dispatch($this->gameId, $this->round, $this->hunterId, $fromNight, $this->isMayor)
             ->delay(now()->addSeconds($game->timer('hunter')));
     }
 }

@@ -5,9 +5,11 @@ namespace Tests\Feature\Game;
 use App\Events\Game\DayStarted;
 use App\Events\Game\HunterShot;
 use App\Events\Game\HunterTurnStarted;
+use App\Events\Game\MayorSuccessionStarted;
 use App\Events\Game\PlayerEliminated;
 use App\Jobs\ProcessHunterAutoAction;
 use App\Jobs\ProcessHunterTurn;
+use App\Jobs\ProcessMayorSuccession;
 use App\Jobs\ProcessNightActions;
 use App\Jobs\ProcessNightEnd;
 use App\Jobs\ProcessDayVote;
@@ -211,6 +213,73 @@ class HunterTest extends TestCase
         Event::assertNotDispatched(DayStarted::class);
         Queue::assertNotPushed(ProcessDayVote::class);
         $this->assertSame('day', $game->fresh()->status);
+    }
+
+    /**
+     * Bug 4 — Chasseur Maire : tir avant succession.
+     * Scénario : chasseur-maire éliminé le jour → ProcessHunterTurn dispatché avec $isMayor=true
+     * → tir volontaire → MayorSuccessionStarted broadcasté APRÈS le tir, pas avant.
+     * ProcessHunterAutoAction (delay 0) ne doit PAS re-déclencher la succession (guard hunter_shot).
+     */
+    public function test_chasseur_maire_elimine_jour_succession_apres_tir(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game = $this->makeDayGame();
+        $user = User::factory()->create();
+
+        $hunter = GamePlayer::factory()->hunter()->create([
+            'game_id'  => $game->id,
+            'user_id'  => $user->id,
+            'is_mayor' => true,
+        ]);
+        $wolf   = GamePlayer::factory()->werewolf()->create(['game_id' => $game->id]);
+        $target = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+        GamePlayer::factory()->count(2)->villager()->create(['game_id' => $game->id]);
+
+        // Simuler l'état post-transaction de resolveDayVote : hunter mort + hunter_pending créé
+        $hunter->update(['is_alive' => false]);
+        GameAction::create([
+            'game_id'   => $game->id,
+            'player_id' => $hunter->id,
+            'type'      => 'hunter_pending',
+            'round'     => $game->round,
+            'phase'     => 'day',
+        ]);
+
+        // ProcessHunterTurn dispatché par VoteService avec $isMayor=true
+        (new ProcessHunterTurn($game->id, $game->round, $hunter->id, isMayor: true))
+            ->handle(app(PhaseManager::class), app(WinConditionChecker::class));
+
+        // HunterTurnStarted broadcasté, ProcessHunterAutoAction dispatché avec isMayor=true
+        Event::assertDispatched(HunterTurnStarted::class, fn ($e) => $e->hunter->id === $hunter->id);
+        Queue::assertPushed(ProcessHunterAutoAction::class, fn ($job) => $job->isMayor === true);
+
+        // Tir volontaire via ActionController
+        $response = $this->actingAs($user)->postJson("/game/{$game->id}/hunter/shoot", [
+            'target_player_id' => $target->id,
+        ]);
+        $response->assertStatus(200);
+
+        // La cible est morte
+        $this->assertFalse($target->fresh()->is_alive);
+
+        // MayorSuccessionStarted broadcasté APRÈS le tir (par ActionController)
+        Event::assertDispatched(MayorSuccessionStarted::class);
+
+        // ProcessMayorSuccession dispatché APRÈS le tir
+        Queue::assertPushed(ProcessMayorSuccession::class);
+
+        // ProcessHunterAutoAction (delay 0) avec isMayor=true + hunter_shot en DB
+        // → guard "alreadyShot" → return sans re-déclencher la succession
+        $autoAction = new ProcessHunterAutoAction(
+            $game->id, $game->round, $hunter->id, fromNight: false, isMayor: true
+        );
+        $autoAction->handle(app(PhaseManager::class), app(WinConditionChecker::class));
+
+        // Une seule occurrence de ProcessMayorSuccession (pas de double succession)
+        Queue::assertPushed(ProcessMayorSuccession::class, 1);
     }
 
     public function test_hunter_auto_action_no_elimination_if_inactive(): void

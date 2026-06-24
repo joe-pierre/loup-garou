@@ -90,8 +90,13 @@ class ProcessNightEnd implements ShouldQueue
         });
 
         if ($hunterId !== null) {
+            // Vérifier si le chasseur était aussi maire pour transmettre l'ordre de succession
+            // après le tir (Guard #2 + fix Bug 4 "chasseur maire — tir avant succession").
+            $hunter  = $game->players()->where('id', $hunterId)->first();
+            $isMayor = $hunter ? $hunter->is_mayor : false;
+
             // delay(0) interdit dans la transaction (Guard #5) — dispatché hors transaction
-            ProcessHunterTurn::dispatch($game->id, $game->round, $hunterId)->delay(0);
+            ProcessHunterTurn::dispatch($game->id, $game->round, $hunterId, $isMayor)->delay(0);
             return;
         }
 

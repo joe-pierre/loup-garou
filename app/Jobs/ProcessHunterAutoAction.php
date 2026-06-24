@@ -2,7 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Events\Game\MayorSuccessionStarted;
 use App\Models\Game;
+use App\Models\GameAction;
 use App\Services\PhaseGuard;
 use App\Services\PhaseManager;
 use App\Services\WinConditionChecker;
@@ -33,12 +35,15 @@ class ProcessHunterAutoAction implements ShouldQueue
      * @param int  $round     Round de référence (double-fire guard).
      * @param int  $hunterId  Identifiant du joueur Chasseur.
      * @param bool $fromNight true si le chasseur est mort la nuit, false si mort le jour.
+     * @param bool $isMayor   true si le chasseur était également maire — déclenche la succession
+     *                        après le tir/renoncement, avant la transition de phase.
      */
     public function __construct(
         public readonly int $gameId,
         public readonly int $round,
         public readonly int $hunterId,
         public readonly bool $fromNight,
+        public readonly bool $isMayor = false,
     ) {}
 
     /**
@@ -76,7 +81,42 @@ class ProcessHunterAutoAction implements ShouldQueue
             return;
         }
 
-        // Chasseur inactif : pas de tir, pas d'élimination supplémentaire — on transitionne simplement.
+        // Chasseur-Maire : la succession doit avoir lieu APRÈS le tir, avant la transition de phase.
+        // Guard : si un hunter_shot existe, ActionController a déjà broadcasté MayorSuccessionStarted
+        // et dispatché ProcessMayorSuccession — éviter une double succession.
+        if ($this->isMayor) {
+            $alreadyShot = $game->actions()
+                ->where('type', 'hunter_shot')
+                ->where('player_id', $this->hunterId)
+                ->where('round', $this->round)
+                ->exists();
+
+            if (! $alreadyShot) {
+                // Timer expiré sans tir volontaire : déclencher la succession ici
+                $hunter          = $game->players()->where('id', $this->hunterId)->first();
+                $pseudo          = $hunter?->pseudo ?? '';
+                $successionDelay = ($hunter && $hunter->is_inactive) ? 0 : $game->timer('mayor_succession');
+
+                broadcast(new MayorSuccessionStarted($game, $pseudo));
+
+                if ($this->fromNight) {
+                    // Nuit : ProcessMayorSuccession ne démarre pas la nuit (shouldStartNight=true),
+                    // ProcessNightEnd prend le relais après le délai buffer.
+                    ProcessMayorSuccession::dispatch($game->id, $game->round, true)
+                        ->delay(now()->addSeconds($successionDelay));
+                    ProcessNightEnd::dispatch($game->id, $game->round)
+                        ->delay(now()->addSeconds($successionDelay + 5));
+                } else {
+                    // Jour : ProcessMayorSuccession appelle startNight() après la succession.
+                    ProcessMayorSuccession::dispatch($game->id, $game->round, false)
+                        ->delay(now()->addSeconds($successionDelay));
+                }
+            }
+            // Ne pas appeler startNight/endNight ici : ProcessMayorSuccession ou ProcessNightEnd le fait.
+            return;
+        }
+
+        // Chasseur inactif (non-maire) : pas de tir, pas d'élimination supplémentaire — on transitionne simplement.
         if ($this->fromNight) {
             $phaseManager->endNight($game);
         } else {
