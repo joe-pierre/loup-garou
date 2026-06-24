@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-06-24 — Messages sorcière non différenciés au matin
+
+- **Symptôme :** tous les joueurs recevaient un toast générique "La sorcière a agi cette nuit." au matin, sans distinction selon leur rôle (sorcière elle-même, joueur sauvé, joueur empoisonné, autres).
+- **Cause :** `DayStarted` ne transportait pas `witch_player_id`, `poisoned_player_id` ni `poisoned_player_pseudo` — `_applyDayStarted()` ne pouvait pas identifier qui était qui. Le toast `witch_kill` dans `handlePlayerEliminated()` était non visible car la page `/night` est détruite par la redirection GSAP avant que le composant toast puisse rendre.
+- **Fix :** `DayStarted` enrichi de trois champs. `PhaseManager::endNight()` calcule `$witchPlayerId`, `$poisonedPlayerId` et `$poisonedPlayerPseudo` depuis les `game_actions` du round. `game-state.js::_applyDayStarted()` : logique différenciée via sessionStorage (sorcière, sauvé, empoisonné) et toast direct pour les autres. Bloc `witch_kill` supprimé de `handlePlayerEliminated()` (jamais visible côté client, remplacé par sessionStorage sur /day).
+
+---
+
 ### [x] 2026-06-24 — Historique : détail des votes maire manquant (qui a voté pour qui)
 
 - **Symptôme :** l'entrée "Élection du Maire" dans l'historique de fin de partie affichait uniquement les totaux par candidat (`vote_totals`), sans indiquer qui avait voté pour qui.

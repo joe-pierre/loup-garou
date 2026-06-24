@@ -34,10 +34,13 @@ class PhaseManager
      *
      * Appel hors lockForUpdate uniquement — jamais depuis l'intérieur d'une transaction verrouillée.
      *
-     * @param  Game            $game          La partie à transitionner
-     * @param  GamePlayer|null $victim        Victime nocturne (null si égalité des loups ou sauvée par sorcière)
-     * @param  bool            $witchActed    Vrai si la sorcière a utilisé soin ou poison ce round
-     * @param  int|null        $savedPlayerId ID du joueur sauvé par la sorcière (null si pas de soin)
+     * @param  Game            $game                 La partie à transitionner
+     * @param  GamePlayer|null $victim               Victime nocturne (null si égalité des loups ou sauvée par sorcière)
+     * @param  bool            $witchActed           Vrai si la sorcière a utilisé soin ou poison ce round
+     * @param  int|null        $savedPlayerId        ID du joueur sauvé par la sorcière (null si pas de soin)
+     * @param  int|null        $witchPlayerId        ID de la sorcière ayant agi (null si pas d'action sorcière)
+     * @param  int|null        $poisonedPlayerId     ID du joueur empoisonné (null si pas de poison)
+     * @param  string|null     $poisonedPlayerPseudo Pseudo du joueur empoisonné (null si pas de poison)
      * @return void
      */
     public function startDay(
@@ -45,6 +48,9 @@ class PhaseManager
         ?GamePlayer $victim,
         bool $witchActed = false,
         ?int $savedPlayerId = null,
+        ?int $witchPlayerId = null,
+        ?int $poisonedPlayerId = null,
+        ?string $poisonedPlayerPseudo = null,
     ): void {
         $game->refresh();
         $locked = null;
@@ -78,7 +84,7 @@ class PhaseManager
         }
 
         broadcast(new PhaseAnnouncement($locked->id, 'day_break', "L'aube approche\u{2026}", 4000));
-        broadcast(new DayStarted($locked, $victim, $witchActed, $savedPlayerId));
+        broadcast(new DayStarted($locked, $victim, $witchActed, $savedPlayerId, $witchPlayerId, $poisonedPlayerId, $poisonedPlayerPseudo));
         ProcessDayVote::dispatch($locked->id, $locked->round)
             ->delay(now()->addSeconds($timer));
     }
@@ -176,6 +182,29 @@ class PhaseManager
             $savedPlayerId = $healAction?->target_player_id;
         }
 
-        $this->startDay($game, $victim, $witchActed, $savedPlayerId);
+        // Récupérer l'id de la sorcière ayant agi ce round (pour toasts différenciés sur /day)
+        $witchPlayerId = null;
+        if ($witchActed) {
+            $witchAction = $game->actions()
+                ->where('round', $game->round)
+                ->whereIn('type', ['witch_heal', 'witch_kill'])
+                ->first();
+            $witchPlayerId = $witchAction?->player_id;
+        }
+
+        // Récupérer les infos du joueur empoisonné si applicable
+        $poisonedPlayerId    = null;
+        $poisonedPlayerPseudo = null;
+        $killAction = $game->actions()
+            ->where('round', $game->round)
+            ->where('type', 'witch_kill')
+            ->with('targetPlayer')
+            ->first();
+        if ($killAction?->targetPlayer) {
+            $poisonedPlayerId    = $killAction->targetPlayer->id;
+            $poisonedPlayerPseudo = $killAction->targetPlayer->pseudo;
+        }
+
+        $this->startDay($game, $victim, $witchActed, $savedPlayerId, $witchPlayerId, $poisonedPlayerId, $poisonedPlayerPseudo);
     }
 }

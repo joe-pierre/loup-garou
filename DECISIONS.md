@@ -1,3 +1,19 @@
+## [RÉSOLU] Messages sorcière non différenciés au matin — DayStarted enrichi + logique sessionStorage
+
+**Contexte :** `fix/bug-messages-sorciere-matin` — `app/Events/Game/DayStarted.php`, `app/Services/PhaseManager.php`, `resources/js/game-state.js`.
+
+**Symptôme / Problème :** Tous les joueurs recevaient le même toast générique "🧙 La sorcière a agi cette nuit." au matin, quelle que soit leur position dans l'action de la sorcière (sorcière elle-même, joueur sauvé par auto-soin, joueur empoisonné, spectateurs). La sorcière et le joueur empoisonné ne recevaient aucun message personnalisé.
+
+**Cause / Alternatives :** `DayStarted::broadcastWith()` ne transportait que `witch_acted` (booléen) et `saved_player_id` — impossible d'identifier la sorcière ou le joueur empoisonné côté client. Le toast "☠️ La sorcière t'a empoisonné" était dans `handlePlayerEliminated()` (reason `witch_kill`), mais cette fonction s'exécute sur `/night` dont la page est détruite par la redirection GSAP avant que le composant toast puisse rendre — le toast était donc invisible dans tous les cas.
+
+**Fix / Décision :** Trois champs ajoutés à `DayStarted` : `witch_player_id` (id de la sorcière ayant agi), `poisoned_player_id` (id du joueur empoisonné), `poisoned_player_pseudo` (pseudo du joueur empoisonné). `PhaseManager::endNight()` les calcule depuis les `game_actions` du round courant, hors de toute transaction `lockForUpdate()`. `game-state.js::_applyDayStarted()` : le bloc `witch_acted` générique est remplacé par une logique différenciée — sorcière (auto-soin ou poison), joueur empoisonné, et autres joueurs reçoivent chacun leur message via sessionStorage ou toast direct. Le bloc `if (e.reason === 'witch_kill')` dans `handlePlayerEliminated()` est supprimé : le toast n'était jamais visible côté client (page `/night` détruite avant rendu), et le sessionStorage sur `/day` est le seul canal fiable pour ce cas.
+
+**Leçon :** Tout toast destiné à un joueur spécifique lors d'une transition de phase (redirection GSAP) doit passer par `sessionStorage` (`pending_toast_{playerId}`), jamais par `_dispatchToast()` dans le handler de l'event déclencheur de la redirection. Les toasts dans `handlePlayerEliminated()` ne sont fiables que si la page n'est pas détruite immédiatement après — vérifier systématiquement si la transition implique une navigation avant d'y placer un toast personnalisé.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [RÉSOLU] Alpine v3 @event.window non déclenché pour les event names avec tirets dans les composants Blade
 
 **Contexte :** `fix/bug-toast-show-toast-window-listener` — `resources/views/components/toast.blade.php`.
