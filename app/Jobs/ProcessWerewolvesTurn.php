@@ -11,6 +11,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Démarre le tour des loups-garous.
@@ -46,6 +47,7 @@ class ProcessWerewolvesTurn implements ShouldQueue
      *
      * La transition status → wolves_turn est effectuée dans DB::transaction
      * avec lockForUpdate pour garantir l'idempotence.
+     * Les rejets par le guard sont loggués en warning pour faciliter le débogage.
      *
      * Dispatche :
      *   - ProcessNightActions($gameId, $round)::delay(wolves_timer).
@@ -79,6 +81,10 @@ class ProcessWerewolvesTurn implements ShouldQueue
         });
 
         if (! $game) {
+            Log::warning('ProcessWerewolvesTurn: rejeté par le guard (statut ou round incorrect)', [
+                'game_id' => $this->gameId,
+                'round'   => $this->round,
+            ]);
             return;
         }
 

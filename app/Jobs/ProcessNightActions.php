@@ -15,6 +15,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Résout le vote des loups et orchestre la suite de la séquence nocturne.
@@ -51,6 +52,7 @@ class ProcessNightActions implements ShouldQueue
      *   - round === $this->round.
      *
      * Le statut passe à 'processing_night' dans la transaction avant toute action.
+     * Les rejets par le guard sont loggués en warning pour faciliter le débogage.
      *
      * Dispatche :
      *   - ProcessWitchTurn($gameId, $round)::delay(0) si sorcière vivante.
@@ -77,6 +79,10 @@ class ProcessNightActions implements ShouldQueue
         });
 
         if (! $game) {
+            Log::warning('ProcessNightActions: rejeté par le guard (statut ou round incorrect)', [
+                'game_id' => $this->gameId,
+                'round'   => $this->round,
+            ]);
             return;
         }
 
