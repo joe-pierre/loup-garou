@@ -188,8 +188,12 @@
     </div>
 
     {{-- ── CHAT GÉNÉRAL ── --}}
-    <div>
-        <div class="flex items-center justify-between mb-2">
+    <div
+        :class="chatVisible
+            ? 'fixed inset-x-0 bottom-14 z-50 md:static md:z-auto md:bottom-auto mx-2 md:mx-0'
+            : 'md:static'"
+    >
+        <div class="flex items-center justify-between mb-2 hidden md:flex">
             <p class="font-medieval text-sm tracking-widest" style="color:#c9a84c;">💬 PLACE DU VILLAGE</p>
             <button
                 @click="toggleChat()"
@@ -262,7 +266,13 @@
     </div>
 
     {{-- ── CHAT FANTÔMES (morts uniquement) ── --}}
-    <div x-show="!isAlive" x-cloak class="mt-6">
+    <div
+        x-show="!isAlive"
+        x-cloak
+        :class="deadChatVisible
+            ? 'fixed inset-x-0 bottom-14 z-50 md:static md:z-auto md:bottom-auto mx-2 md:mx-0 mt-0 md:mt-6'
+            : 'hidden md:block mt-6'"
+    >
         <p class="font-medieval text-sm tracking-widest mb-2" style="color:rgba(139,0,0,0.7);">
             💀 CANAL DES FANTÔMES
         </p>
@@ -406,6 +416,44 @@
 </div>
 @endsection
 
+@section('footer-nav')
+<div x-data="footerDayNav()" class="contents">
+    {{-- Bouton Chat village --}}
+    <button
+        @click="toggleChat()"
+        class="flex-1 flex flex-col items-center justify-center gap-0.5 text-xs font-medieval transition-colors"
+        :style="chatVisible
+            ? 'color:#c9a84c;'
+            : 'color:rgba(232,224,208,0.45);'"
+        aria-label="Chat village"
+    >
+        <span class="text-base">💬</span>
+        <span>Village</span>
+        <span
+            x-show="!chatVisible && unreadMessages > 0"
+            class="text-xs px-1 rounded-full"
+            style="background-color:rgba(201,168,76,0.2);color:#c9a84c;font-size:0.6rem;"
+            x-text="unreadMessages"
+        ></span>
+    </button>
+
+    {{-- Bouton Chat fantômes (morts uniquement) --}}
+    <button
+        x-show="!isAlive"
+        x-cloak
+        @click="toggleDeadChat()"
+        class="flex-1 flex flex-col items-center justify-center gap-0.5 text-xs font-medieval transition-colors"
+        :style="deadChatVisible
+            ? 'color:rgba(185,28,28,1);'
+            : 'color:rgba(232,224,208,0.45);'"
+        aria-label="Chat des fantômes"
+    >
+        <span class="text-base">💀</span>
+        <span>Fantômes</span>
+    </button>
+</div>
+@endsection
+
 @php
     $playersJson = $players->map(fn ($p) => [
         'id'                  => $p->id,
@@ -479,6 +527,7 @@
             deadChatMessages: [],
             deadChatInput:    '',
             deadChatSending:  false,
+            deadChatVisible:  false,
 
             init() {
                 if (this._initialized) return;
@@ -534,11 +583,15 @@
                     this._updateVoteBars(e.detail.votes ?? []);
                 });
 
+                // Requêtes de toggle depuis footerDayNav (footer nav hors scope Alpine)
+                window.addEventListener('request-day-toggle-chat',      () => this.toggleChat());
+                window.addEventListener('request-day-toggle-dead-chat', () => this.toggleDeadChat());
+
                 // Messages chat dispatchés par game-state.js (évite le double abonnement Echo)
                 window.addEventListener('chat-message', (e) => {
                     if (e.detail?.channel === 'general') {
                         this.chatMessages.push(e.detail);
-                        if (!this.chatVisible) this.unreadMessages++;
+                        if (!this.chatVisible) { this.unreadMessages++; this._emitChatState(); }
                         this.$nextTick(() => {
                             const el = this.$refs.chatMessages;
                             if (el) el.scrollTop = el.scrollHeight;
@@ -555,7 +608,9 @@
                 // Écoute des events window dispatchés par game-state.js
                 window.addEventListener('i-was-eliminated', () => {
                     this.showDeathBanner = true;
+                    this.isAlive = false;
                     sessionStorage.setItem('dead_' + MY_PLAYER_ID, '1');
+                    this._emitChatState();
                 });
                 window.addEventListener('i-was-saved', () => {
                     this.showDeathBanner = false;
@@ -657,10 +712,27 @@
                 }, 1000);
             },
 
+            _emitChatState() {
+                window.dispatchEvent(new CustomEvent('day-chat-state', {
+                    detail: {
+                        chatVisible:     this.chatVisible,
+                        deadChatVisible: this.deadChatVisible,
+                        unreadMessages:  this.unreadMessages,
+                        isAlive:         this.isAlive,
+                    }
+                }));
+            },
+
             toggleChat() {
                 this.chatVisible = !this.chatVisible;
                 this.manualOverride = true;
                 if (this.chatVisible) this.unreadMessages = 0;
+                this._emitChatState();
+            },
+
+            toggleDeadChat() {
+                this.deadChatVisible = !this.deadChatVisible;
+                this._emitChatState();
             },
 
             _checkChatAuto() {
@@ -671,6 +743,7 @@
                 if (elapsed >= 10 && !this.chatVisible && !this.manualOverride && !this.autoOpened) {
                     this.chatVisible = true;
                     this.autoOpened  = true;
+                    this._emitChatState();
                     // Animation gérée par x-transition sur le div — pas de GSAP ici
                 }
 
@@ -678,6 +751,7 @@
                 if (this.dayTimerSeconds <= 15 && this.chatVisible && !this.manualOverride && !this.autoClosed) {
                     this.chatVisible = false;
                     this.autoClosed  = true;
+                    this._emitChatState();
                 }
             },
 
@@ -687,6 +761,7 @@
                 this.autoOpened     = false;
                 this.autoClosed     = false;
                 this.unreadMessages = 0;
+                this._emitChatState();
             },
 
             _updateVoteBars(votes) {
@@ -834,6 +909,33 @@
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     },
                 }).then(() => { window.location.href = '/'; });
+            },
+        };
+    }
+
+    // Composant léger pour le footer nav mobile — communique avec dayScreen() via window events
+    function footerDayNav() {
+        return {
+            chatVisible:     false,
+            deadChatVisible: false,
+            unreadMessages:  0,
+            isAlive:         MY_IS_ALIVE,
+
+            init() {
+                window.addEventListener('day-chat-state', (e) => {
+                    this.chatVisible     = e.detail.chatVisible;
+                    this.deadChatVisible = e.detail.deadChatVisible;
+                    this.unreadMessages  = e.detail.unreadMessages;
+                    this.isAlive         = e.detail.isAlive;
+                });
+            },
+
+            toggleChat() {
+                window.dispatchEvent(new CustomEvent('request-day-toggle-chat'));
+            },
+
+            toggleDeadChat() {
+                window.dispatchEvent(new CustomEvent('request-day-toggle-dead-chat'));
             },
         };
     }
