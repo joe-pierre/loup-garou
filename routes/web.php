@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminGameController;
+use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Game\ActionController;
 use App\Http\Controllers\Game\ChatController;
@@ -91,4 +94,15 @@ Route::middleware('auth')->group(function () {
     // ══════════════════════════════════════════════════════
     Route::post('/push/subscriptions', [PushSubscriptionController::class, 'store'])->name('push.subscribe');
     Route::delete('/push/subscriptions', [PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
+});
+
+// ══════════════════════════════════════════════════════
+// ADMINISTRATION — lecture seule
+// ══════════════════════════════════════════════════════
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/games', [AdminGameController::class, 'index'])->name('games.index');
+    Route::get('/games/{id}', [AdminGameController::class, 'show'])->name('games.show');
+    Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
+    Route::get('/users/{id}', [AdminUserController::class, 'show'])->name('users.show');
 });
