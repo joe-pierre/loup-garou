@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 20h53
+Generated at: 21h23
 
 ## PHP Analysis (Core Logic)
 
@@ -37,6 +37,8 @@ Game.php
       - aliveCount() → return $this->alivePlayers()->count()
       - aliveWerewolvesCount() → return $this->alivePlayers()->whereIn('role', ['werewolf', 'white_wolf'])->count()
       - aliveVillagersCount() → return $this->alivePlayers()->whereNotIn('role', ['werewolf', 'white_wolf'])->count()
+      - scopeActive(Builder $query) → return $query->whereNotIn('status', ['finished'])
+      - gamePlayers() → return $this->hasMany(GamePlayer::class)
 
 // app/Models/GameAction.php
 GameAction.php
@@ -772,6 +774,11 @@ MayorSuccessionRequest.php
       - rules() → return ['target_player_id' => ['required', 'integer', Rule::exists('game_players', 'id')->where('game_id', $this->route('id'))->where('is_alive', true)]]
       - messages() → return ['target_player_id.required' => 'Le successeur est obligatoire.', 'target_player_id.exists' => 'Ce joueur n\'existe pas ou est éliminé.']
 
+// app/Http/Middleware/IsAdmin.php
+IsAdmin.php
+    functions:
+      - handle(Request $request, Closure $next) → return $next($request)
+
 // app/Http/Controllers/Auth/GoogleController.php
 GoogleController.php
     functions:
@@ -844,6 +851,23 @@ PushSubscriptionController.php
     functions:
       - store(Request $request) → return response()->json(['success' => true])
       - destroy(Request $request) → return response()->json(['success' => true])
+
+// app/Http/Controllers/Admin/AdminGameController.php
+AdminGameController.php
+    functions:
+      - index(Request $request) → return view('admin.games.index', compact('games', 'statusFilter'))
+      - show(Request $request, int $id) → return view('admin.games.show', compact('game'))
+
+// app/Http/Controllers/Admin/AdminDashboardController.php
+AdminDashboardController.php
+    functions:
+      - index(Request $request) → return view('admin.dashboard', compact('totalGames', 'activeGames', 'finishedGames', 'totalUsers', 'recentActive'))
+
+// app/Http/Controllers/Admin/AdminUserController.php
+AdminUserController.php
+    functions:
+      - index(Request $request) → return view('admin.users.index')
+      - show(Request $request, int $id) → return view('admin.users.show')
 
 // app/Notifications/PlayerKilledNightNotification.php
 PlayerKilledNightNotification.php
@@ -1406,6 +1430,12 @@ PhaseGuardTest.php
 
 // tests/TestCase.php
 TestCase.php
+
+// database/migrations/2026_06_24_000001_add_is_admin_to_users_table.php
+2026_06_24_000001_add_is_admin_to_users_table.php
+    functions:
+      - up() → void
+      - down() → void
 
 // database/migrations/2026_06_05_074521_add_user_id_to_exclusions_table.php
 2026_06_05_074521_add_user_id_to_exclusions_table.php
