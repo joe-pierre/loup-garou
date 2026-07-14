@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-14 — Warning dépréciation @dataProvider doc-comment (PhaseGuardTest)
+
+- **Symptôme :** `php artisan test` affichait 3 warnings de dépréciation PHPUnit sur `tests/Unit/Services/PhaseGuardTest.php` — les annotations `@dataProvider` en doc-comment seront supprimées en PHPUnit 12.
+- **Cause :** les 3 méthodes de test utilisant un data provider déclaraient celui-ci via `/** @dataProvider nomDeLaMethode */` au lieu de l'attribut PHP natif.
+- **Fix :** remplacement des 3 annotations doc-comment par `#[DataProvider('nomDeLaMethode')]` et ajout de `use PHPUnit\Framework\Attributes\DataProvider;` en haut du fichier.
+
+---
+
 ### [x] 2026-06-24 — Relation `targetPlayer` inexistante dans `PhaseManager::endNight()`
 
 - **Symptôme :** `ProcessNightEnd` échouait en boucle avec `Call to undefined relationship [targetPlayer]` — partie 140 bloquée en `processing_night` depuis 23:30.
