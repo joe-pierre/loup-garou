@@ -448,6 +448,12 @@
 
 ---
 
+## Phase 30 — Maintenance tests (2026-07-14)
+
+- [x] Warning dépréciation `@dataProvider` doc-comment dans `PhaseGuardTest` — migration vers `#[DataProvider(...)]`
+
+---
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`

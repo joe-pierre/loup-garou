@@ -5,13 +5,14 @@ namespace Tests\Unit\Services;
 use App\Models\Game;
 use App\Services\PhaseGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class PhaseGuardTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @dataProvider nightStatusProvider */
+    #[DataProvider('nightStatusProvider')]
     public function test_is_night_retourne_true_pour_statuts_nocturnes(string $status): void
     {
         $game = Game::factory()->create(['status' => $status]);
@@ -27,7 +28,7 @@ class PhaseGuardTest extends TestCase
         ];
     }
 
-    /** @dataProvider dayStatusProvider */
+    #[DataProvider('dayStatusProvider')]
     public function test_is_day_retourne_true_pour_statuts_diurnes(string $status): void
     {
         $game = Game::factory()->create(['status' => $status]);
@@ -42,7 +43,7 @@ class PhaseGuardTest extends TestCase
         ];
     }
 
-    /** @dataProvider nonNightStatusProvider */
+    #[DataProvider('nonNightStatusProvider')]
     public function test_is_night_retourne_false_pour_statuts_non_nocturnes(string $status): void
     {
         $game = Game::factory()->create(['status' => $status]);
