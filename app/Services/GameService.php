@@ -470,17 +470,7 @@ class GameService
      */
     public function validateTimerSettings(array $timers): void
     {
-        $limits = config('game.timers.limits');
-
-        foreach ($timers as $key => $value) {
-            if (! isset($limits[$key]) || $limits[$key]['host_configurable'] === false) {
-                abort(422, "Le timer '{$key}' n'est pas configurable.");
-            }
-
-            if (! is_int($value) || $value < $limits[$key]['min'] || $value > $limits[$key]['max']) {
-                abort(422, "Le timer '{$key}' doit être compris entre {$limits[$key]['min']} et {$limits[$key]['max']} secondes.");
-            }
-        }
+        app(\App\Services\GameSettingsService::class)->validateTimerSettings($timers);
     }
 
     /**
@@ -494,18 +484,7 @@ class GameService
      */
     public function updateTimerSettings(Game $game, array $timers): Game
     {
-        if ($game->status !== 'waiting') {
-            abort(409, 'Les timers ne peuvent être modifiés que dans la salle d\'attente.');
-        }
-
-        $this->validateTimerSettings($timers);
-
-        $currentSettings = $game->settings ?? [];
-        $currentSettings['timers'] = array_merge($currentSettings['timers'] ?? [], $timers);
-
-        $game->update(['settings' => $currentSettings]);
-
-        return $game;
+        return app(\App\Services\GameSettingsService::class)->updateTimerSettings($game, $timers);
     }
 
     /**
@@ -517,17 +496,7 @@ class GameService
      */
     public function validateRoleSettings(array $roles): void
     {
-        foreach (['witch', 'hunter'] as $key) {
-            if (array_key_exists($key, $roles) && ! in_array($roles[$key], [0, 1], true)) {
-                abort(422, "Le rôle '{$key}' doit être 0 ou 1.");
-            }
-        }
-
-        foreach (array_keys($roles) as $key) {
-            if (! in_array($key, ['witch', 'hunter'], true)) {
-                abort(422, "Le rôle '{$key}' n'est pas configurable.");
-            }
-        }
+        app(\App\Services\GameSettingsService::class)->validateRoleSettings($roles);
     }
 
     /**
@@ -541,18 +510,7 @@ class GameService
      */
     public function updateRoleSettings(Game $game, array $roles): Game
     {
-        if ($game->status !== 'waiting') {
-            abort(409, 'La composition des rôles ne peut être modifiée que dans la salle d\'attente.');
-        }
-
-        $this->validateRoleSettings($roles);
-
-        $currentSettings = $game->settings ?? [];
-        $currentSettings['roles'] = array_merge($currentSettings['roles'] ?? [], $roles);
-
-        $game->update(['settings' => $currentSettings]);
-
-        return $game;
+        return app(\App\Services\GameSettingsService::class)->updateRoleSettings($game, $roles);
     }
 
     /**
