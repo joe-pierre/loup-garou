@@ -2,10 +2,12 @@
 
 namespace Tests\Feature\Game;
 
+use App\Events\Game\PlayerJoined;
 use App\Models\Exclusion;
 use App\Models\Game;
 use App\Models\GamePlayer;
 use App\Models\User;
+use Illuminate\Contracts\Broadcasting\Factory as BroadcastFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
@@ -106,5 +108,42 @@ class JoinGameTest extends TestCase
         // Deuxième joueur : game.status != 'waiting' → 409
         $responseB = $this->actingAs($userB)->postJson("/game/{$game->code}/join", ['pseudo' => 'JoueurB']);
         $responseB->assertStatus(409);
+    }
+
+    public function test_partie_demarre_meme_si_broadcast_playerjoined_echoue(): void
+    {
+        Queue::fake();
+
+        // Simule un incident réseau/Reverb : le broadcast PlayerJoined lève une
+        // exception, les autres broadcasts (GameStarted, etc.) restent no-op.
+        $factory = \Mockery::mock(BroadcastFactory::class);
+        $factory->shouldReceive('queue')->andReturnUsing(function ($event) {
+            if ($event instanceof PlayerJoined) {
+                throw new \RuntimeException('Reverb indisponible (simulation test)');
+            }
+
+            return null;
+        });
+        $factory->shouldReceive('event')->andReturnUsing(
+            fn ($event) => new \Illuminate\Broadcasting\PendingBroadcast(app('events'), $event)
+        );
+        $this->app->instance(BroadcastFactory::class, $factory);
+
+        $game = Game::factory()->create(['max_players' => 6]);
+        GamePlayer::factory()->count(5)->create(['game_id' => $game->id]);
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->postJson("/game/{$game->code}/join", [
+            'pseudo' => 'DernierJoueur',
+        ]);
+
+        $response->assertStatus(200);
+
+        // Malgré l'échec du broadcast PlayerJoined, startGame() doit s'exécuter :
+        // la partie transite bien vers electing_mayor.
+        $this->assertDatabaseHas('games', [
+            'id'     => $game->id,
+            'status' => 'electing_mayor',
+        ]);
     }
 }

@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-22 — Partie bloquée en waiting + 404 role-reveal (broadcast PlayerJoined non protégé + resync() sur mauvais critère)
+
+- **Symptôme :** lors d'un incident réseau/Reverb au remplissage du dernier slot, la partie restait bloquée en `status='waiting'` (le `GamePlayer` était bien créé en base). Côté client, `resync()` redirigeait quand même vers `/role-reveal` dès que `slots_remaining === 0`, menant à un état incohérent (404).
+- **Cause :** `broadcast(new PlayerJoined(...))` dans `GameService::joinGame()` (event `ShouldBroadcastNow`, synchrone) n'était pas protégé — une exception à cet endroit empêchait l'appel à `startGame()` juste après. `resync()` dérivait sa redirection de `slots_remaining === 0` en plus de `status !== 'waiting'`, alors que seul `status` reflète l'avancement réel de la partie.
+- **Fix :** `try/catch (\Throwable)` + `Log::warning()` autour du broadcast `PlayerJoined` dans `joinGame()` — l'exécution continue vers `startGame()` quel que soit le résultat du broadcast. Suppression de la branche `slots_remaining === 0` dans `resync()` ; seule `status !== 'waiting'` déclenche la redirection. Voir DECISIONS.md "Partie bloquée en waiting + 404 role-reveal" pour le détail complet.
+
+---
+
 ### [x] 2026-07-22 — Chasseur Maire tué de nuit : succession déclenchée avant le tir (ProcessNightActions + WitchAction)
 
 - **Symptôme :** un Chasseur-Maire tué de nuit (loups ou poison sorcière) voyait la succession du maire partir immédiatement au lieu d'attendre son tour de tir. Sur le chemin "maire en sursis" de `WitchAction` (sorcière ayant choisi de ne pas sauver le maire visé par les loups), le Chasseur ne tirait même jamais — `hunter_pending` n'était pas créé du tout sur ce chemin.

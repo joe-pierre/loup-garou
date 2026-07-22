@@ -499,6 +499,15 @@
       (`ProcessNightActions`, `VoteService` ×2, `GameService::quitGame`, `HunterAction`,
       `WitchAction` ×6). Aucune signature publique changée. 205 tests verts.
 
+## Phase 36 — Bugfix startGame bloqué par échec broadcast PlayerJoined (2026-07-22)
+
+- [x] `GameService::joinGame()` : broadcast `PlayerJoined` encapsulé dans un try/catch
+      (`Log::warning()`) — un échec réseau/Reverb ne bloque plus la transition vers
+      `startGame()`. `resync()` (`waiting-room.blade.php`) : suppression de la
+      redirection sur `slots_remaining === 0`, ne redirige plus que sur
+      `status !== 'waiting'`. Test `test_partie_demarre_meme_si_broadcast_playerjoined_echoue`
+      ajouté. 206 tests verts.
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
