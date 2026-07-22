@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 21h49
+Generated at: 22h21
 
 ## PHP Analysis (Core Logic)
 
@@ -1482,6 +1482,18 @@ TestCase.php
       - up() → void
       - down() → void
 
+// database/migrations/2026_07_22_221716_add_cupidon_to_game_players_role_enum.php
+2026_07_22_221716_add_cupidon_to_game_players_role_enum.php
+    functions:
+      - up() → void
+      - down() → void
+
+// database/migrations/2026_07_22_221716_add_lover_player_id_to_game_players_table.php
+2026_07_22_221716_add_lover_player_id_to_game_players_table.php
+    functions:
+      - up() → void
+      - down() → void
+
 // database/migrations/2026_06_03_000005_create_exclusions_table.php
 2026_06_03_000005_create_exclusions_table.php
     functions:
@@ -1490,6 +1502,12 @@ TestCase.php
 
 // database/migrations/2026_06_03_000002_create_game_players_table.php
 2026_06_03_000002_create_game_players_table.php
+    functions:
+      - up() → void
+      - down() → void
+
+// database/migrations/2026_07_22_221716_add_lovers_to_games_winner_team_enum.php
+2026_07_22_221716_add_lovers_to_games_winner_team_enum.php
     functions:
       - up() → void
       - down() → void
@@ -1508,6 +1526,12 @@ TestCase.php
 
 // database/migrations/2026_06_04_002156_create_push_subscriptions_table.php
 2026_06_04_002156_create_push_subscriptions_table.php
+    functions:
+      - up() → void
+      - down() → void
+
+// database/migrations/2026_07_22_221716_add_cupidon_link_to_game_actions_type_enum.php
+2026_07_22_221716_add_cupidon_link_to_game_actions_type_enum.php
     functions:
       - up() → void
       - down() → void

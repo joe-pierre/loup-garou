@@ -15,4 +15,5 @@ enum ActionType: string
     case WITCH_PASS       = 'witch_pass';
     case HUNTER_SHOT      = 'hunter_shot';
     case READY            = 'ready';
+    case CUPIDON_LINK     = 'cupidon_link';
 }

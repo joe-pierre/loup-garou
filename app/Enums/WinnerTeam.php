@@ -7,4 +7,5 @@ enum WinnerTeam: string
 {
     case VILLAGERS  = 'villagers';
     case WEREWOLVES = 'werewolves';
+    case LOVERS     = 'lovers';
 }

@@ -508,6 +508,26 @@
       `status !== 'waiting'`. Test `test_partie_demarre_meme_si_broadcast_playerjoined_echoue`
       ajouté. 206 tests verts.
 
+## Phase 37 — Cupidon Étape 1 : migration schéma + extension enums (2026-07-22)
+
+- [x] `PlayerRole` (+ `cupidon`), `ActionType` (+ `cupidon_link`), `WinnerTeam` (+ `lovers`)
+      étendus dans `app/Enums/` — même pattern d'ajout que les cases existantes.
+- [x] Migration `add_cupidon_to_game_players_role_enum` — ENUM `game_players.role`
+      étendu à `cupidon` (même procédé que witch/hunter en v1.2 : `ALTER TABLE ... MODIFY COLUMN ... ENUM(...)`).
+- [x] Migration `add_cupidon_link_to_game_actions_type_enum` — ENUM `game_actions.type`
+      étendu à `cupidon_link`.
+- [x] Migration `add_lovers_to_games_winner_team_enum` — ENUM `games.winner_team`
+      étendu à `lovers` (colonne définie via `$table->enum()` dans la migration de création ;
+      extension par `ALTER TABLE ... MODIFY COLUMN`, cohérent avec les deux enums ci-dessus).
+- [x] Migration `add_lover_player_id_to_game_players_table` — colonne `lover_player_id`
+      (FK nullable vers `game_players`, `nullOnDelete`) conforme à `SPEC_CUPIDON.md` §2.
+- [x] `README.md` — tableau Enums mis à jour (`cupidon`, `cupidon_link`, `lovers`).
+- [x] Aucun test existant ne fait d'assertion exhaustive sur `cases()` de ces 3 enums —
+      vérifié par grep, aucune régression possible de ce type.
+- [x] Aucune logique métier touchée (`RoleDistributor`, `PhaseManager`, `RoleActions/*`
+      non modifiés) — périmètre strictement schéma + enums + doc. 207 tests verts
+      (inchangé avant/après, migrations testées avec rollback + réapplication).
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
@@ -517,5 +537,6 @@
 - Étape 10 ✅ Terminée — Audit final de conformité CLAUDE.md
 - Roadmap Code Propre ✅ Complète (Étapes 1→10)
 - Phase 26 ✅ Terminée — Sursis maire + historique aléatoire
+- v1.3 Cupidon — Étape 1/8 ✅ (schéma + enums) — voir SPEC_CUPIDON.md §8 pour la suite
 - Phase 27 ✅ Terminée — P1 succession sorcière, P2 persistance random_elimination, P3 couronne maire jour
 - v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md
