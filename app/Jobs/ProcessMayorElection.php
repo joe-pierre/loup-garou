@@ -66,8 +66,24 @@ class ProcessMayorElection implements ShouldQueue
             return;
         }
 
-        broadcast(new MayorElected($result['game'], $result['player'], $result['was_random']));
-        broadcast(new NightStarted($result['game']));
+        try {
+            broadcast(new MayorElected($result['game'], $result['player'], $result['was_random']));
+        } catch (\Throwable $e) {
+            Log::warning('ProcessMayorElection: échec du broadcast MayorElected (incident réseau/Reverb), poursuite du flux', [
+                'game_id'   => $result['game']->id,
+                'player_id' => $result['player']->id,
+                'exception' => $e->getMessage(),
+            ]);
+        }
+
+        try {
+            broadcast(new NightStarted($result['game']));
+        } catch (\Throwable $e) {
+            Log::warning('ProcessMayorElection: échec du broadcast NightStarted (incident réseau/Reverb), poursuite du flux', [
+                'game_id'   => $result['game']->id,
+                'exception' => $e->getMessage(),
+            ]);
+        }
 
         // Délai avant le premier tour voyante : laisse le temps à l'UI d'afficher MayorElected.
         ProcessSeerTurn::dispatch($this->gameId, $result['game']->round)
