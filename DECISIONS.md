@@ -1,3 +1,19 @@
+## [RÉSOLU] lover_player_id absent de $fillable — cascade de mort Cupidon silencieusement no-op
+
+**Contexte :** `feat/cupidon-elimination-cascade` — `app/Services/PlayerEliminationService.php`, `app/Models/GamePlayer.php`. Étape 2 de l'implémentation Cupidon (SPEC_CUPIDON.md §5, suite de l'Étape 1 schéma + enums).
+
+**Symptôme / Problème :** `PlayerEliminationService::eliminate()` enrichi avec la cascade récursive (`$player->lover_player_id` → élimination de l'amoureux vivant). Premier test écrit (`$playerA->update(['lover_player_id' => $playerB->id])` puis `eliminate($playerA)`) échouait : `$playerB` restait `is_alive = true` après l'appel, alors que le code de cascade semblait correct à la lecture.
+
+**Cause / Alternatives :** La migration de l'Étape 1 (`add_lover_player_id_to_game_players_table`) a ajouté la colonne au schéma uniquement, sans mettre à jour `$fillable` sur `GamePlayer`. Eloquent ignore silencieusement une assignation de masse (`update()`/`create()`) sur une colonne absente de `$fillable` — aucune exception, aucun warning, juste une valeur qui ne part jamais en base. Le bug n'a donc pas été détecté à l'Étape 1 (aucun test n'exerçait encore la colonne). Aucune alternative envisagée : ajouter la colonne à `$fillable` est le seul fix possible, cohérent avec toutes les autres colonnes du modèle.
+
+**Fix / Décision :** `lover_player_id` ajouté à `$fillable` dans `GamePlayer`. `PlayerEliminationService::eliminate()` reste tel que spécifié dans SPEC_CUPIDON.md §5 : pose `is_alive = false`, puis cascade récursive sur `lover_player_id` si l'amoureux existe et est vivant, avec garde défensive `$lover->id !== $player->id` contre une auto-référence accidentelle.
+
+**Leçon :** Toute migration qui ajoute une colonne destinée à être renseignée via mass assignment (`update()`/`create()`) doit être accompagnée dans la **même tâche** de l'ajout de cette colonne à `$fillable` du modèle — une migration schema-only sans le modèle à jour est un bug silencieux garanti (pas d'exception à l'écriture), qui ne se révèle qu'au premier test ou usage réel de la colonne. Vérifier systématiquement `$fillable` dès qu'une nouvelle colonne FK/mutable est ajoutée à une table déjà couverte par un modèle Eloquent.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [RÉSOLU] Partie bloquée en night — broadcasts MayorElected/NightStarted non protégés dans ProcessMayorElection
 
 **Contexte :** `fix/broadcast-failure-blocks-startgame` — `app/Jobs/ProcessMayorElection.php`. Suite directe de l'entrée précédente (même incident Reverb, 58 échecs de broadcast constatés en logs le même jour, cause racine identique).
