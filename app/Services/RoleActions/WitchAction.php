@@ -12,7 +12,7 @@ use App\Services\PhaseGuard;
 use App\Services\VoteService;
 use Illuminate\Support\Facades\DB;
 
-class WitchAction
+class WitchAction extends RoleAction
 {
     public function __construct(private VoteService $voteService) {}
 
@@ -49,16 +49,7 @@ class WitchAction
         $mayorVictim         = null;
 
         $result = DB::transaction(function () use ($witch, $action, $targetId, $game, &$witchDiedFromWolves, &$mayorVictim) {
-            $alreadyActed = GameAction::where('game_id', $game->id)
-                ->where('player_id', $witch->id)
-                ->where('round', $game->round)
-                ->whereIn('type', ['witch_heal', 'witch_kill', 'witch_pass'])
-                ->lockForUpdate()
-                ->exists();
-
-            if ($alreadyActed) {
-                abort(409, 'Vous avez déjà utilisé votre pouvoir ce round.');
-            }
+            $this->guardNotAlreadyActed($game, $witch->id, ['witch_heal', 'witch_kill', 'witch_pass']);
 
             $settings = $witch->settings ?? [];
             $target   = null;

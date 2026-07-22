@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 10h16
+Generated at: 10h36
 
 ## PHP Analysis (Core Logic)
 
@@ -998,6 +998,11 @@ GameService.php
       - cancelGame(Game $game) → void
       - generateUniqueCode() → return $code
 
+// app/Services/RoleActions/RoleAction.php
+RoleAction.php
+    functions:
+      - guardNotAlreadyActed(Game $game, int $playerId, array $types) → void
+
 // app/Services/RoleActions/WitchAction.php
 WitchAction.php
     functions:
@@ -1007,12 +1012,12 @@ WitchAction.php
 // app/Services/RoleActions/SeerAction.php
 SeerAction.php
     functions:
-      - check(GamePlayer $seer, int $targetId) → return DB::transaction(function () use ($seer, $targetId, $game) { $alreadyActed = GameAction::where('game_id', $game->id)->where('player_id', $seer->id)->where('type', 'seer_check')->where('round', $game->round)->lockForUpdate()->exists(); if ($alreadyActed) { abort(409, 'Vous avez déjà utilisé votre pouvoir ce round.'); } GameAction::create(['game_id' => $game->id, 'player_id' => $seer->id, 'type' => 'seer_check', 'target_player_id' => $targetId, 'round' => $game->round, 'phase' => 'night']); return GamePlayer::findOrFail($targetId); })
+      - check(GamePlayer $seer, int $targetId) → return DB::transaction(function () use ($seer, $targetId, $game) { $this->guardNotAlreadyActed($game, $seer->id, ['seer_check']); GameAction::create(['game_id' => $game->id, 'player_id' => $seer->id, 'type' => 'seer_check', 'target_player_id' => $targetId, 'round' => $game->round, 'phase' => 'night']); return GamePlayer::findOrFail($targetId); })
 
 // app/Services/RoleActions/HunterAction.php
 HunterAction.php
     functions:
-      - shoot(GamePlayer $hunter, int $targetId) → return DB::transaction(function () use ($hunter, $targetId, $game) { $alreadyShot = GameAction::where('game_id', $game->id)->where('player_id', $hunter->id)->where('type', 'hunter_shot')->where('round', $game->round)->lockForUpdate()->exists(); if ($alreadyShot) { abort(409, 'Vous avez déjà tiré ce round.'); } $target = GamePlayer::where('id', $targetId)->where('game_id', $game->id)->where('is_alive', true)->lockForUpdate()->first(); if (!$target) { abort(404, 'Cible invalide.'); } $target->update(['is_alive' => false]); GameAction::create(['game_id' => $game->id, 'player_id' => $hunter->id, 'type' => 'hunter_shot', 'target_player_id' => $target->id, 'round' => $game->round, 'phase' => PhaseGuard::isNightOrProcessing($game) ? 'night' : 'day']); return $target; })
+      - shoot(GamePlayer $hunter, int $targetId) → return DB::transaction(function () use ($hunter, $targetId, $game) { $this->guardNotAlreadyActed($game, $hunter->id, ['hunter_shot']); $target = GamePlayer::where('id', $targetId)->where('game_id', $game->id)->where('is_alive', true)->lockForUpdate()->first(); if (!$target) { abort(404, 'Cible invalide.'); } $target->update(['is_alive' => false]); GameAction::create(['game_id' => $game->id, 'player_id' => $hunter->id, 'type' => 'hunter_shot', 'target_player_id' => $target->id, 'round' => $game->round, 'phase' => PhaseGuard::isNightOrProcessing($game) ? 'night' : 'day']); return $target; })
 
 // app/Services/GameSettingsService.php
 GameSettingsService.php
