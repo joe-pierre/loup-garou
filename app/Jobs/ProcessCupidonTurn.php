@@ -13,13 +13,12 @@ use Illuminate\Queue\SerializesModels;
 /**
  * Démarre le tour de Cupidon (round 1 exclusivement, avant la Voyante).
  *
- * ⚠️ Non branché dans PhaseManager::startNight() à ce stade (SPEC_CUPIDON.md §8,
- * tâche 3) — dispatché uniquement manuellement en test. L'intégration réelle
- * (condition round === 1, chaînage vers ProcessSeerTurn) est l'étape suivante.
+ * Branché dans PhaseManager::startNight() (SPEC_CUPIDON.md §8, tâche 4) : dispatché
+ * à la place de ProcessSeerTurn quand round === 1 et qu'un Cupidon est distribué.
  *
- * Si Cupidon mort/absent/inactif ou composition sans Cupidon → aucun effet
- * (pas de broadcast, pas de dispatch — voir DECISIONS.md pour le choix de
- * ne pas chaîner ProcessSeerTurn depuis cette étape).
+ * Si Cupidon mort/absent/inactif ou composition sans Cupidon → aucun effet Cupidon,
+ * mais la nuit doit continuer : dispatch immédiat de ProcessSeerTurn (même principe
+ * que ProcessSeerTurn lui-même quand la Voyante est morte/absente/inactive).
  * Sinon :
  *   - Broadcast CupidonTurnStarted sur le canal privé de Cupidon.
  *   - Dispatche ProcessCupidonAutoAction après le timer 'cupidon'.
@@ -44,8 +43,10 @@ class ProcessCupidonTurn implements ShouldQueue
 
         $cupidon = $game->players()->where('role', 'cupidon')->where('is_alive', true)->first();
 
-        // Pas de Cupidon dans la composition, mort, ou inactif → rien à faire.
+        // Pas de Cupidon dans la composition, mort, ou inactif → la nuit continue
+        // sans lui, la Voyante démarre immédiatement (délai night_start_delay déjà écoulé).
         if (! $cupidon || $cupidon->is_inactive) {
+            ProcessSeerTurn::dispatch($this->gameId, $this->round);
             return;
         }
 

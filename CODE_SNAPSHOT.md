@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 22h55
+Generated at: 23h41
 
 ## PHP Analysis (Core Logic)
 
@@ -1199,6 +1199,16 @@ FullGameIntegrationTest.php
       - test_sequence_nocturne_voyante_puis_loups_puis_jour() → void
       - test_cascade_deux_successions_ne_bloque_pas_la_partie() → void
 
+// tests/Feature/Game/CupidonNightIntegrationTest.php
+CupidonNightIntegrationTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - makeDayGame(int $round) → return Game::factory()->create(['status' => 'day', 'max_players' => 6, 'round' => $round])
+      - test_cupidon_turn_started_avant_seer_turn_started_si_cupidon_distribue() → void
+      - test_seer_turn_started_immediat_si_pas_de_cupidon() → void
+      - test_pas_de_cupidon_turn_started_au_round_2_meme_avec_cupidon_distribue() → void
+
 // tests/Feature/Game/ChatTest.php
 ChatTest.php
     attributes:
@@ -1265,6 +1275,8 @@ RoleSettingsTest.php
       - test_role_invalide_est_rejete() → void
       - test_role_distributor_inclut_sorciere_si_configuree() → void
       - test_role_distributor_inclut_chasseur_si_configure() → void
+      - test_role_distributor_inclut_cupidon_si_configure() → void
+      - test_role_distributor_ninclut_pas_cupidon_par_defaut() → void
       - test_role_distributor_remplit_villageois_automatiquement() → void
       - test_deux_sorcieres_impossibles() → void
       - test_villageois_residuels_toujours_positifs() → void
@@ -1335,9 +1347,9 @@ CupidonJobsTest.php
     functions:
       - makeNightRoundOneGame() → return Game::factory()->create(['status' => 'night', 'max_players' => 6, 'round' => 1])
       - test_cupidon_turn_broadcast_et_dispatch_auto_action() → void
-      - test_cupidon_turn_ne_fait_rien_si_pas_de_cupidon_dans_la_composition() → void
-      - test_cupidon_turn_ne_fait_rien_si_cupidon_mort() → void
-      - test_cupidon_turn_ne_fait_rien_si_cupidon_inactif() → void
+      - test_cupidon_turn_dispatche_seer_turn_si_pas_de_cupidon_dans_la_composition() → void
+      - test_cupidon_turn_dispatche_seer_turn_si_cupidon_mort() → void
+      - test_cupidon_turn_dispatche_seer_turn_si_cupidon_inactif() → void
       - test_cupidon_turn_skip_si_mauvais_round() → void
       - test_cupidon_turn_skip_si_mauvais_status() → void
       - test_cupidon_auto_action_ne_forme_aucun_couple_si_pas_dagi() → void

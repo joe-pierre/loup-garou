@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Events\Game\DayStarted;
 use App\Events\Game\NightStarted;
 use App\Events\Game\PhaseAnnouncement;
+use App\Jobs\ProcessCupidonTurn;
 use App\Jobs\ProcessDayVote;
 use App\Jobs\ProcessSeerTurn;
 use App\Models\Game;
@@ -135,8 +136,20 @@ class PhaseManager
 
         broadcast(new PhaseAnnouncement($locked->id, 'night_fall', "Le village s'endort\u{2026}", 4000));
         broadcast(new NightStarted($locked));
-        ProcessSeerTurn::dispatch($locked->id, $locked->round)
-            ->delay(now()->addSeconds($locked->timer('night_start_delay')));
+
+        // Cupidon agit une seule fois, au tout premier round, avant la Voyante
+        // (SPEC_CUPIDON.md §3). Rounds suivants ou parties sans Cupidon distribué :
+        // comportement v1.1/v1.2 inchangé, ProcessSeerTurn dispatché directement.
+        $hasCupidon = $locked->round === 1
+            && $locked->players()->where('role', 'cupidon')->exists();
+
+        if ($hasCupidon) {
+            ProcessCupidonTurn::dispatch($locked->id, $locked->round)
+                ->delay(now()->addSeconds($locked->timer('night_start_delay')));
+        } else {
+            ProcessSeerTurn::dispatch($locked->id, $locked->round)
+                ->delay(now()->addSeconds($locked->timer('night_start_delay')));
+        }
     }
 
     /**
