@@ -164,10 +164,10 @@ app/
 | Fichier | Valeurs clés |
 |---|---|
 | `app/Enums/GameStatus.php` | waiting, electing_mayor, night, wolves_turn, processing_night, day, processing_day, finished |
-| `app/Enums/PlayerRole.php` | villager, werewolf, white_wolf, seer, witch, hunter |
-| `app/Enums/ActionType.php` | mayor_vote, night_vote, day_vote, seer_check, witch_heal, witch_kill, hunter_shot, ready, … |
+| `app/Enums/PlayerRole.php` | villager, werewolf, white_wolf, seer, witch, hunter, cupidon |
+| `app/Enums/ActionType.php` | mayor_vote, night_vote, day_vote, seer_check, witch_heal, witch_kill, hunter_shot, ready, cupidon_link, … |
 | `app/Enums/ChatChannel.php` | general, werewolves, dead |
-| `app/Enums/WinnerTeam.php` | villagers, werewolves |
+| `app/Enums/WinnerTeam.php` | villagers, werewolves, lovers |
 
 ---
 

@@ -10,6 +10,7 @@ enum PlayerRole: string
     case SEER       = 'seer';
     case WITCH      = 'witch';
     case HUNTER     = 'hunter';
+    case CUPIDON    = 'cupidon';
     case WHITE_WOLF = 'white_wolf'; // v1.3+, anticipation
 
     /** Retourne true si le rôle est dans le camp des loups */
