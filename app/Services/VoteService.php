@@ -305,6 +305,24 @@ class VoteService
      */
     public function resolveDayVote(Game $game): void
     {
+        $result = $this->resolveDayVoteWinner($game);
+
+        // Tout ce qui suit est HORS transaction
+        $this->notifyDayVoteResult($game, $result);
+        $this->dispatchDayVoteConsequences($game, $result);
+    }
+
+    /**
+     * Calcule le résultat du vote jour dans une transaction atomique : élimination,
+     * égalité (personne éliminé), ou 0 vote (élimination aléatoire).
+     * Guard 'processing_day' : passe le statut de 'day' à 'processing_day' dès l'entrée
+     * en transaction pour bloquer tout double-fire concurrent.
+     *
+     * @param  Game $game La partie en phase jour
+     * @return array{eliminated: GamePlayer|null, noElimReason: string|null, randomVictim: GamePlayer|null}
+     */
+    private function resolveDayVoteWinner(Game $game): array
+    {
         $eliminated   = null;
         $noElimReason = null;
         $randomVictim = null;
@@ -385,16 +403,60 @@ class VoteService
             }
         });
 
-        // Tout ce qui suit est HORS transaction
+        return [
+            'eliminated'   => $eliminated,
+            'noElimReason' => $noElimReason,
+            'randomVictim' => $randomVictim,
+        ];
+    }
 
-        if ($noElimReason) {
-            broadcast(new NoElimination($game, $noElimReason));
+    /**
+     * Broadcaste le résultat du vote jour (égalité, élimination aléatoire, ou élimination)
+     * et envoie la notification push le cas échéant. Ne déclenche aucune transition de phase.
+     *
+     * @param  Game                                                                                     $game   La partie concernée
+     * @param  array{eliminated: GamePlayer|null, noElimReason: string|null, randomVictim: GamePlayer|null} $result Résultat de resolveDayVoteWinner()
+     * @return void
+     */
+    private function notifyDayVoteResult(Game $game, array $result): void
+    {
+        if ($result['noElimReason']) {
+            broadcast(new NoElimination($game, $result['noElimReason']));
+            return;
+        }
+
+        if ($result['randomVictim']) {
+            broadcast(new RandomElimination($game, $result['randomVictim']));
+            return;
+        }
+
+        if (! $result['eliminated']) {
+            return;
+        }
+
+        broadcast(new PlayerEliminated($game, $result['eliminated'], 'day_vote'));
+
+        try {
+            $result['eliminated']->user->notify(new PlayerEliminatedDayNotification($result['eliminated']->role));
+        } catch (\Throwable) {}
+    }
+
+    /**
+     * Déclenche les conséquences du vote jour : vérification de victoire, tir du chasseur
+     * en attente, succession du maire, ou passage à la nuit suivante.
+     *
+     * @param  Game                                                                                     $game   La partie concernée
+     * @param  array{eliminated: GamePlayer|null, noElimReason: string|null, randomVictim: GamePlayer|null} $result Résultat de resolveDayVoteWinner()
+     * @return void
+     */
+    private function dispatchDayVoteConsequences(Game $game, array $result): void
+    {
+        if ($result['noElimReason']) {
             $this->phaseManager->startNight($game);
             return;
         }
 
-        if ($randomVictim) {
-            broadcast(new RandomElimination($game, $randomVictim));
+        if ($randomVictim = $result['randomVictim']) {
             if ($this->winConditionChecker->check($game)) {
                 return;
             }
@@ -412,15 +474,11 @@ class VoteService
             return;
         }
 
+        $eliminated = $result['eliminated'];
+
         if (! $eliminated) {
             return;
         }
-
-        broadcast(new PlayerEliminated($game, $eliminated, 'day_vote'));
-
-        try {
-            $eliminated->user->notify(new PlayerEliminatedDayNotification($eliminated->role));
-        } catch (\Throwable) {}
 
         if ($this->winConditionChecker->check($game)) {
             return;

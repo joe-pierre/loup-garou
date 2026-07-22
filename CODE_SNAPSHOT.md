@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 00h03
+Generated at: 10h09
 
 ## PHP Analysis (Core Logic)
 
@@ -932,6 +932,9 @@ VoteService.php
       - resolveNightVoteFromAction(Game $game) → return $action ? GamePlayer::find($action->target_player_id) : null
       - castNightVote(GamePlayer $wolf, int $targetId) → return $state
       - resolveDayVote(Game $game) → void
+      - resolveDayVoteWinner(Game $game) → return ['eliminated' => $eliminated, 'noElimReason' => $noElimReason, 'randomVictim' => $randomVictim]
+      - notifyDayVoteResult(Game $game, array $result) → void
+      - dispatchDayVoteConsequences(Game $game, array $result) → void
       - castDayVote(GamePlayer $voter, int $targetId) → return $this->getDayVoteSummary($voter->game)
       - getDayVoteSummary(Game $game) → return GameAction::where('game_id', $game->id)->where('type', 'day_vote')->where('round', $game->round)->get()->groupBy('target_player_id')->map(fn($group) => $group->sum('weight'))->toArray()
       - getNightVoteState(Game $game) → return $aliveWolves->map(fn(GamePlayer $w) => ['player_id' => $w->id, 'pseudo' => $w->pseudo, 'has_voted' => $votes->has($w->id), 'target_player_id' => $votes->get($w->id)?->target_player_id, 'target_pseudo' => $votes->has($w->id) ? $targets[$votes[$w->id]->target_player_id] ?? null : null])->values()->toArray()

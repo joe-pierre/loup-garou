@@ -462,6 +462,16 @@
 
 ---
 
+## Phase 32 — Découpage VoteService::resolveDayVote() (2026-07-22)
+
+- [x] `resolveDayVote()` découpée en trois méthodes privées : `resolveDayVoteWinner()`
+      (transaction), `notifyDayVoteResult()` (broadcasts + notification push),
+      `dispatchDayVoteConsequences()` (victoire, chasseur, succession maire, nuit suivante).
+      Ordre d'exécution et comportement identiques (asymétrie randomVictim/eliminated
+      préservée). Aucun guard touché. 202 tests verts.
+
+---
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
