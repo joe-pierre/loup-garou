@@ -1,3 +1,19 @@
+## [RÉSOLU] Modale succession maire masquant le panel de tir du Chasseur (nuit et jour)
+
+**Contexte :** `fix/hunter-mayor-succession-modal-overlap` — `resources/views/game/night.blade.php`, `resources/views/game/day.blade.php` (fonctions `nightScreen()` et `dayScreen()`).
+
+**Symptôme / Problème :** Un joueur cumulant Chasseur et Maire, mort de nuit (loups ou poison), ne voyait jamais le panel "éliminer quelqu'un" de son tour de tir. Diagnostiqué sur `game_id=249`, round 2, joueur `Maba diakhouba`. Le bug était plus fréquent quand la sorcière agissait ce round-là, car cela retarde l'arrivée du tour chasseur.
+
+**Cause / Alternatives :** `MayorSuccessionStarted` est broadcasté dès la mort du maire et ouvre immédiatement `successionOpen` (modale `fixed inset-0 z-50`, fond opaque). Le tour du chasseur arrive bien plus tard (mort → `hunter_pending` → `ProcessNightEnd` avec délai `witch_timer + mayor_succession_timer + 5s` → `ProcessHunterTurn` → `HunterTurnStarted`). Le listener `hunter-turn-started` de `nightScreen()`/`dayScreen()` bascule vers l'affichage du panel de tir (`nightPhase = 'hunter_turn'` / `hunterOpen = true`) mais ne touchait jamais `successionOpen` — les deux modales/panels partagent le même `z-index` et concernent le même joueur, donc la modale succession (plus récente dans le flux d'events, et en `day.blade.php` plus bas dans le DOM) reste visible par-dessus et bloque les clics. Backend correct et non modifié : le problème est purement un conflit d'affichage client entre deux états qui ne doivent jamais coexister pour un même joueur.
+
+**Fix / Décision :** Dans les deux listeners `hunter-turn-started` (`night.blade.php` et `day.blade.php`), ajout de `this.successionOpen = false;` en première instruction, avant toute autre affectation. Le tour de tir du Chasseur ferme systématiquement la modale succession si elle est encore ouverte. Aucun changement backend (`ProcessNightActions`, `ProcessNightEnd`, `ProcessHunterTurn`, pattern `hunter_pending`) ni de délai de timer. Vérifié que `closeSuccessionModal()` (appelé sur `mayor-succession-done`) reste un no-op sûr si `successionOpen` est déjà `false` — pas de race condition inverse.
+
+**Leçon :** Quand deux overlays plein écran de même `z-index` peuvent viser le même joueur à des moments différents (ici modale automatique "succession" vs panel d'action volontaire "tour de tir"), l'ouverture du second doit explicitement fermer le premier — ne pas supposer qu'un event de fermeture (`mayor-succession-done`) arrivera à temps, car son délai dépend de timers indépendants du tour concerné. Voir Guard #7 dans `RISK_GUARDS.md`.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] Classe abstraite RoleAction — guard anti-double-action partagé (SeerAction/WitchAction/HunterAction)
 
 **Contexte :** `refactor/role-action-shared-guards` — `app/Services/RoleActions/RoleAction.php` (nouveau), `SeerAction.php`, `WitchAction.php`, `HunterAction.php`.

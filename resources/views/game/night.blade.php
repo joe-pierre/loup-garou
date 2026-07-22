@@ -771,9 +771,13 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
 
                 if (this.isHunter) {
                     window.addEventListener('hunter-turn-started', () => {
-                        this.nightPhase          = 'hunter_turn';
+                        // Le maire-chasseur mort a pu voir la modale succession s'ouvrir avant
+                        // que son propre tour de tir n'arrive (délai witch_timer + mayor_succession_timer + 5s) :
+                        // elle doit systématiquement céder la place au panel de tir, jamais coexister.
+                        this.successionOpen        = false;
+                        this.nightPhase            = 'hunter_turn';
                         this.hunterSelectedTarget = null;
-                        this.hunterActionDone    = false;
+                        this.hunterActionDone     = false;
                         this.$nextTick(() => {
                             if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
                             gsap.to('#hunter-timer-bar', { width: '0%', duration: HUNTER_TIMER, ease: 'none' });

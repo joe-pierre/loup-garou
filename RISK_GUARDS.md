@@ -263,6 +263,40 @@ if (!$witch) {
 
 ---
 
+## GUARD #7 — Overlays plein écran concurrents visant le même joueur (client)
+
+### Symptôme sans protection
+Deux vues `fixed inset-0` de même `z-index` (ex. modale "Succession du Maire"
+et panel "Tour du Chasseur") peuvent s'appliquer au même joueur à des instants
+différents, dictés par des timers indépendants (`witch_timer`,
+`mayor_succession_timer`, etc.). Si celle ouverte automatiquement en premier
+(succession) n'est jamais explicitement fermée par celle qui arrive ensuite,
+elle reste visible par-dessus et bloque les clics — l'event de fermeture
+attendu (`mayor-succession-done`) peut arriver arbitrairement tard, voire
+après le nouvel overlay.
+
+### Règle
+Ne jamais compter sur l'event de fermeture "naturel" d'un overlay pour
+garantir qu'il ne coexiste pas avec un autre overlay plein écran destiné au
+même joueur. Le listener qui ouvre le second overlay doit fermer
+explicitement le premier en toute première instruction :
+
+```javascript
+window.addEventListener('hunter-turn-started', () => {
+    this.successionOpen = false; // ✅ ferme l'overlay précédent avant d'ouvrir le nouveau
+    this.nightPhase = 'hunter_turn'; // ou this.hunterOpen = true côté day.blade.php
+    // ...
+});
+// ❌ Interdit : ouvrir un nouvel overlay plein écran sans fermer les précédents
+//    qui peuvent viser le même joueur (succession, résultat de tour, etc.)
+```
+
+Vérifier aussi que la fermeture différée de l'overlay précédent (souvent un
+`setTimeout`) reste un no-op sûr si elle s'exécute après coup — ne jamais
+faire dépendre une fermeture d'un état qui pourrait avoir changé entre-temps.
+
+---
+
 ## TABLEAU DE VÉRIFICATION PAR ÉTAPE
 
 | Étape | Guards à vérifier avant de commencer |
