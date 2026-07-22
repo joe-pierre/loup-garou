@@ -312,9 +312,9 @@ Fichier : `resources/js/game-state.js` ~ligne 20
 
 ---
 
-**🟠 `mayor-election.blade.php` et `role-reveal.blade.php` s'abonnent à Echo directement**
+**✅ (Résolu 2026-06-20) `mayor-election.blade.php` et `role-reveal.blade.php` s'abonnaient à Echo directement**
 
-Les deux vues montent un abonnement `window.Echo.channel()` en parallèle du store `gameState` qui souscrit au même canal. Risque de double-traitement des events `.mayor.elected`, `.night.started`, `.player.ready`, `.mayor.election.started`.
+Corrigé — voir DECISIONS.md "Double abonnement Echo — mayor-election.blade.php et role-reveal.blade.php". Les deux vues ne montent plus de `window.Echo.channel()` ; elles réagissent via `window.addEventListener` aux `CustomEvent` (`mayor-vote-cast`, `mayor-elected`, `mayor-election-started`, `player-ready`) dispatchés par `game-state.js`. Re-vérifié le 2026-07-22 : aucune régression.
 
 ---
 
