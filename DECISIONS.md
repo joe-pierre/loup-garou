@@ -1,3 +1,19 @@
+## [CHOIX] Découpage de VoteService::resolveDayVote() en trois méthodes privées
+
+**Contexte :** `refactor/split-vote-service-resolve-day-vote` — `app/Services/VoteService.php`.
+
+**Symptôme / Problème :** `resolveDayVote()` faisait 150 lignes concentrant calcul du résultat (transaction), broadcasts/notifications, et déclenchement des conséquences (victoire, chasseur, succession maire, nuit suivante) — signalé par AUDIT.md. Objectif : découper sans changer le comportement.
+
+**Cause / Alternatives :** Les branches `randomVictim` (0 vote) et `eliminated` (élimination normale) ont des logiques de conséquences asymétriques : la branche `randomVictim` ne gère jamais la succession du maire même si la victime aléatoire était maire (seul `hunter_pending` est vérifié), alors que la branche `eliminated` gère `hunter_pending` puis `is_mayor` en fallback. Cette asymétrie est un comportement existant, non documenté ailleurs, qui n'entrait pas dans le périmètre de cette tâche (zéro régression demandé). Alternative envisagée : unifier les deux branches dans une seule méthode `dispatchDayVoteConsequences()` avec un paramètre `$victim` générique — rejetée après lecture du code, car elle aurait fait disparaître visuellement cette asymétrie et risqué de la « corriger » silencieusement lors d'une future modification.
+
+**Fix / Décision :** `resolveDayVote()` orchestre désormais trois méthodes privées dans l'ordre exact d'origine : `resolveDayVoteWinner()` (transaction : élimination, égalité, ou 0 vote → tableau `['eliminated', 'noElimReason', 'randomVictim']`), `notifyDayVoteResult()` (broadcasts `NoElimination`/`RandomElimination`/`PlayerEliminated` + notification push, sans aucune transition de phase), `dispatchDayVoteConsequences()` (vérification de victoire, tir chasseur en attente, succession maire, ou nuit suivante — conserve la branche `randomVictim` sans gestion `is_mayor`, telle quelle). Le tableau de résultat `$result` est passé par valeur entre les trois méthodes plutôt que par référence (contrairement à l'original qui utilisait `&$eliminated` etc.) — plus lisible, sans risque car aucune méthode ne modifie plus l'état après la transaction. Aucune méthode publique de `VoteService` n'a changé de signature. 202 tests verts après découpage (198 avant + 4 déjà présents pour ce chemin, aucun cassé).
+
+**Leçon :** Avant de fusionner deux branches de code qui « se ressemblent » lors d'un découpage, vérifier qu'elles font vraiment la même chose — une asymétrie de comportement entre deux chemins voisins (ici mayor succession absente du chemin `randomVictim`) doit être préservée explicitement dans le découpage, pas silencieusement unifiée. Le pattern "un tableau de résultat nommé passé entre méthodes privées" est réutilisable pour tout futur découpage d'une méthode `resolveX()` combinant transaction + effets de bord post-transaction.
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] Extraction GameSettingsService de GameService (God Service)
 
 **Contexte :** `refactor/extract-game-settings-service` — `app/Services/GameService.php`, `app/Services/GameSettingsService.php`.
