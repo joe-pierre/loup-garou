@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-22 — Modale succession maire masquant le panel de tir du Chasseur
+
+- **Symptôme :** un joueur cumulant Chasseur et Maire, mort de nuit (loups ou poison sorcière), ne voyait jamais l'option "éliminer quelqu'un" de son tour de tir — masqué par la modale "Succession du Maire" restée ouverte par-dessus. Diagnostiqué sur `game_id=249`, round 2, joueur `Maba diakhouba`.
+- **Cause :** `successionOpen` s'ouvre immédiatement à la mort du maire (`mayor-succession-started`) alors que `hunter-turn-started` arrive bien plus tard (délai `witch_timer + mayor_succession_timer + 5s`) sans jamais fermer `successionOpen` — les deux vues partagent le même `z-index` plein écran.
+- **Fix :** ajout de `this.successionOpen = false;` en première instruction des listeners `hunter-turn-started` dans `night.blade.php` (`nightScreen()`) et `day.blade.php` (`dayScreen()`).
+
+---
+
 ### [x] 2026-07-14 — Warning dépréciation @dataProvider doc-comment (PhaseGuardTest)
 
 - **Symptôme :** `php artisan test` affichait 3 warnings de dépréciation PHPUnit sur `tests/Unit/Services/PhaseGuardTest.php` — les annotations `@dataProvider` en doc-comment seront supprimées en PHPUnit 12.

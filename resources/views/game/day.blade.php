@@ -630,6 +630,9 @@
                     this.closeSuccessionModal();
                 });
                 window.addEventListener('hunter-turn-started', (e) => {
+                    // Même conflit d'affichage que night.blade.php : un maire-chasseur mort de jour
+                    // peut encore avoir la modale succession ouverte quand son tour de tir démarre.
+                    this.successionOpen       = false;
                     this.hunterOpen           = true;
                     this.hunterSelectedTarget = null;
                     this.hunterSubmitting     = false;
