@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 22h21
+Generated at: 22h28
 
 ## PHP Analysis (Core Logic)
 
@@ -1444,6 +1444,15 @@ EventPayloadTest.php
 ExampleTest.php
     functions:
       - test_that_true_is_true() → void
+
+// tests/Unit/Services/PlayerEliminationServiceTest.php
+PlayerEliminationServiceTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_eliminer_un_joueur_pose_is_alive_false() → void
+      - test_eliminer_un_amoureux_cascade_sur_lautre_amoureux() → void
+      - test_cascade_ne_re_elimine_pas_un_amoureux_deja_mort() → void
 
 // tests/Unit/Services/PhaseGuardTest.php
 PhaseGuardTest.php

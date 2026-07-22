@@ -25,6 +25,7 @@ class GamePlayer extends Model
         'is_ready',
         'joined_at',
         'settings',
+        'lover_player_id',
     ];
 
     protected function casts(): array

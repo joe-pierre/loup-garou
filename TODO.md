@@ -528,6 +528,18 @@
       non modifiés) — périmètre strictement schéma + enums + doc. 207 tests verts
       (inchangé avant/après, migrations testées avec rollback + réapplication).
 
+## Phase 38 — Cupidon Étape 2 : cascade de mort dans PlayerEliminationService (2026-07-22)
+
+- [x] `PlayerEliminationService::eliminate()` enrichi — cascade récursive sur
+      `lover_player_id` si l'amoureux existe et est vivant (garde défensive
+      contre auto-référence). No-op garanti sur les parties sans Cupidon
+      (`lover_player_id` toujours null).
+- [x] `GamePlayer::$fillable` — `lover_player_id` ajouté (bug silencieux
+      découvert en écrivant le test, voir DECISIONS.md).
+- [x] `tests/Unit/Services/PlayerEliminationServiceTest.php` créé — 3 tests
+      (élimination simple, cascade amoureux, pas de re-élimination si déjà mort).
+      210 tests verts (207 avant + 3 nouveaux, aucun cassé).
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
@@ -537,6 +549,6 @@
 - Étape 10 ✅ Terminée — Audit final de conformité CLAUDE.md
 - Roadmap Code Propre ✅ Complète (Étapes 1→10)
 - Phase 26 ✅ Terminée — Sursis maire + historique aléatoire
-- v1.3 Cupidon — Étape 1/8 ✅ (schéma + enums) — voir SPEC_CUPIDON.md §8 pour la suite
+- v1.3 Cupidon — Étape 2/8 ✅ (cascade de mort PlayerEliminationService) — voir SPEC_CUPIDON.md §8 pour la suite
 - Phase 27 ✅ Terminée — P1 succession sorcière, P2 persistance random_elimination, P3 couronne maire jour
 - v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md
