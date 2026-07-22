@@ -610,10 +610,6 @@
                     this.players = json.data.players;
                     this.animateProgress(this.players.length);
                     this.pulseEmptySlots();
-                    if (json.data.slots_remaining === 0) {
-                        sessionStorage.setItem('__internalNavigation', '1');
-                        window.location.href = `/game/${this.gameCode}/role-reveal`;
-                    }
                 } catch { }
             },
 

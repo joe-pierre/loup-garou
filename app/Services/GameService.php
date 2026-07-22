@@ -141,7 +141,15 @@ class GameService
         });
 
         if ($result['broadcast']) {
-            broadcast(new PlayerJoined($result['game'], $result['player']));
+            try {
+                broadcast(new PlayerJoined($result['game'], $result['player']));
+            } catch (\Throwable $e) {
+                Log::warning('joinGame: échec du broadcast PlayerJoined (incident réseau/Reverb), poursuite du flux', [
+                    'game_id'   => $result['game']->id,
+                    'player_id' => $result['player']->id,
+                    'exception' => $e->getMessage(),
+                ]);
+            }
         }
 
         if ($result['start']) {

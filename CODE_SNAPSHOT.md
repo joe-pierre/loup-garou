@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 20h22
+Generated at: 21h10
 
 ## PHP Analysis (Core Logic)
 
@@ -1252,6 +1252,7 @@ JoinGameTest.php
       - test_joueur_exclu_ne_peut_pas_rejoindre_retourne_403() → void
       - test_code_inexistant_retourne_404() → void
       - test_race_condition_deux_joueurs_remplissent_le_dernier_slot() → void
+      - test_partie_demarre_meme_si_broadcast_playerjoined_echoue() → void
 
 // tests/Feature/Game/AutoActionTest.php
 AutoActionTest.php
