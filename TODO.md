@@ -586,6 +586,19 @@
       `RoleSettingsTest`) mis à jour/étendus. 237 tests verts (232 avant + 5
       nouveaux, aucun cassé).
 
+## Phase 41 — Cupidon Étape 5 : WinConditionChecker camp amoureux (2026-07-22)
+
+- [x] `WinConditionChecker::check()` — vérification victoire amoureux ajoutée AVANT
+      le calcul loups/village existant (non modifié) : si `nb_vivants === 2` et les
+      2 vivants sont mutuellement `lover_player_id`, `winner_team = 'lovers'`,
+      retour anticipé. Fonctionne quel que soit le camp des 2 amoureux (loup+loup,
+      loup+villageois, villageois+villageois).
+- [x] `GameFinishedNotification::toWebPush()` — cas `'lovers'` ajouté au `match`.
+- [x] `tests/Unit/Services/WinConditionCheckerTest.php` créé (6 tests : victoire
+      amoureux villageois/villageois, loup/villageois, loup/loup ; non-régression
+      village gagne, loups gagnent ; garde `nb_vivants !== 2`). 243 tests verts
+      (237 avant + 6 nouveaux, aucun cassé).
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
@@ -595,8 +608,9 @@
 - Étape 10 ✅ Terminée — Audit final de conformité CLAUDE.md
 - Roadmap Code Propre ✅ Complète (Étapes 1→10)
 - Phase 26 ✅ Terminée — Sursis maire + historique aléatoire
-- v1.3 Cupidon — Étape 4/8 ✅ (branché dans PhaseManager::startNight(), chaînage
-  complet vers ProcessSeerTurn) — voir SPEC_CUPIDON.md §8 pour la suite
-  (tâche 5 : WinConditionChecker camp amoureux ; tâche 6 : Frontend/endpoint)
+- v1.3 Cupidon — Étape 5/7 ✅ (WinConditionChecker camp amoureux, priorité sur
+  loups/village) — voir SPEC_CUPIDON.md §8 pour la suite (tâche 6 : Frontend/endpoint ;
+  tâche 7 : tests d'intégration bout en bout couvrant auto-sélection, timeout sans
+  couple, cascade de mort, victoire amoureux loup+villageois)
 - Phase 27 ✅ Terminée — P1 succession sorcière, P2 persistance random_elimination, P3 couronne maire jour
 - v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md

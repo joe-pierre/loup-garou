@@ -24,6 +24,7 @@ class GameFinishedNotification extends Notification implements ShouldQueue
         $title = match ($this->winnerTeam) {
             'villagers'  => '🏆 Le village a gagné !',
             'werewolves' => '🐺 Les loups ont gagné !',
+            'lovers'     => '💞 Les amoureux ont gagné !',
             default      => '🏁 Partie terminée',
         };
 
