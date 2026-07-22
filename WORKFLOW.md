@@ -125,6 +125,54 @@ Les étapes sont **strictement ordonnées** — chaque étape s'appuie sur la pr
 
 ---
 
+## 5bis. Ordre d'implémentation v1.3 — Cupidon
+
+Prérequis obligatoire avant tout code Cupidon — la tâche 6 (élimination
+centralisée) doit être mergée seule et validée avant de commencer Cupidon :
+
+Tâche 6 — PlayerEliminationService (REFACTOR_PROMPTS.md)
+↓ merge sur dev + partie complète jouée manuellement (loups/sorcière/
+chasseur/vote jour déclenchent bien is_alive=false comme avant)
+↓ php artisan test 100% vert
+Étape 1 — Migration lover_player_id + extension enums
+↓ merge sur dev
+Étape 2 — CupidonAction + ProcessCupidonTurn/AutoAction
+↓ merge sur dev
+Étape 3 — Intégration PhaseManager::startNight() (round === 1)
+↓ merge sur dev + partie round 1 jouée manuellement
+Étape 4 — WinConditionChecker : priorité camp amoureux
+↓ merge sur dev
+Étape 5 — Frontend (modale Cupidon + écran "tu es amoureux de X")
+↓ merge sur dev
+Étape 6 — Tests d'intégration CupidonTest.php
+↓ merge sur dev + php artisan test 100% vert
+↓ tag v1.3.0
+
+**Pourquoi la tâche 6 passe avant tout le reste :** c'est le seul endroit qui
+touche du code déjà utilisé par tous les rôles existants (loups, sorcière,
+chasseur, vote jour). Si elle introduit une régression, elle doit être
+détectée seule — mélangée avec le code Cupidon, une régression sur
+`is_alive` serait beaucoup plus dure à isoler.
+
+### Validation manuelle après Tâche 6
+1. Jouer une partie complète sans Cupidon actif (rôle non distribué)
+2. Vérifier que chaque mort (loups, sorcière, chasseur, vote jour) fonctionne
+   exactement comme avant — aucune différence observable
+3. `php artisan test` — aucune régression
+
+### Validation manuelle après Étape 3 (intégration nuit)
+1. Partie avec Cupidon actif, round 1 : vérifier qu'il joue avant la Voyante
+2. Round 2 : vérifier que Cupidon n'apparaît plus
+3. Timeout sans choix : vérifier qu'aucun couple ne se forme
+
+### Validation manuelle après Étape 4 (victoire)
+1. Scénario cascade : tuer un amoureux (n'importe quelle cause) → vérifier
+   que l'autre meurt immédiatement aussi
+2. Scénario victoire amoureux loup+villageois : réduire la partie à 2
+   joueurs = les 2 amoureux → vérifier `winner_team = 'lovers'`
+
+---
+
 ## 6. Lancer les tests automatisés
 
 ```bash
@@ -250,6 +298,7 @@ Quand toutes les étapes sont mergées, les tests passent, et le tag v1.2.0 est 
 CLAUDE.md  (lu automatiquement par Claude Code)
   │
   ├──→ SPEC.md                 référence fonctionnelle complète (lecture seule)
+  ├──→ SPEC_CUPIDON.md         spec rôle Cupidon v1.3 (lecture seule)
   ├──→ SPEC_TIMERS.md          timers et pattern action volontaire / job auto (lecture seule)
   ├──→ SPEC_TRANSITIONS.md     annonces de phases et reconnexion (lecture seule)
   ├──→ CONVENTIONS.md          règles de codage strictes (lecture seule)
@@ -270,6 +319,7 @@ WORKFLOW.md                    ce fichier — développeur uniquement, jamais lu
 |---|---|
 | `CODE_SNAPSHOT.md` | Généré par script externe |
 | `SPEC.md` | Source de vérité fonctionnelle |
+| `SPEC_CUPIDON.md` | Spec de référence rôle Cupidon (lecture seule pour Claude Code) |
 | `SPEC_TIMERS.md` | Spec de référence (lecture seule pour Claude Code) |
 | `SPEC_TRANSITIONS.md` | Spec de référence (lecture seule pour Claude Code) |
 | `WORKFLOW.md` | Développeur uniquement |

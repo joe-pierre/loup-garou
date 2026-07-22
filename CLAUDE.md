@@ -4,6 +4,7 @@
 
 Lis ces fichiers dans l'ordre avant de faire quoi que ce soit :
 - `SPEC.md`
+- `SPEC_CUPIDON.md`
 - `SPEC_TIMERS.md`
 - `SPEC_TRANSITIONS.md`
 - `CONVENTIONS.md`
@@ -180,15 +181,17 @@ Sans ce guard, Alpine peut déclencher `init()` plusieurs fois et empiler les li
 Lit `$game->settings['roles']` en priorité, fallback sur `config('game.roles')`.
 Ne jamais hardcoder la composition dans RoleDistributor.
 Villageois = toujours fill. Non configurable par le host.
-Rôles spéciaux (seer, witch, hunter) : 0 ou 1 max chacun.
+Rôles spéciaux (seer, witch, hunter, cupidon) : 0 ou 1 max chacun.
 
 ## Versioning
 - v1.1 ✅ : Villageois, Loup-Garou, Voyante, Maire électif
 - v1.2 (en cours) : Sorcière, Chasseur — timers + composition rôles configurables
-- v1.3+ (ne pas anticiper) : Loup Blanc, Cupidon, Petite Fille
+- v1.3 (en cours) : Cupidon — voir SPEC_CUPIDON.md
+- v1.4+ (ne pas anticiper) : Loup Blanc, Petite Fille
 
 ## État d'avancement
 → Voir TODO.md (source de vérité unique pour les tâches)
+→ Voir SPEC_CUPIDON.md (spec complète Cupidon, v1.3)
 → Voir TASK_PROMPTS_REMAINING.md (prompts des Étapes 2→5)
 → Voir DECISIONS.md (bugs résolus + décisions techniques)
 → Voir SPEC_TIMERS.md (timers, pattern action volontaire / job auto)
