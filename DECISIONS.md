@@ -1,3 +1,19 @@
+## [CHOIX] Extraction GameSettingsService de GameService (God Service)
+
+**Contexte :** `refactor/extract-game-settings-service` — `app/Services/GameService.php`, `app/Services/GameSettingsService.php`.
+
+**Symptôme / Problème :** `GameService` concentrait toujours, en plus de l'orchestration générale (joinGame, startGame, markReady, excludePlayer, cancelGame), la validation et la persistance des paramètres hôte (timers, composition de rôles) — quatre méthodes sans rapport avec le cycle de vie d'une partie. Suite logique de l'extraction `RoleActions/*` déjà effectuée (voir entrée "Extraction SeerAction / WitchAction / HunterAction de GameService").
+
+**Cause / Alternatives :** Mêmes options que pour l'extraction précédente : (1) extraction avec mise à jour de tous les appelants (LobbyController, FormRequests) — risque inutile, aucun gain fonctionnel. (2) Pattern Facade/délégation déjà validé — retenu, cohérence avec `RoleActions/*`.
+
+**Fix / Décision :** `validateTimerSettings()`, `updateTimerSettings()`, `validateRoleSettings()`, `updateRoleSettings()` copiées telles quelles dans `app/Services/GameSettingsService.php` (nouvelle classe, aucune dépendance externe hors `Game`). `GameService` conserve les quatre méthodes publiques à l'identique (signature et PHPDoc), chacune déléguant via `app(GameSettingsService::class)->methode(...)`. Aucun appelant externe (`LobbyController`, `UpdateTimersRequest`, `UpdateRolesRequest`) modifié. 202 tests verts après extraction (198 avant + aucun ajouté, aucun cassé).
+
+**Leçon :** Le pattern "délégation par le container" (`app(Xxx::class)->method(...)`) reste le chemin de migration à risque minimal pour extraire un groupe de méthodes cohérent d'un God Service, tant que le groupe ne partage pas d'état mutable avec le reste du service. Pour tout futur retrait de responsabilité de `GameService`, répliquer ce même pattern plutôt que de renommer/déplacer les appels chez les consommateurs.
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [RÉSOLU] Relation `targetPlayer` inexistante dans `PhaseManager::endNight()`
 
 **Contexte :** `fix/targetplayer-relation-phasemanager` — `app/Services/PhaseManager.php`.

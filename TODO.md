@@ -454,6 +454,14 @@
 
 ---
 
+## Phase 31 — Extraction GameSettingsService (2026-07-22)
+
+- [x] `app/Services/GameSettingsService.php` créé — `validateTimerSettings()`, `updateTimerSettings()`,
+      `validateRoleSettings()`, `updateRoleSettings()` extraites de `GameService` (pattern délégation
+      identique à `RoleActions/*`). Aucun appelant externe modifié. 202 tests verts.
+
+---
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`

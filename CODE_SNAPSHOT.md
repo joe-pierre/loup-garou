@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 23h40
+Generated at: 00h03
 
 ## PHP Analysis (Core Logic)
 
@@ -987,9 +987,9 @@ GameService.php
       - handleReconnection(GamePlayer $player) → void
       - quitGame(Game $game, GamePlayer $player) → void
       - validateTimerSettings(array $timers) → void
-      - updateTimerSettings(Game $game, array $timers) → return $game
+      - updateTimerSettings(Game $game, array $timers) → return app(\App\Services\GameSettingsService::class)->updateTimerSettings($game, $timers)
       - validateRoleSettings(array $roles) → void
-      - updateRoleSettings(Game $game, array $roles) → return $game
+      - updateRoleSettings(Game $game, array $roles) → return app(\App\Services\GameSettingsService::class)->updateRoleSettings($game, $roles)
       - witchAct(GamePlayer $witch, string $action, ?int $targetId) → return app(\App\Services\RoleActions\WitchAction::class)->act($witch, $action, $targetId)
       - hunterShoot(GamePlayer $hunter, int $targetId) → return app(\App\Services\RoleActions\HunterAction::class)->shoot($hunter, $targetId)
       - cancelGame(Game $game) → void
@@ -1010,6 +1010,14 @@ SeerAction.php
 HunterAction.php
     functions:
       - shoot(GamePlayer $hunter, int $targetId) → return DB::transaction(function () use ($hunter, $targetId, $game) { $alreadyShot = GameAction::where('game_id', $game->id)->where('player_id', $hunter->id)->where('type', 'hunter_shot')->where('round', $game->round)->lockForUpdate()->exists(); if ($alreadyShot) { abort(409, 'Vous avez déjà tiré ce round.'); } $target = GamePlayer::where('id', $targetId)->where('game_id', $game->id)->where('is_alive', true)->lockForUpdate()->first(); if (!$target) { abort(404, 'Cible invalide.'); } $target->update(['is_alive' => false]); GameAction::create(['game_id' => $game->id, 'player_id' => $hunter->id, 'type' => 'hunter_shot', 'target_player_id' => $target->id, 'round' => $game->round, 'phase' => PhaseGuard::isNightOrProcessing($game) ? 'night' : 'day']); return $target; })
+
+// app/Services/GameSettingsService.php
+GameSettingsService.php
+    functions:
+      - validateTimerSettings(array $timers) → void
+      - updateTimerSettings(Game $game, array $timers) → return $game
+      - validateRoleSettings(array $roles) → void
+      - updateRoleSettings(Game $game, array $roles) → return $game
 
 // app/Services/WinConditionChecker.php
 WinConditionChecker.php
