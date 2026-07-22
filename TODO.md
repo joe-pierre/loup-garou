@@ -482,6 +482,15 @@
 
 ---
 
+## Phase 34 — Classe abstraite RoleAction, préparation Cupidon (2026-07-22)
+
+- [x] `app/Services/RoleActions/RoleAction.php` créée — méthode protégée `guardNotAlreadyActed()`
+      factorise le guard anti-double-action dupliqué dans `SeerAction`, `WitchAction`, `HunterAction`.
+      Pas d'interface (signatures `check()`/`act()`/`shoot()` incompatibles). Aucune signature publique
+      changée. 202 tests verts.
+
+---
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`

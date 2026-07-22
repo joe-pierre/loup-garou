@@ -7,7 +7,7 @@ use App\Models\GameAction;
 use App\Models\GamePlayer;
 use Illuminate\Support\Facades\DB;
 
-class SeerAction
+class SeerAction extends RoleAction
 {
     /**
      * Enregistre l'inspection de la voyante sur une cible et retourne le joueur inspecté.
@@ -32,16 +32,7 @@ class SeerAction
         }
 
         return DB::transaction(function () use ($seer, $targetId, $game) {
-            $alreadyActed = GameAction::where('game_id', $game->id)
-                ->where('player_id', $seer->id)
-                ->where('type', 'seer_check')
-                ->where('round', $game->round)
-                ->lockForUpdate()
-                ->exists();
-
-            if ($alreadyActed) {
-                abort(409, 'Vous avez déjà utilisé votre pouvoir ce round.');
-            }
+            $this->guardNotAlreadyActed($game, $seer->id, ['seer_check']);
 
             GameAction::create([
                 'game_id'          => $game->id,

@@ -8,7 +8,7 @@ use App\Models\GamePlayer;
 use App\Services\PhaseGuard;
 use Illuminate\Support\Facades\DB;
 
-class HunterAction
+class HunterAction extends RoleAction
 {
     /**
      * Tir du Chasseur : élimine une cible après la mort du chasseur (nuit ou jour).
@@ -43,16 +43,7 @@ class HunterAction
         }
 
         return DB::transaction(function () use ($hunter, $targetId, $game) {
-            $alreadyShot = GameAction::where('game_id', $game->id)
-                ->where('player_id', $hunter->id)
-                ->where('type', 'hunter_shot')
-                ->where('round', $game->round)
-                ->lockForUpdate()
-                ->exists();
-
-            if ($alreadyShot) {
-                abort(409, 'Vous avez déjà tiré ce round.');
-            }
+            $this->guardNotAlreadyActed($game, $hunter->id, ['hunter_shot']);
 
             $target = GamePlayer::where('id', $targetId)
                 ->where('game_id', $game->id)

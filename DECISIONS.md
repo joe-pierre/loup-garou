@@ -1,3 +1,19 @@
+## [CHOIX] Classe abstraite RoleAction — guard anti-double-action partagé (SeerAction/WitchAction/HunterAction)
+
+**Contexte :** `refactor/role-action-shared-guards` — `app/Services/RoleActions/RoleAction.php` (nouveau), `SeerAction.php`, `WitchAction.php`, `HunterAction.php`.
+
+**Symptôme / Problème :** Les trois classes dupliquaient quasi à l'identique un guard anti-double-action (`GameAction::where(...)->lockForUpdate()->exists()` + `abort(409, ...)`), avec un message d'erreur légèrement différent pour `HunterAction` (`'Vous avez déjà tiré ce round.'`) par rapport à `SeerAction`/`WitchAction` (`'Vous avez déjà utilisé votre pouvoir ce round.'`). Objectif : préparer le terrain pour Cupidon (v1.3+) sans imposer d'interface stricte (signatures de `check()`/`act()`/`shoot()` incompatibles entre les trois classes).
+
+**Cause / Alternatives :** Une interface PHP aurait forcé un contrat artificiel vu les signatures divergentes — écartée. Extraction d'une classe abstraite `RoleAction` avec une méthode protégée `guardNotAlreadyActed(Game $game, int $playerId, array $types)` — retenue. Cette méthode fige un message d'erreur unique, ce qui change le texte visible côté chasseur (`'tiré'` → `'utilisé votre pouvoir'`). Aucun test n'asserte sur ce texte ; validé explicitement avec l'utilisateur (garder le message générique plutôt qu'ajouter un paramètre `$message` qui aurait complexifié la signature demandée).
+
+**Fix / Décision :** `RoleAction` créée avec la seule méthode `guardNotAlreadyActed()`. `SeerAction`, `WitchAction`, `HunterAction` en héritent ; leur bloc dupliqué remplacé par un appel à cette méthode, à l'intérieur de leur `DB::transaction()` existante, sans rien déplacer d'autre. Aucune signature publique changée. 202 tests verts après chacune des 3 migrations (Seer, Witch, Hunter testées séparément).
+
+**Leçon :** Pour des classes aux signatures publiques incompatibles mais partageant un guard interne identique, préférer une classe abstraite avec une méthode protégée plutôt qu'une interface — évite un contrat artificiel tout en dédupliquant le code. Vérifier systématiquement si les messages d'erreur dupliqués sont réellement identiques avant de les unifier ; si un texte diffère et qu'aucun test ne le couvre, valider explicitement le choix avec l'utilisateur plutôt que de trancher silencieusement.
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] Découpage de VoteService::resolveDayVote() en trois méthodes privées
 
 **Contexte :** `refactor/split-vote-service-resolve-day-vote` — `app/Services/VoteService.php`.
