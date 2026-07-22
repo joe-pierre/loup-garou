@@ -47,8 +47,9 @@ class WitchAction extends RoleAction
 
         $witchDiedFromWolves = false;
         $mayorVictim         = null;
+        $deferredMayorVictim = null;
 
-        $result = DB::transaction(function () use ($witch, $action, $targetId, $game, &$witchDiedFromWolves, &$mayorVictim) {
+        $result = DB::transaction(function () use ($witch, $action, $targetId, $game, &$witchDiedFromWolves, &$mayorVictim, &$deferredMayorVictim) {
             $this->guardNotAlreadyActed($game, $witch->id, ['witch_heal', 'witch_kill', 'witch_pass']);
 
             $settings = $witch->settings ?? [];
@@ -99,7 +100,10 @@ class WitchAction extends RoleAction
                 }
 
                 $target->update(['is_alive' => false]);
-                if ($target->is_mayor) {
+                // Priorité chasseur > maire : si la cible est aussi le Chasseur, hunter_pending
+                // (créé ci-dessous) gère la succession différée après le tir — ne pas déclencher
+                // la succession ici. Voir DECISIONS.md "Chasseur Maire — tir avant succession du maire".
+                if ($target->is_mayor && ! $target->isHunter()) {
                     $mayorVictim = $target;
                 }
                 $settings['witch_kill_used'] = true;
@@ -143,7 +147,22 @@ class WitchAction extends RoleAction
                         ->first();
                     if ($mayorCandidate?->is_mayor && $mayorCandidate->is_alive) {
                         $mayorCandidate->update(['is_alive' => false]);
-                        $mayorVictim = $mayorCandidate;
+
+                        // Priorité chasseur > maire : si le maire en sursis est aussi le Chasseur,
+                        // créer hunter_pending et NE PAS déclencher la succession ici — la chaîne
+                        // ProcessNightEnd → ProcessHunterTurn gère la succession différée après le
+                        // tir. Voir DECISIONS.md "Chasseur Maire — tir avant succession du maire".
+                        if ($mayorCandidate->isHunter()) {
+                            GameAction::create([
+                                'game_id'   => $game->id,
+                                'player_id' => $mayorCandidate->id,
+                                'type'      => 'hunter_pending',
+                                'round'     => $game->round,
+                                'phase'     => 'night',
+                            ]);
+                        }
+
+                        $deferredMayorVictim = $mayorCandidate;
                     }
                 }
             } else {
@@ -166,7 +185,22 @@ class WitchAction extends RoleAction
                         ->first();
                     if ($mayorCandidate?->is_mayor && $mayorCandidate->is_alive) {
                         $mayorCandidate->update(['is_alive' => false]);
-                        $mayorVictim = $mayorCandidate;
+
+                        // Priorité chasseur > maire : si le maire en sursis est aussi le Chasseur,
+                        // créer hunter_pending et NE PAS déclencher la succession ici — la chaîne
+                        // ProcessNightEnd → ProcessHunterTurn gère la succession différée après le
+                        // tir. Voir DECISIONS.md "Chasseur Maire — tir avant succession du maire".
+                        if ($mayorCandidate->isHunter()) {
+                            GameAction::create([
+                                'game_id'   => $game->id,
+                                'player_id' => $mayorCandidate->id,
+                                'type'      => 'hunter_pending',
+                                'round'     => $game->round,
+                                'phase'     => 'night',
+                            ]);
+                        }
+
+                        $deferredMayorVictim = $mayorCandidate;
                     }
                 }
 
@@ -206,6 +240,23 @@ class WitchAction extends RoleAction
             broadcast(new MayorSuccessionStarted($game, $mayorVictim->pseudo));
             ProcessMayorSuccession::dispatch($game->id, $game->round, shouldStartNight: true)
                 ->delay(now()->addSeconds($successionDelay));
+        }
+
+        // Broadcast hors transaction : le maire en sursis (victime initiale des loups,
+        // non soignée) a été résolu mort par cette action sorcière (kill ou pass).
+        // Priorité chasseur > maire : si ce maire est aussi le Chasseur, hunter_pending a déjà
+        // été créé dans la transaction — la succession est déclenchée plus tard par la chaîne
+        // ProcessNightEnd → ProcessHunterTurn, jamais ici.
+        if ($deferredMayorVictim) {
+            $deferredMayorVictim->load('user');
+            broadcast(new PlayerEliminated($game, $deferredMayorVictim, 'night_kill'));
+
+            if (! $deferredMayorVictim->isHunter()) {
+                $successionDelay = $deferredMayorVictim->is_inactive ? 0 : $game->timer('mayor_succession');
+                broadcast(new MayorSuccessionStarted($game, $deferredMayorVictim->pseudo));
+                ProcessMayorSuccession::dispatch($game->id, $game->round, shouldStartNight: true)
+                    ->delay(now()->addSeconds($successionDelay));
+            }
         }
 
         // Broadcast hors transaction : élimination de la victime nocturne ordinaire différée

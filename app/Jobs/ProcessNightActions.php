@@ -28,7 +28,9 @@ use Illuminate\Support\Facades\Log;
  *   3. Création de GameAction hunter_pending en DB si la victime est le Chasseur.
  *   4. Vérification condition de victoire (WinConditionChecker) → return si finie.
  *   5. Dispatch ProcessWitchTurn::delay(0) si sorcière vivante.
- *   6. Dispatch ProcessMayorSuccession(shouldStartNight:true) si le maire est tué.
+ *   6. Dispatch ProcessMayorSuccession(shouldStartNight:true) si le maire est tué —
+ *      SAUF si la victime est le Chasseur (hunter_pending) : priorité tir > succession,
+ *      mutuellement exclusif (voir DECISIONS.md "Chasseur Maire — tir avant succession").
  *   7. Dispatch ProcessNightEnd::delay(witch_timer + mayor_succession + 5s) — toujours.
  */
 class ProcessNightActions implements ShouldQueue
@@ -93,6 +95,7 @@ class ProcessNightActions implements ShouldQueue
 
         $victimIsWitchWithHeal          = false;
         $victimIsMayorWithWitchAvailable = false;
+        $hunterPending                   = false;
 
         if ($victim) {
             // Si la victime est la sorcière avec sa potion de soin disponible,
@@ -133,6 +136,8 @@ class ProcessNightActions implements ShouldQueue
                 broadcast(new PlayerEliminated($game, $victim, 'night_kill'));
 
                 if ($victim->isHunter()) {
+                    $hunterPending = true;
+
                     GameAction::create([
                         'game_id'   => $game->id,
                         'player_id' => $victim->id,
@@ -156,7 +161,14 @@ class ProcessNightActions implements ShouldQueue
             ProcessWitchTurn::dispatch($game->id, $game->round)->delay(0);
         }
 
-        if ($victim?->is_mayor && ! $victimIsMayorWithWitchAvailable) {
+        // Priorité chasseur > maire : si la victime est le Chasseur (hunter_pending créé
+        // ci-dessus), le tir doit avoir lieu AVANT la succession — ProcessNightEnd →
+        // ProcessHunterTurn → ProcessHunterAutoAction reçoit déjà $isMayor et déclenche
+        // la succession différée après le tir (ou le renoncement). Voir DECISIONS.md
+        // "Chasseur Maire — tir avant succession du maire".
+        if ($hunterPending) {
+            // Rien à faire ici : la chaîne hunter_pending gère la succession.
+        } elseif ($victim?->is_mayor && ! $victimIsMayorWithWitchAvailable) {
             $successionDelay = $victim->is_inactive
                 ? 0
                 : $game->timer('mayor_succession');

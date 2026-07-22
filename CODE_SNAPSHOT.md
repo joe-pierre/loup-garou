@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 11h34
+Generated at: 14h46
 
 ## PHP Analysis (Core Logic)
 
@@ -1127,6 +1127,7 @@ HunterTest.php
       - test_chasseur_ne_peut_pas_tirer_deux_fois() → void
       - test_hunter_auto_action_skipped_if_already_shot() → void
       - test_chasseur_maire_elimine_jour_succession_apres_tir() → void
+      - test_chasseur_maire_tue_par_loups_nuit_succession_pas_declenchee_avant_tir() → void
       - test_hunter_auto_action_no_elimination_if_inactive() → void
       - test_chasseur_tire_apres_resolution_complete_de_nuit() → void
       - test_chasseur_ne_tire_pas_avant_day_started() → void
@@ -1333,6 +1334,8 @@ WitchTest.php
       - test_sorciere_empoisonne_joueur_vivant_pendant_processing_night() → void
       - test_victime_sorciere_identique_a_victime_loups_en_cas_egalite() → void
       - test_hunter_pending_dans_transaction_witch_kill() → void
+      - test_sorciere_empoisonne_chasseur_maire_succession_pas_declenchee() → void
+      - test_maire_en_sursis_chasseur_non_sauve_par_sorciere_cree_hunter_pending() → void
       - test_sorciere_auto_action_sans_victime_ne_bloque_pas() → void
 
 // tests/Feature/Game/ProcessDayVoteTest.php

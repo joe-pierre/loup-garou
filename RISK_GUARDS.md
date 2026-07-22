@@ -105,6 +105,38 @@ if ($game->status === 'night' || in_array($game->status, ['processing_night'])) 
 // ❌ Interdit : return sans déclencher la transition suivante
 ```
 
+### Sous-règle — priorité Chasseur > Maire à TOUS les points d'entrée de mort
+
+Un joueur cumulant Chasseur et Maire doit toujours tirer (ou renoncer/timeout)
+AVANT que la succession du Maire ne soit déclenchée, quel que soit le point
+d'entrée de sa mort. `hunter_pending` et `MayorSuccessionStarted` /
+`ProcessMayorSuccession::dispatch()` sont mutuellement exclusifs — jamais les
+deux au même endroit.
+
+```php
+// ✅ Pattern obligatoire partout où une mort peut déclencher une succession
+if ($victim->isHunter() /* ou hunter_pending déjà créé pour ce joueur */) {
+    // hunter_pending créé (ou déjà existant) — NE PAS déclencher la succession ici.
+    // La chaîne ProcessNightEnd → ProcessHunterTurn → ProcessHunterAutoAction
+    // (ou ActionController::hunterShoot() pour le tir volontaire) s'en charge
+    // après le tir, via le flag $isMayor déjà threadé dans ces jobs.
+} elseif ($victim->is_mayor) {
+    broadcast(new MayorSuccessionStarted($game, $victim->pseudo));
+    ProcessMayorSuccession::dispatch(...);
+}
+// ❌ Interdit : tester is_mayor sans avoir d'abord exclu le cas isHunter()/hunter_pending
+```
+
+Avant de corriger ce bug à UN endroit, toujours `grep` tous les usages de
+`MayorSuccessionStarted` et `ProcessMayorSuccession::dispatch` dans `app/`
+pour vérifier qu'aucun autre point d'entrée (mort par les loups, poison
+sorcière, vote jour, maire en sursis résolu par la sorcière, etc.) ne
+reproduit le même défaut de garde — un fix appliqué à un seul point
+d'entrée laisse les autres bugués, parfois de façon aggravée (`hunter_pending`
+carrément absent sur un chemin, pas seulement mal ordonné). Voir
+DECISIONS.md "Chasseur Maire tué de nuit — succession déclenchée avant le
+tir" et "Chasseur Maire — tir avant succession du maire".
+
 ---
 
 ## GUARD #3 — Sorcière sans victime (égalité vote loups) (révisé)
