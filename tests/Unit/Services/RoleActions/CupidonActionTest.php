@@ -3,12 +3,14 @@
 namespace Tests\Unit\Services\RoleActions;
 
 use App\Events\Game\LoverRevealed;
+use App\Jobs\ProcessSeerTurn;
 use App\Models\Game;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
 use App\Services\RoleActions\CupidonAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Queue;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
@@ -28,6 +30,7 @@ class CupidonActionTest extends TestCase
     public function test_lien_pose_lover_player_id_symetrique_et_historique(): void
     {
         Event::fake();
+        Queue::fake();
 
         $game = $this->makeNightRoundOneGame();
         $cupidon = GamePlayer::factory()->cupidon()->create(['game_id' => $game->id]);
@@ -54,11 +57,15 @@ class CupidonActionTest extends TestCase
         ]);
 
         Event::assertDispatched(LoverRevealed::class, 2);
+
+        // Action volontaire → termine le tour de Cupidon, la Voyante enchaîne (SPEC_CUPIDON.md §3).
+        Queue::assertPushed(ProcessSeerTurn::class, fn ($job) => $job->gameId === $game->id && $job->round === $game->round);
     }
 
     public function test_cupidon_peut_se_choisir_lui_meme_un_seul_broadcast(): void
     {
         Event::fake();
+        Queue::fake();
 
         $game = $this->makeNightRoundOneGame();
         $cupidon = GamePlayer::factory()->cupidon()->create(['game_id' => $game->id]);
@@ -73,6 +80,7 @@ class CupidonActionTest extends TestCase
         // broadcast, destiné à l'autre amoureux uniquement (SPEC_CUPIDON.md §7).
         Event::assertDispatched(LoverRevealed::class, 1);
         Event::assertDispatched(LoverRevealed::class, fn ($e) => $e->lover->id === $other->id && $e->partner->id === $cupidon->id);
+        Queue::assertPushed(ProcessSeerTurn::class, fn ($job) => $job->gameId === $game->id && $job->round === $game->round);
     }
 
     public function test_role_invalide_rejete_403(): void
@@ -122,6 +130,10 @@ class CupidonActionTest extends TestCase
 
     public function test_double_action_rejetee_409(): void
     {
+        // Le premier link() réussit et dispatche ProcessSeerTurn (voir plus haut) —
+        // Queue::fake() évite l'exécution synchrone réelle de la suite du flux nocturne.
+        Queue::fake();
+
         $game = $this->makeNightRoundOneGame();
         $cupidon = GamePlayer::factory()->cupidon()->create(['game_id' => $game->id]);
         $target1 = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);

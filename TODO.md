@@ -565,6 +565,27 @@
       `PhaseGuardTest::canCupidonLink`. 232 tests verts (210 avant + 22 nouveaux,
       aucun cassé).
 
+## Phase 40 — Cupidon Étape 4 : intégration dans la séquence nocturne (2026-07-22)
+
+- [x] `RoleDistributor` — `cupidon` ajouté à la config des rôles (0 ou 1 max,
+      pattern identique à witch/hunter). `config/game.php roles.cupidon => 0`
+      (désactivé par défaut — voir DECISIONS.md pour le choix, indépendant
+      de la prémisse initiale du prompt sur witch/hunter).
+- [x] `PhaseManager::startNight()` — dispatch conditionnel : `ProcessCupidonTurn`
+      si round === 1 et Cupidon distribué, sinon `ProcessSeerTurn` directement
+      (comportement v1.1/v1.2 strictement inchangé pour round > 1 et parties
+      sans Cupidon).
+- [x] `ProcessCupidonTurn` et `ProcessCupidonAutoAction` — chaînage complet vers
+      `ProcessSeerTurn` ajouté (absent/mort/inactif, et timeout sans action
+      volontaire) : sans ce chaînage, toute partie avec Cupidon serait restée
+      bloquée indéfiniment au round 1.
+- [x] `CupidonAction::link()` — dispatch `ProcessSeerTurn` après action volontaire
+      (`delay(0)`, même principe que `/seer/done`).
+- [x] `tests/Feature/Game/CupidonNightIntegrationTest.php` créé (3 tests bout en
+      bout). Tests existants (`CupidonJobsTest`, `CupidonActionTest`,
+      `RoleSettingsTest`) mis à jour/étendus. 237 tests verts (232 avant + 5
+      nouveaux, aucun cassé).
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
@@ -574,6 +595,8 @@
 - Étape 10 ✅ Terminée — Audit final de conformité CLAUDE.md
 - Roadmap Code Propre ✅ Complète (Étapes 1→10)
 - Phase 26 ✅ Terminée — Sursis maire + historique aléatoire
-- v1.3 Cupidon — Étape 3/8 ✅ (CupidonAction + Jobs créés, non branchés) — voir SPEC_CUPIDON.md §8 pour la suite
+- v1.3 Cupidon — Étape 4/8 ✅ (branché dans PhaseManager::startNight(), chaînage
+  complet vers ProcessSeerTurn) — voir SPEC_CUPIDON.md §8 pour la suite
+  (tâche 5 : WinConditionChecker camp amoureux ; tâche 6 : Frontend/endpoint)
 - Phase 27 ✅ Terminée — P1 succession sorcière, P2 persistance random_elimination, P3 couronne maire jour
 - v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md

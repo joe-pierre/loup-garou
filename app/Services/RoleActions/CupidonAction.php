@@ -3,6 +3,7 @@
 namespace App\Services\RoleActions;
 
 use App\Events\Game\LoverRevealed;
+use App\Jobs\ProcessSeerTurn;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
 use App\Services\PhaseGuard;
@@ -20,6 +21,12 @@ class CupidonAction extends RoleAction
      * SPEC_CUPIDON.md §2) et notifie chaque amoureux distinct de Cupidon en privé.
      * Cupidon n'est jamais notifié de son propre choix : il le connaît déjà via la
      * réponse de son action (d'où un seul broadcast s'il s'est choisi lui-même).
+     *
+     * Action volontaire → termine le tour de Cupidon immédiatement : dispatch de
+     * ProcessSeerTurn(delay 0) après la transaction (SPEC_CUPIDON.md §3), même
+     * principe que SeerAction/WitchAction/HunterAction pour la phase suivante.
+     * ProcessCupidonAutoAction verra cette GameAction `cupidon_link` en base et
+     * ne re-dispatchera pas (guard anti-double-dispatch existant).
      *
      * @param  GamePlayer $cupidon   Cupidon (rôle 'cupidon' requis)
      * @param  int        $target1Id ID du premier amoureux (peut être $cupidon->id)
@@ -97,5 +104,7 @@ class CupidonAction extends RoleAction
                 broadcast(new LoverRevealed($game, $lover, $partner));
             }
         });
+
+        ProcessSeerTurn::dispatch($game->id, $game->round)->delay(0);
     }
 }

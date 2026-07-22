@@ -18,10 +18,12 @@ use Illuminate\Queue\SerializesModels;
  * imposer un couple au hasard aurait des conséquences trop lourdes (camp de victoire
  * entier) pour être laissé au hasard.
  *
- * Ce job ne fait donc jamais rien d'autre que vérifier ses guards puis, dans tous
- * les cas, retourner sans effet — pas de couple, pas de broadcast, pas de dispatch.
- * ⚠️ Ne chaîne pas ProcessSeerTurn à ce stade (voir ProcessCupidonTurn, DECISIONS.md) :
- * ce chaînage sera ajouté avec l'intégration dans PhaseManager (SPEC_CUPIDON.md §8, tâche 4).
+ * Aucun couple n'est jamais formé par ce job — mais la nuit doit continuer dans
+ * tous les cas : dispatch de ProcessSeerTurn si Cupidon n'a pas agi volontairement
+ * (SPEC_CUPIDON.md §3, branché en même temps que l'intégration PhaseManager,
+ * SPEC_CUPIDON.md §8 tâche 4). Si Cupidon a déjà agi via CupidonAction::link(),
+ * ce dernier a déjà dispatché ProcessSeerTurn lui-même — ce job retourne alors
+ * sans rien faire (évite un double dispatch).
  */
 class ProcessCupidonAutoAction implements ShouldQueue
 {
@@ -57,6 +59,8 @@ class ProcessCupidonAutoAction implements ShouldQueue
             return;
         }
 
-        // Timeout sans action volontaire : aucun couple formé, aucun effet.
+        // Timeout sans action volontaire : aucun couple formé, mais la Voyante
+        // doit démarrer — délai night_start_delay + cupidon déjà écoulés.
+        ProcessSeerTurn::dispatch($this->gameId, $this->round);
     }
 }

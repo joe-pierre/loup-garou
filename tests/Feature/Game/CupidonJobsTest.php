@@ -6,6 +6,7 @@ use App\Events\Game\CupidonTurnStarted;
 use App\Events\Game\LoverRevealed;
 use App\Jobs\ProcessCupidonAutoAction;
 use App\Jobs\ProcessCupidonTurn;
+use App\Jobs\ProcessSeerTurn;
 use App\Models\Game;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
@@ -15,9 +16,10 @@ use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
- * Ces deux Jobs ne sont pas branchés dans PhaseManager à ce stade
- * (SPEC_CUPIDON.md §8, tâche 3) — ils sont dispatchés manuellement ici,
- * sans dépendre du flux de jeu réel.
+ * Ces deux Jobs sont branchés dans PhaseManager::startNight() depuis
+ * SPEC_CUPIDON.md §8 tâche 4 (voir CupidonNightIntegrationTest.php pour les
+ * tests d'intégration bout en bout). Les tests ci-dessous exercent chaque Job
+ * isolément, dispatché manuellement, sans dépendre du flux PhaseManager.
  */
 class CupidonJobsTest extends TestCase
 {
@@ -53,7 +55,7 @@ class CupidonJobsTest extends TestCase
         });
     }
 
-    public function test_cupidon_turn_ne_fait_rien_si_pas_de_cupidon_dans_la_composition(): void
+    public function test_cupidon_turn_dispatche_seer_turn_si_pas_de_cupidon_dans_la_composition(): void
     {
         Event::fake();
         Queue::fake();
@@ -65,9 +67,10 @@ class CupidonJobsTest extends TestCase
 
         Event::assertNotDispatched(CupidonTurnStarted::class);
         Queue::assertNotPushed(ProcessCupidonAutoAction::class);
+        Queue::assertPushed(ProcessSeerTurn::class, fn ($job) => $job->gameId === $game->id && $job->round === $game->round);
     }
 
-    public function test_cupidon_turn_ne_fait_rien_si_cupidon_mort(): void
+    public function test_cupidon_turn_dispatche_seer_turn_si_cupidon_mort(): void
     {
         Event::fake();
         Queue::fake();
@@ -80,9 +83,10 @@ class CupidonJobsTest extends TestCase
 
         Event::assertNotDispatched(CupidonTurnStarted::class);
         Queue::assertNotPushed(ProcessCupidonAutoAction::class);
+        Queue::assertPushed(ProcessSeerTurn::class, fn ($job) => $job->gameId === $game->id && $job->round === $game->round);
     }
 
-    public function test_cupidon_turn_ne_fait_rien_si_cupidon_inactif(): void
+    public function test_cupidon_turn_dispatche_seer_turn_si_cupidon_inactif(): void
     {
         Event::fake();
         Queue::fake();
@@ -95,6 +99,7 @@ class CupidonJobsTest extends TestCase
 
         Event::assertNotDispatched(CupidonTurnStarted::class);
         Queue::assertNotPushed(ProcessCupidonAutoAction::class);
+        Queue::assertPushed(ProcessSeerTurn::class, fn ($job) => $job->gameId === $game->id && $job->round === $game->round);
     }
 
     public function test_cupidon_turn_skip_si_mauvais_round(): void
@@ -144,7 +149,8 @@ class CupidonJobsTest extends TestCase
         $this->assertSame(0, GameAction::where('game_id', $game->id)->where('type', 'cupidon_link')->count());
         Event::assertNotDispatched(CupidonTurnStarted::class);
         Event::assertNotDispatched(LoverRevealed::class);
-        Queue::assertNothingPushed();
+        // Aucun couple formé, mais la nuit doit continuer : ProcessSeerTurn dispatché.
+        Queue::assertPushed(ProcessSeerTurn::class, fn ($job) => $job->gameId === $game->id && $job->round === $game->round);
     }
 
     public function test_cupidon_auto_action_skipped_if_already_acted(): void

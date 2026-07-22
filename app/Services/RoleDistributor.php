@@ -9,11 +9,14 @@ use Illuminate\Support\Collection;
  * Distribue les rôles aux joueurs d'une partie selon la configuration active.
  *
  * Priorité de configuration : $game->settings['roles'] > config/game.php
- * Rôles spéciaux (seer, witch, hunter) : 0 ou 1 max chacun.
+ * Rôles spéciaux (seer, witch, hunter, cupidon) : 0 ou 1 max chacun.
  * Villageois ('villager') : toujours en mode 'fill', complète les slots restants — non configurable.
  * Loups ('werewolf') : mode 'auto', calcul via werewolfCount() (table d'overrides ou formule floor(n×0.2)).
  *
- * v1.3+ uniquement : ne pas anticiper white_wolf, cupidon, petite_fille — absents de l'enum DB.
+ * cupidon (v1.3) : désactivé par défaut (config/game.php roles.cupidon = 0) — aucune UI
+ * host ne le rend encore configurable (GameSettingsService::validateRoleSettings() ne
+ * couvre que witch/hunter), voir DECISIONS.md.
+ * v1.4+ uniquement : ne pas anticiper white_wolf, petite_fille — absents de l'enum DB.
  */
 class RoleDistributor
 {
@@ -62,8 +65,9 @@ class RoleDistributor
             'werewolf' => config('game.roles.werewolf', 'auto'),
         ];
 
-        $witchAmount  = $overrides['witch']  ?? config('game.roles.witch', 0);
-        $hunterAmount = $overrides['hunter'] ?? config('game.roles.hunter', 0);
+        $witchAmount   = $overrides['witch']   ?? config('game.roles.witch', 0);
+        $hunterAmount  = $overrides['hunter']  ?? config('game.roles.hunter', 0);
+        $cupidonAmount = $overrides['cupidon'] ?? config('game.roles.cupidon', 0);
 
         if ($witchAmount > 0) {
             $config['witch'] = $witchAmount;
@@ -71,6 +75,10 @@ class RoleDistributor
 
         if ($hunterAmount > 0) {
             $config['hunter'] = $hunterAmount;
+        }
+
+        if ($cupidonAmount > 0) {
+            $config['cupidon'] = $cupidonAmount;
         }
 
         $config['villager'] = 'fill';
