@@ -34,6 +34,7 @@ class VoteService
     public function __construct(
         private PhaseManager $phaseManager,
         private WinConditionChecker $winConditionChecker,
+        private PlayerEliminationService $eliminationService,
     ) {}
 
     /**
@@ -355,7 +356,7 @@ class VoteService
             if ($votes->isEmpty()) {
                 $victim = $locked->alivePlayers()->inRandomOrder()->first();
                 if ($victim) {
-                    $victim->update(['is_alive' => false]);
+                    $this->eliminationService->eliminate($victim);
                     $randomVictim = $victim;
 
                     GameAction::create([
@@ -389,7 +390,7 @@ class VoteService
             }
 
             $elim = GamePlayer::with('user')->find($topCandidates->first()->target_player_id);
-            $elim->update(['is_alive' => false]);
+            $this->eliminationService->eliminate($elim);
             $eliminated = $elim;
 
             if ($elim->isHunter()) {

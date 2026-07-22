@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 14h46
+Generated at: 20h22
 
 ## PHP Analysis (Core Logic)
 
@@ -925,7 +925,7 @@ RoleDistributor.php
 // app/Services/VoteService.php
 VoteService.php
     functions:
-      - __construct(PhaseManager $phaseManager, WinConditionChecker $winConditionChecker) {}
+      - __construct(PhaseManager $phaseManager, WinConditionChecker $winConditionChecker, PlayerEliminationService $eliminationService) {}
       - castMayorVote(GamePlayer $voter, int $targetId) → return $totals
       - resolveMayorElection(Game $game) → return DB::transaction(function () use ($game) { $locked = Game::where('id', $game->id)->where('status', 'electing_mayor')->lockForUpdate()->first(); if (!$locked) { return null; } if (!$locked->canTransition('start_night')) { Log::warning("Transition 'start_night' refusée depuis status={$locked->status}"); return null; } $votes = GameAction::where('game_id', $locked->id)->where('type', 'mayor_vote')->where('round', $locked->round)->selectRaw('target_player_id, COUNT(*) as vote_count')->groupBy('target_player_id')->orderByDesc('vote_count')->get(); $wasRandom = false; if ($votes->isEmpty()) { $winner = $locked->alivePlayers()->inRandomOrder()->first(); $wasRandom = true; } else { $maxVotes = $votes->first()->vote_count; $topCandidates = $votes->where('vote_count', $maxVotes); if ($topCandidates->count() > 1) { $wasRandom = true; $winnerId = $topCandidates->random()->target_player_id; } else { $winnerId = $topCandidates->first()->target_player_id; } $winner = GamePlayer::find($winnerId); } $winner->update(['is_mayor' => true]); $locked->update(['status' => 'night', 'round' => 1, 'phase_deadline' => now()->addSeconds($locked->timer('seer'))]); return ['player' => $winner, 'game' => $locked, 'was_random' => $wasRandom]; })
       - resolveNightVote(Game $game) → return GamePlayer::find($winnerId)
@@ -978,7 +978,7 @@ TimerCalculator.php
 // app/Services/GameService.php
 GameService.php
     functions:
-      - __construct(RoleDistributor $roleDistributor, PhaseManager $phaseManager) {}
+      - __construct(RoleDistributor $roleDistributor, PhaseManager $phaseManager, PlayerEliminationService $eliminationService) {}
       - createGame(User $user, string $pseudo, int $maxPlayers) → return DB::transaction(function () use ($user, $pseudo, $maxPlayers, $code) { $game = Game::create(['code' => $code, 'status' => 'waiting', 'max_players' => $maxPlayers]); GamePlayer::create(['game_id' => $game->id, 'user_id' => $user->id, 'pseudo' => $pseudo, 'is_host' => true, 'joined_at' => now()]); return $game; })
       - joinGame(User $user, string $code, string $pseudo) → return $result['player']
       - startGame(Game $game) → void
@@ -1006,7 +1006,7 @@ RoleAction.php
 // app/Services/RoleActions/WitchAction.php
 WitchAction.php
     functions:
-      - __construct(VoteService $voteService) {}
+      - __construct(VoteService $voteService, PlayerEliminationService $eliminationService) {}
       - act(GamePlayer $witch, string $action, ?int $targetId) → return $result
 
 // app/Services/RoleActions/SeerAction.php
@@ -1017,7 +1017,13 @@ SeerAction.php
 // app/Services/RoleActions/HunterAction.php
 HunterAction.php
     functions:
-      - shoot(GamePlayer $hunter, int $targetId) → return DB::transaction(function () use ($hunter, $targetId, $game) { $this->guardNotAlreadyActed($game, $hunter->id, ['hunter_shot']); $target = GamePlayer::where('id', $targetId)->where('game_id', $game->id)->where('is_alive', true)->lockForUpdate()->first(); if (!$target) { abort(404, 'Cible invalide.'); } $target->update(['is_alive' => false]); GameAction::create(['game_id' => $game->id, 'player_id' => $hunter->id, 'type' => 'hunter_shot', 'target_player_id' => $target->id, 'round' => $game->round, 'phase' => PhaseGuard::isNightOrProcessing($game) ? 'night' : 'day']); return $target; })
+      - __construct(PlayerEliminationService $eliminationService) {}
+      - shoot(GamePlayer $hunter, int $targetId) → return DB::transaction(function () use ($hunter, $targetId, $game) { $this->guardNotAlreadyActed($game, $hunter->id, ['hunter_shot']); $target = GamePlayer::where('id', $targetId)->where('game_id', $game->id)->where('is_alive', true)->lockForUpdate()->first(); if (!$target) { abort(404, 'Cible invalide.'); } $this->eliminationService->eliminate($target); GameAction::create(['game_id' => $game->id, 'player_id' => $hunter->id, 'type' => 'hunter_shot', 'target_player_id' => $target->id, 'round' => $game->round, 'phase' => PhaseGuard::isNightOrProcessing($game) ? 'night' : 'day']); return $target; })
+
+// app/Services/PlayerEliminationService.php
+PlayerEliminationService.php
+    functions:
+      - eliminate(GamePlayer $player) → void
 
 // app/Services/GameSettingsService.php
 GameSettingsService.php

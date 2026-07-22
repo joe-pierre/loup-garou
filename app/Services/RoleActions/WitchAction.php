@@ -9,12 +9,16 @@ use App\Models\Game;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
 use App\Services\PhaseGuard;
+use App\Services\PlayerEliminationService;
 use App\Services\VoteService;
 use Illuminate\Support\Facades\DB;
 
 class WitchAction extends RoleAction
 {
-    public function __construct(private VoteService $voteService) {}
+    public function __construct(
+        private VoteService $voteService,
+        private PlayerEliminationService $eliminationService,
+    ) {}
 
     /**
      * Action de la Sorcière : sauver la victime des loups (y compris elle-même), empoisonner un joueur, ou passer son tour.
@@ -99,7 +103,7 @@ class WitchAction extends RoleAction
                     abort(409, 'Vous avez déjà utilisé votre potion de poison.');
                 }
 
-                $target->update(['is_alive' => false]);
+                $this->eliminationService->eliminate($target);
                 // Priorité chasseur > maire : si la cible est aussi le Chasseur, hunter_pending
                 // (créé ci-dessous) gère la succession différée après le tir — ne pas déclencher
                 // la succession ici. Voir DECISIONS.md "Chasseur Maire — tir avant succession du maire".
@@ -136,7 +140,7 @@ class WitchAction extends RoleAction
                 if ($nightResolveForKill
                     && $nightResolveForKill->target_player_id === $witch->id
                     && $witch->is_alive) {
-                    $witch->update(['is_alive' => false]);
+                    $this->eliminationService->eliminate($witch);
                     $witchDiedFromWolves = true;
                 }
 
@@ -146,7 +150,7 @@ class WitchAction extends RoleAction
                         ->lockForUpdate()
                         ->first();
                     if ($mayorCandidate?->is_mayor && $mayorCandidate->is_alive) {
-                        $mayorCandidate->update(['is_alive' => false]);
+                        $this->eliminationService->eliminate($mayorCandidate);
 
                         // Priorité chasseur > maire : si le maire en sursis est aussi le Chasseur,
                         // créer hunter_pending et NE PAS déclencher la succession ici — la chaîne
@@ -174,7 +178,7 @@ class WitchAction extends RoleAction
                 if ($nightResolveForPass
                     && $nightResolveForPass->target_player_id === $witch->id
                     && $witch->is_alive) {
-                    $witch->update(['is_alive' => false]);
+                    $this->eliminationService->eliminate($witch);
                     $witchDiedFromWolves = true;
                 }
 
@@ -184,7 +188,7 @@ class WitchAction extends RoleAction
                         ->lockForUpdate()
                         ->first();
                     if ($mayorCandidate?->is_mayor && $mayorCandidate->is_alive) {
-                        $mayorCandidate->update(['is_alive' => false]);
+                        $this->eliminationService->eliminate($mayorCandidate);
 
                         // Priorité chasseur > maire : si le maire en sursis est aussi le Chasseur,
                         // créer hunter_pending et NE PAS déclencher la succession ici — la chaîne
@@ -279,7 +283,7 @@ class WitchAction extends RoleAction
             }
 
             if ($ordinaryVictim) {
-                $ordinaryVictim->update(['is_alive' => false]);
+                $this->eliminationService->eliminate($ordinaryVictim);
                 $ordinaryVictim->load('user');
                 broadcast(new PlayerEliminated($game, $ordinaryVictim, 'night_kill'));
 

@@ -7,6 +7,7 @@ use App\Events\Game\PlayerEliminated;
 use App\Models\Game;
 use App\Models\GameAction;
 use App\Notifications\PlayerKilledNightNotification;
+use App\Services\PlayerEliminationService;
 use App\Services\VoteService;
 use App\Services\WinConditionChecker;
 use Illuminate\Bus\Queueable;
@@ -116,7 +117,7 @@ class ProcessNightActions implements ShouldQueue
                 && ! ($witch->settings['witch_heal_used'] ?? false);
 
             if (! $victimIsWitchWithHeal && ! $victimIsMayorWithWitchAvailable && ! $witchCanSaveVictim) {
-                $victim->update(['is_alive' => false]);
+                app(PlayerEliminationService::class)->eliminate($victim);
             }
 
             // Persiste la victime résolue pour les jobs suivants (ProcessWitchTurn,

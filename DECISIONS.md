@@ -1355,3 +1355,25 @@ une const locale d'une vue Blade.
 **Leçon :** Quand un événement doit être conditionné à l'action d'un autre joueur, différer les deux (mort DB + broadcast) ensemble — pas seulement le broadcast. Et prévoir le cas `ProcessWitchAutoAction` (timer expiré sans action manuelle) comme chemin de résolution alternatif qui n'appelle pas `WitchAction::act()` — c'est un gap résiduel à traiter dans un ticket dédié.
 
 **Statut :** ✅ Résolu
+
+---
+
+## [CHOIX] PlayerEliminationService — point d'entrée unique pour éliminer un joueur (prérequis Cupidon)
+
+**Contexte :** `refactor/centralize-player-elimination` — `app/Services/PlayerEliminationService.php` (nouveau), `app/Jobs/ProcessNightActions.php`, `app/Services/VoteService.php`, `app/Services/GameService.php`, `app/Services/RoleActions/HunterAction.php`, `app/Services/RoleActions/WitchAction.php`.
+
+**Symptôme / Problème :** `is_alive = false` était posé directement à 11 endroits différents (audit confirmé par grep, dépassant les 10 initialement recensés : `ProcessNightActions` ×1, `VoteService` ×2, `GameService::quitGame` ×1, `HunterAction` ×1, `WitchAction` ×6). SPEC_CUPIDON.md §5 exige qu'une future cascade de mort des amoureux (si un amoureux meurt, l'autre meurt aussi) soit ajoutée à un seul endroit — dupliquer cette cascade dans 11 call sites aurait signifié qu'un seul oubli produirait un bug silencieux en prod (l'amoureux restant ne mourrait pas).
+
+**Cause / Alternatives :** Le choix (méthode sur `GamePlayer` vs Service dédié) était déjà tranché dans SPEC_CUPIDON.md §5 avant cette tâche : `PlayerEliminationService::eliminate(GamePlayer $player): void`, cohérent avec le pattern de délégation déjà en place pour `GameSettingsService` et `RoleActions/*` (extraction sans changer l'API publique des appelants). Alternative `GamePlayer::eliminate()` écartée dans la spec — non ré-examinée ici, la décision amont faisait déjà autorité.
+
+**Fix / Décision :**
+1. `PlayerEliminationService::eliminate()` créé — pose uniquement `is_alive = false` pour l'instant (aucune cascade : Cupidon n'existe pas encore, viendra dans une tâche ultérieure qui enrichira cette seule méthode).
+2. Les 11 call sites migrés vers cette méthode, un par un avec passage des tests entre chaque fichier. Aucune signature publique changée, aucun comportement observable modifié.
+3. `WitchAction` (6 occurrences) : chaque occurrence traitée séparément malgré la duplication de logique priorité chasseur/maire déjà documentée dans DECISIONS.md — hors périmètre de cette tâche, uniquement la ligne `->update(['is_alive' => false])` remplacée par l'appel au service.
+4. `GameService::quitGame()` : seul call site à combiner `is_alive` et `is_inactive` dans un même `update()`. Scindé en `$this->eliminationService->eliminate($player)` puis `$player->update(['is_inactive' => true])` — deux appels au lieu d'un, toujours dans la même transaction, comportement final identique (mêmes deux colonnes à `true`/`false` à la fin).
+5. Injection : `PlayerEliminationService` ajouté au constructeur de `VoteService`, `GameService`, `HunterAction`, `WitchAction` (résolution via container Laravel, cohérent avec l'injection déjà en place de `VoteService` dans `WitchAction`). Dans `ProcessNightActions::handle()`, résolution via `app(PlayerEliminationService::class)` plutôt qu'un paramètre de méthode — les tests appellent `handle()` directement avec un nombre d'arguments fixe (`ArgumentCountError` provoqué lors d'un premier essai avec paramètre additionnel), donc pas d'injection via signature de méthode pour ce fichier précis.
+6. Aucun fichier de test dédié créé pour `PlayerEliminationService`, cohérent avec le précédent `GameSettingsService`/`RoleAction` (aucun test unitaire dédié non plus) — la couverture existante (`HunterTest`, `WitchTest`, `NightPhaseTest`, `FullGameIntegrationTest`, etc.) exerce déjà tous les chemins d'élimination. 205 tests verts après chaque fichier migré (aucun ajouté, aucun cassé).
+
+**Leçon :** Avant d'ajouter un paramètre à la signature d'une méthode `handle()` de Job, vérifier si des tests l'appellent directement (`(new Job(...))->handle($a, $b)`) plutôt que de compter sur la résolution automatique du container — un paramètre additionnel requis casse ces appels directs avec `ArgumentCountError`. Dans ce cas, résoudre la dépendance via `app(Xxx::class)` à l'intérieur du corps de la méthode plutôt que via la signature. Pour les classes de service uniquement instanciées par le container (`app(Xxx::class)->method(...)`), l'injection par constructeur reste préférable et sans risque — vérifier au préalable par `grep "new NomDeClasse"` dans `tests/` et `app/` qu'aucun call site n'instancie la classe directement avec `new`.
+
+**Statut :** 🔵 Choix assumé
