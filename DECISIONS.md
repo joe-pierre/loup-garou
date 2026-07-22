@@ -1,3 +1,22 @@
+## [RÉSOLU] Partie bloquée en night — broadcasts MayorElected/NightStarted non protégés dans ProcessMayorElection
+
+**Contexte :** `fix/broadcast-failure-blocks-startgame` — `app/Jobs/ProcessMayorElection.php`. Suite directe de l'entrée précédente (même incident Reverb, 58 échecs de broadcast constatés en logs le même jour, cause racine identique).
+
+**Symptôme / Problème :** `MayorElected` et `NightStarted` implémentent tous deux `ShouldBroadcastNow` (broadcast synchrone, comme `PlayerJoined`). Dans `ProcessMayorElection::handle()`, les deux appels `broadcast(...)` n'étaient protégés par aucun `try/catch` : une exception Reverb sur l'un des deux interrompt le job avant `ProcessSeerTurn::dispatch()` (ligne ~73) — la partie reste bloquée en `status='night'` en base, sans que rien ne pilote la suite (le job ne sera jamais réexécuté puisqu'il s'est déjà exécuté avec succès jusqu'au point de l'exception, sans retry automatique).
+
+**Cause / Alternatives :** Même cause racine que `PlayerJoined` (cf. entrée précédente) : un event `ShouldBroadcastNow` s'exécute de façon synchrone dans le job, une exception à cet endroit se comporte comme une exception métier. Aucune alternative envisagée — le pattern à appliquer était déjà validé et documenté (`try/catch` + `Log::warning()`), la seule question était l'encapsulation individuelle vs commune des deux broadcasts. Choix : deux blocs `try/catch` séparés (un par event) plutôt qu'un seul englobant les deux — un échec sur `MayorElected` ne doit pas empêcher la tentative de `NightStarted`, les deux events sont indépendants côté client.
+
+**Fix / Décision :**
+1. `ProcessMayorElection::handle()` : `broadcast(new MayorElected(...))` et `broadcast(new NightStarted(...))` chacun encapsulé dans son propre `try/catch (\Throwable $e)` avec `Log::warning()` (même format que `joinGame()` : contexte `game_id` + `player_id` pour `MayorElected`, `game_id` seul pour `NightStarted`). `ProcessSeerTurn::dispatch()` s'exécute désormais toujours après, quel que soit l'état des deux broadcasts.
+2. Aucun autre fichier touché — périmètre strictement limité à `ProcessMayorElection.php`, conformément à la demande.
+3. Test `ProcessMayorElectionTest::test_processseerturn_dispatche_meme_si_broadcast_mayorelected_echoue()` : même pattern de mock que `JoinGameTest` (binding `Illuminate\Contracts\Broadcasting\Factory`, exception forcée uniquement sur `MayorElected`). Vérifie que la partie transite bien vers `status='night'` et que `ProcessSeerTurn` est dispatché malgré l'échec. 207 tests verts (206 avant + 1 nouveau, aucun cassé).
+
+**Leçon :** Le pattern "encapsuler un `ShouldBroadcastNow` en `try/catch` + `Log::warning()` pour ne jamais bloquer une transition critique" ne s'applique pas qu'au premier point de broadcast trouvé — vérifier systématiquement tous les jobs qui broadcastent un event `ShouldBroadcastNow` juste avant un `dispatch()` critique. `grep -rn "ShouldBroadcastNow" app/Events/` pour lister tous les events concernés et croiser avec leurs call sites serait le moyen le plus sûr d'éviter de découvrir ces bugs un par un via les logs de prod.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [RÉSOLU] Partie bloquée en waiting + 404 role-reveal — broadcast PlayerJoined non protégé + redirection resync() sur mauvais critère
 
 **Contexte :** `fix/broadcast-failure-blocks-startgame` — `app/Services/GameService.php` (`joinGame()`), `resources/views/game/waiting-room.blade.php` (`resync()`).

@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 21h10
+Generated at: 21h49
 
 ## PHP Analysis (Core Logic)
 
@@ -1253,6 +1253,13 @@ JoinGameTest.php
       - test_code_inexistant_retourne_404() → void
       - test_race_condition_deux_joueurs_remplissent_le_dernier_slot() → void
       - test_partie_demarre_meme_si_broadcast_playerjoined_echoue() → void
+
+// tests/Feature/Game/ProcessMayorElectionTest.php
+ProcessMayorElectionTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_processseerturn_dispatche_meme_si_broadcast_mayorelected_echoue() → void
 
 // tests/Feature/Game/AutoActionTest.php
 AutoActionTest.php

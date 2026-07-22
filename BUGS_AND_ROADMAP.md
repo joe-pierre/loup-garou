@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-22 — Partie bloquée en night (broadcasts MayorElected/NightStarted non protégés dans ProcessMayorElection)
+
+- **Symptôme :** lors d'un incident réseau/Reverb, une exception sur `broadcast(new MayorElected(...))` ou `broadcast(new NightStarted(...))` dans `ProcessMayorElection::handle()` empêchait `ProcessSeerTurn::dispatch()` de s'exécuter — la partie restait bloquée en `status='night'` sans rien pour piloter la suite.
+- **Cause :** même cause racine que le bug PlayerJoined ci-dessous (events `ShouldBroadcastNow` synchrones, non protégés par `try/catch`), simplement non traitée pour ce job lors du premier fix.
+- **Fix :** `try/catch (\Throwable)` + `Log::warning()` autour de chacun des deux broadcasts dans `ProcessMayorElection::handle()`. Voir DECISIONS.md "Partie bloquée en night — broadcasts MayorElected/NightStarted non protégés dans ProcessMayorElection" pour le détail complet.
+
+---
+
 ### [x] 2026-07-22 — Partie bloquée en waiting + 404 role-reveal (broadcast PlayerJoined non protégé + resync() sur mauvais critère)
 
 - **Symptôme :** lors d'un incident réseau/Reverb au remplissage du dernier slot, la partie restait bloquée en `status='waiting'` (le `GamePlayer` était bien créé en base). Côté client, `resync()` redirigeait quand même vers `/role-reveal` dès que `slots_remaining === 0`, menant à un état incohérent (404).
