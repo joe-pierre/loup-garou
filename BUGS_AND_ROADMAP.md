@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-22 — Chasseur Maire tué de nuit : succession déclenchée avant le tir (ProcessNightActions + WitchAction)
+
+- **Symptôme :** un Chasseur-Maire tué de nuit (loups ou poison sorcière) voyait la succession du maire partir immédiatement au lieu d'attendre son tour de tir. Sur le chemin "maire en sursis" de `WitchAction` (sorcière ayant choisi de ne pas sauver le maire visé par les loups), le Chasseur ne tirait même jamais — `hunter_pending` n'était pas créé du tout sur ce chemin.
+- **Cause :** `ProcessNightActions::handle()` et `WitchAction::act()` (3 emplacements) déclenchaient `MayorSuccessionStarted`/`ProcessMayorSuccession::dispatch()` sans condition sur `isHunter()`, contrairement au fix déjà en place côté jour (`VoteService::resolveDayVote()`).
+- **Fix :** priorité tir > succession rendue mutuellement exclusive dans les 4 sites concernés, `hunter_pending` créé sur le chemin "maire en sursis" de `WitchAction` qui en était dépourvu. Voir DECISIONS.md "Chasseur Maire tué de nuit — succession déclenchée avant le tir" pour le détail complet.
+
+---
+
 ### [x] 2026-07-22 — Modale succession maire masquant le panel de tir du Chasseur
 
 - **Symptôme :** un joueur cumulant Chasseur et Maire, mort de nuit (loups ou poison sorcière), ne voyait jamais l'option "éliminer quelqu'un" de son tour de tir — masqué par la modale "Succession du Maire" restée ouverte par-dessus. Diagnostiqué sur `game_id=249`, round 2, joueur `Maba diakhouba`.

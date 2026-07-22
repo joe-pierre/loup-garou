@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Game;
 
+use App\Events\Game\MayorSuccessionStarted;
 use App\Events\Game\PlayerEliminated;
 use App\Events\Game\WitchActed;
 use App\Events\Game\WitchTurnStarted;
+use App\Jobs\ProcessMayorSuccession;
 use App\Jobs\ProcessNightActions;
 use App\Jobs\ProcessNightEnd;
 use App\Jobs\ProcessWitchAutoAction;
@@ -435,6 +437,104 @@ class WitchTest extends TestCase
             'round'     => 1,
             'phase'     => 'night',
         ]);
+    }
+
+    /**
+     * Régression : la sorcière empoisonne directement le Chasseur-Maire. hunter_pending
+     * doit être créé (comportement déjà correct) et la succession du maire ne doit PAS
+     * être déclenchée ici — priorité tir > succession. Voir DECISIONS.md
+     * "Chasseur Maire — tir avant succession du maire".
+     */
+    public function test_sorciere_empoisonne_chasseur_maire_succession_pas_declenchee(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game  = $this->makeNightGame();
+        $user  = User::factory()->create();
+        $witch = GamePlayer::factory()->witch()->create([
+            'game_id' => $game->id, 'user_id' => $user->id,
+        ]);
+        $hunterMayor = GamePlayer::factory()->hunter()->create([
+            'game_id' => $game->id, 'is_mayor' => true,
+        ]);
+        GamePlayer::factory()->count(3)->villager()->create(['game_id' => $game->id]);
+
+        $response = $this->actingAs($user)->postJson("/game/{$game->id}/witch/act", [
+            'action'           => 'kill',
+            'target_player_id' => $hunterMayor->id,
+        ]);
+
+        $response->assertStatus(200);
+
+        $this->assertFalse($hunterMayor->fresh()->is_alive);
+        $this->assertTrue($hunterMayor->fresh()->is_mayor);
+
+        $this->assertDatabaseHas('game_actions', [
+            'game_id' => $game->id, 'player_id' => $hunterMayor->id, 'type' => 'hunter_pending',
+            'round' => 1, 'phase' => 'night',
+        ]);
+
+        Event::assertNotDispatched(MayorSuccessionStarted::class);
+        Queue::assertNotPushed(ProcessMayorSuccession::class);
+    }
+
+    /**
+     * Régression : le maire en sursis visé par les loups (sorcière avec soin disponible,
+     * cf. "Maire en sursis" dans DECISIONS.md) est aussi le Chasseur. La sorcière choisit
+     * de ne pas le sauver (elle passe). Avant ce fix, hunter_pending n'était JAMAIS créé
+     * pour ce chemin (bug distinct, découvert par audit) et la succession était déclenchée
+     * immédiatement — le Chasseur ne tirait jamais. Voir DECISIONS.md
+     * "Chasseur Maire — tir avant succession du maire".
+     */
+    public function test_maire_en_sursis_chasseur_non_sauve_par_sorciere_cree_hunter_pending(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game  = $this->makeNightGame();
+        $user  = User::factory()->create();
+        $witch = GamePlayer::factory()->witch()->create([
+            'game_id' => $game->id, 'user_id' => $user->id,
+        ]);
+        $hunterMayor = GamePlayer::factory()->hunter()->create([
+            'game_id' => $game->id, 'is_mayor' => true,
+        ]);
+        $wolf = GamePlayer::factory()->werewolf()->create(['game_id' => $game->id]);
+        GamePlayer::factory()->count(2)->villager()->create(['game_id' => $game->id]);
+
+        GameAction::factory()->create([
+            'game_id' => $game->id, 'player_id' => $wolf->id, 'type' => 'night_vote',
+            'target_player_id' => $hunterMayor->id, 'round' => 1, 'phase' => 'night',
+        ]);
+
+        // Résout la nuit : le maire-chasseur est en sursis (sorcière vivante, soin disponible)
+        // → pas encore marqué mort, pas de hunter_pending à ce stade.
+        (new ProcessNightActions($game->id, 1))->handle(app(VoteService::class), app(WinConditionChecker::class));
+
+        $this->assertTrue($hunterMayor->fresh()->is_alive);
+        $this->assertDatabaseMissing('game_actions', [
+            'game_id' => $game->id, 'player_id' => $hunterMayor->id, 'type' => 'hunter_pending',
+        ]);
+
+        // La sorcière choisit de ne pas sauver le maire-chasseur : elle passe son tour.
+        $response = $this->actingAs($user)->postJson("/game/{$game->id}/witch/act", [
+            'action' => 'pass',
+        ]);
+
+        $response->assertStatus(200);
+
+        $this->assertFalse($hunterMayor->fresh()->is_alive);
+        $this->assertTrue($hunterMayor->fresh()->is_mayor);
+
+        $this->assertDatabaseHas('game_actions', [
+            'game_id' => $game->id, 'player_id' => $hunterMayor->id, 'type' => 'hunter_pending',
+            'round' => 1, 'phase' => 'night',
+        ]);
+
+        Event::assertDispatched(PlayerEliminated::class, fn ($e) => $e->player->id === $hunterMayor->id);
+        Event::assertNotDispatched(MayorSuccessionStarted::class);
+        Queue::assertNotPushed(ProcessMayorSuccession::class);
     }
 
     /**

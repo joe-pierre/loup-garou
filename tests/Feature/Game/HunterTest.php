@@ -282,6 +282,47 @@ class HunterTest extends TestCase
         Queue::assertPushed(ProcessMayorSuccession::class, 1);
     }
 
+    /**
+     * Régression : Chasseur-Maire tué par les loups (sans sorcière vivante, donc mort
+     * immédiate dans ProcessNightActions). hunter_pending doit être créé et la succession
+     * du maire ne doit PAS être déclenchée à ce stade — priorité tir > succession, comme
+     * pour le cas jour. Voir DECISIONS.md "Chasseur Maire — tir avant succession du maire".
+     */
+    public function test_chasseur_maire_tue_par_loups_nuit_succession_pas_declenchee_avant_tir(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game = $this->makeNightGame();
+
+        $hunter = GamePlayer::factory()->hunter()->create([
+            'game_id'  => $game->id,
+            'is_mayor' => true,
+        ]);
+        $wolf = GamePlayer::factory()->werewolf()->create(['game_id' => $game->id]);
+        GamePlayer::factory()->count(4)->villager()->create(['game_id' => $game->id]);
+
+        GameAction::factory()->create([
+            'game_id' => $game->id, 'player_id' => $wolf->id, 'type' => 'night_vote',
+            'target_player_id' => $hunter->id, 'round' => 1, 'phase' => 'night',
+        ]);
+
+        (new ProcessNightActions($game->id, 1))->handle(app(VoteService::class), app(WinConditionChecker::class));
+
+        $this->assertFalse($hunter->fresh()->is_alive);
+        // is_mayor doit rester true : aucune succession n'a dû s'exécuter à ce stade.
+        $this->assertTrue($hunter->fresh()->is_mayor);
+
+        $this->assertDatabaseHas('game_actions', [
+            'game_id' => $game->id, 'player_id' => $hunter->id, 'type' => 'hunter_pending',
+            'round' => 1, 'phase' => 'night',
+        ]);
+
+        Event::assertNotDispatched(MayorSuccessionStarted::class);
+        Queue::assertNotPushed(ProcessMayorSuccession::class);
+        Queue::assertPushed(ProcessNightEnd::class, fn ($job) => $job->gameId === $game->id && $job->round === 1);
+    }
+
     public function test_hunter_auto_action_no_elimination_if_inactive(): void
     {
         Event::fake();
