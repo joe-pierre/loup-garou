@@ -90,4 +90,22 @@ class PhaseGuardTest extends TestCase
             $this->assertTrue(PhaseGuard::canHunterShoot($game), "Échec pour status={$status}");
         }
     }
+
+    public function test_can_cupidon_link_retourne_true_uniquement_round_1_nuit(): void
+    {
+        $game = Game::factory()->create(['status' => 'night', 'round' => 1]);
+        $this->assertTrue(PhaseGuard::canCupidonLink($game));
+    }
+
+    public function test_can_cupidon_link_retourne_false_si_round_2(): void
+    {
+        $game = Game::factory()->create(['status' => 'night', 'round' => 2]);
+        $this->assertFalse(PhaseGuard::canCupidonLink($game));
+    }
+
+    public function test_can_cupidon_link_retourne_false_hors_phase_nuit(): void
+    {
+        $game = Game::factory()->create(['status' => 'day', 'round' => 1]);
+        $this->assertFalse(PhaseGuard::canCupidonLink($game));
+    }
 }

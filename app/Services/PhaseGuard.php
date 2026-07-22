@@ -77,4 +77,13 @@ class PhaseGuard
     {
         return self::isDay($game);
     }
+
+    /**
+     * Cupidon peut former un couple (round 1 exclusivement, phase nuit stricte).
+     * Absent des rounds suivants — voir SPEC_CUPIDON.md §1, §3.
+     */
+    public static function canCupidonLink(Game $game): bool
+    {
+        return $game->round === 1 && $game->status === 'night';
+    }
 }

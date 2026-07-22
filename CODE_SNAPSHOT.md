@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 22h28
+Generated at: 22h55
 
 ## PHP Analysis (Core Logic)
 
@@ -127,6 +127,17 @@ ChatChannel.php
 // app/Enums/WinnerTeam.php
 WinnerTeam.php
 
+// app/Jobs/ProcessCupidonAutoAction.php
+ProcessCupidonAutoAction.php
+    attributes:
+      - Dispatchable
+      - InteractsWithQueue
+      - Queueable
+      - SerializesModels
+    functions:
+      - __construct(int $gameId, int $cupidonId, int $round) {}
+      - handle() → void
+
 // app/Jobs/ProcessMayorSuccession.php
 ProcessMayorSuccession.php
     attributes:
@@ -140,6 +151,17 @@ ProcessMayorSuccession.php
 
 // app/Jobs/ProcessWerewolvesTurn.php
 ProcessWerewolvesTurn.php
+    attributes:
+      - Dispatchable
+      - InteractsWithQueue
+      - Queueable
+      - SerializesModels
+    functions:
+      - __construct(int $gameId, int $round) {}
+      - handle() → void
+
+// app/Jobs/ProcessCupidonTurn.php
+ProcessCupidonTurn.php
     attributes:
       - Dispatchable
       - InteractsWithQueue
@@ -465,6 +487,18 @@ PlayerEliminated.php
       - broadcastAs() → return 'player.eliminated'
       - broadcastWith() → return ['player_id' => $this->player->id, 'pseudo' => $this->player->pseudo, 'role' => $this->player->role, 'reason' => $this->reason]
 
+// app/Events/Game/LoverRevealed.php
+LoverRevealed.php
+    attributes:
+      - Dispatchable
+      - InteractsWithSockets
+      - SerializesModels
+    functions:
+      - __construct(Game $game, GamePlayer $lover, GamePlayer $partner) {}
+      - broadcastOn() → return [new PrivateChannel("game.{$this->game->id}.player.{$this->lover->id}")]
+      - broadcastAs() → return 'lover.revealed'
+      - broadcastWith() → return ['partner_player_id' => $this->partner->id, 'partner_pseudo' => $this->partner->pseudo]
+
 // app/Events/Game/HunterShot.php
 HunterShot.php
     attributes:
@@ -601,6 +635,18 @@ MayorSuccessionStarted.php
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'mayor.succession.started'
       - broadcastWith() → return ['timer' => $this->game->timer('mayor_succession'), 'dying_mayor_pseudo' => $this->dyingMayorPseudo]
+
+// app/Events/Game/CupidonTurnStarted.php
+CupidonTurnStarted.php
+    attributes:
+      - Dispatchable
+      - InteractsWithSockets
+      - SerializesModels
+    functions:
+      - __construct(Game $game, GamePlayer $cupidon) {}
+      - broadcastOn() → return [new PrivateChannel("game.{$this->game->id}.player.{$this->cupidon->id}")]
+      - broadcastAs() → return 'cupidon.turn.started'
+      - broadcastWith() → return ['timer' => $this->game->timer('cupidon')]
 
 // app/Events/Game/SeerTurnStarted.php
 SeerTurnStarted.php
@@ -951,6 +997,7 @@ PhaseGuard.php
       - canChatGeneral(Game $game) → return in_array($game->status, ['electing_mayor', 'day', 'processing_day'])
       - canChatWolves(Game $game) → return in_array($game->status, ['night', 'wolves_turn'])
       - canChatDead(Game $game) → return self::isDay($game)
+      - canCupidonLink(Game $game) → return $game->round === 1 && $game->status === 'night'
 
 // app/Services/HistoryService.php
 HistoryService.php
@@ -1013,6 +1060,11 @@ WitchAction.php
 SeerAction.php
     functions:
       - check(GamePlayer $seer, int $targetId) → return DB::transaction(function () use ($seer, $targetId, $game) { $this->guardNotAlreadyActed($game, $seer->id, ['seer_check']); GameAction::create(['game_id' => $game->id, 'player_id' => $seer->id, 'type' => 'seer_check', 'target_player_id' => $targetId, 'round' => $game->round, 'phase' => 'night']); return GamePlayer::findOrFail($targetId); })
+
+// app/Services/RoleActions/CupidonAction.php
+CupidonAction.php
+    functions:
+      - link(GamePlayer $cupidon, int $target1Id, int $target2Id) → void
 
 // app/Services/RoleActions/HunterAction.php
 HunterAction.php
@@ -1276,6 +1328,23 @@ AutoActionTest.php
       - test_seer_check_rejected_if_self_target() → void
       - test_seer_check_sur_loup_retourne_role_werewolf() → void
 
+// tests/Feature/Game/CupidonJobsTest.php
+CupidonJobsTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - makeNightRoundOneGame() → return Game::factory()->create(['status' => 'night', 'max_players' => 6, 'round' => 1])
+      - test_cupidon_turn_broadcast_et_dispatch_auto_action() → void
+      - test_cupidon_turn_ne_fait_rien_si_pas_de_cupidon_dans_la_composition() → void
+      - test_cupidon_turn_ne_fait_rien_si_cupidon_mort() → void
+      - test_cupidon_turn_ne_fait_rien_si_cupidon_inactif() → void
+      - test_cupidon_turn_skip_si_mauvais_round() → void
+      - test_cupidon_turn_skip_si_mauvais_status() → void
+      - test_cupidon_auto_action_ne_forme_aucun_couple_si_pas_dagi() → void
+      - test_cupidon_auto_action_skipped_if_already_acted() → void
+      - test_cupidon_auto_action_skip_si_mauvais_round() → void
+      - test_cupidon_auto_action_skip_si_mauvais_status() → void
+
 // tests/Feature/Game/NightPhaseTest.php
 NightPhaseTest.php
     attributes:
@@ -1469,6 +1538,25 @@ PhaseGuardTest.php
       - test_can_chat_wolves_retourne_true_pour_night_et_wolves_turn() → void
       - test_can_chat_wolves_retourne_false_hors_phase_loups() → void
       - test_can_hunter_shoot_couvre_nuit_et_jour() → void
+      - test_can_cupidon_link_retourne_true_uniquement_round_1_nuit() → void
+      - test_can_cupidon_link_retourne_false_si_round_2() → void
+      - test_can_cupidon_link_retourne_false_hors_phase_nuit() → void
+
+// tests/Unit/Services/RoleActions/CupidonActionTest.php
+CupidonActionTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - makeNightRoundOneGame() → return Game::factory()->create(['status' => 'night', 'max_players' => 6, 'round' => 1])
+      - test_lien_pose_lover_player_id_symetrique_et_historique() → void
+      - test_cupidon_peut_se_choisir_lui_meme_un_seul_broadcast() → void
+      - test_role_invalide_rejete_403() → void
+      - test_phase_invalide_round_2_rejete_409() → void
+      - test_phase_invalide_hors_nuit_rejete_409() → void
+      - test_double_action_rejetee_409() → void
+      - test_meme_cible_deux_fois_rejetee_422() → void
+      - test_cible_introuvable_404() → void
+      - test_cible_morte_rejetee_422() → void
 
 // tests/TestCase.php
 TestCase.php
@@ -1677,6 +1765,7 @@ GamePlayerFactory.php
       - seer() → return $this->state(['role' => 'seer'])
       - witch() → return $this->state(['role' => 'witch'])
       - hunter() → return $this->state(['role' => 'hunter'])
+      - cupidon() → return $this->state(['role' => 'cupidon'])
       - villager() → return $this->state(['role' => 'villager'])
       - host() → return $this->state(['is_host' => true])
       - dead() → return $this->state(['is_alive' => false])
