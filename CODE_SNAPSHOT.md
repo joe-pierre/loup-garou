@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 23h41
+Generated at: 23h58
 
 ## PHP Analysis (Core Logic)
 
@@ -1525,6 +1525,20 @@ EventPayloadTest.php
 ExampleTest.php
     functions:
       - test_that_true_is_true() → void
+
+// tests/Unit/Services/WinConditionCheckerTest.php
+WinConditionCheckerTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - makeGame(string $status, int $round) → return Game::factory()->create(['status' => $status, 'max_players' => 6, 'round' => $round])
+      - linkLovers(GamePlayer $a, GamePlayer $b) → void
+      - test_deux_derniers_survivants_amoureux_villageois_declenche_victoire_amoureux() → void
+      - test_deux_derniers_survivants_amoureux_loup_et_villageois_declenche_victoire_amoureux() → void
+      - test_deux_derniers_survivants_amoureux_loups_declenche_victoire_amoureux_et_pas_loups() → void
+      - test_deux_derniers_survivants_non_amoureux_comportement_loups_village_inchange() → void
+      - test_deux_derniers_survivants_non_amoureux_loup_contre_villageois_les_loups_gagnent() → void
+      - test_plus_de_deux_survivants_amoureux_ne_declenche_pas_victoire_amoureux() → void
 
 // tests/Unit/Services/PlayerEliminationServiceTest.php
 PlayerEliminationServiceTest.php

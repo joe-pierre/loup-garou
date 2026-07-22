@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Notification;
  * Vérifie les conditions de victoire après chaque élimination et termine la partie si nécessaire.
  *
  * Formule de victoire :
+ * - Amoureux gagnent si : nb_vivants === 2 ET les 2 vivants sont mutuellement lover_player_id
+ *   l'un de l'autre (vérifié EN PREMIER, quel que soit leur camp d'origine — SPEC_CUPIDON.md §6)
  * - Loups gagnent si : nb_loups_vivants >= nb_autres_vivants (ET nb_loups > 0)
  * - Villageois gagnent si : nb_loups_vivants === 0
  *
@@ -33,6 +35,44 @@ class WinConditionChecker
     public function check(Game $game): bool
     {
         $game->refresh();
+
+        if ($game->aliveCount() === 2) {
+            $aliveTwo = $game->alivePlayers()->get();
+            $first    = $aliveTwo->get(0);
+            $second   = $aliveTwo->get(1);
+
+            if ($first && $second
+                && $first->lover_player_id === $second->id
+                && $second->lover_player_id === $first->id
+            ) {
+                if (in_array($game->status, ['night', 'day']) && ! $game->canTransition('finish')) {
+                    Log::warning("Transition 'finish' refusée depuis status={$game->status}");
+                    return false;
+                }
+
+                $lastAction = $this->buildLastAction($game);
+
+                $game->update([
+                    'status'      => 'finished',
+                    'winner_team' => 'lovers',
+                    'finished_at' => now(),
+                ]);
+
+                $allPlayers = $game->players()->with('user')->get();
+
+                broadcast(new PhaseAnnouncement($game->id, 'game_finished', 'Les amoureux ont triomphé du destin !', 5000));
+                broadcast(new GameFinished($game, $allPlayers, 'lovers', $lastAction));
+
+                try {
+                    Notification::send(
+                        $allPlayers->map->user->filter(),
+                        new GameFinishedNotification('lovers')
+                    );
+                } catch (\Throwable) {}
+
+                return true;
+            }
+        }
 
         $aliveWerewolves = $game->aliveWerewolvesCount();
         $aliveOthers     = $game->aliveVillagersCount();
