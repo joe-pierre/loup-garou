@@ -472,6 +472,16 @@
 
 ---
 
+## Phase 33 — Déduplication playerAvatarColor() dans mayor-election.blade.php (2026-07-22)
+
+- [x] `mayor-election.blade.php` : bloc `@php` local (`$avatarColors`/`$avatarColor`) et commentaire
+      TODO supprimés. Avatar des candidats calculé via `:style` Alpine appelant le
+      `window.playerAvatarColor` global (`resources/js/player-avatar.js`), même source que
+      `day.blade.php` et `waiting-room.blade.php`. Avatar du joueur courant (couleur de rôle)
+      inchangé. Rendu identique vérifié (équivalence PHP/JS palette) + 202 tests verts.
+
+---
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`

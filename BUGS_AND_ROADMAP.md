@@ -216,6 +216,14 @@
 
 ---
 
+### [x] 2026-07-22 — playerAvatarColor() encore dupliquée en PHP dans mayor-election.blade.php
+
+- **Symptôme :** le fix du 2026-06-20 n'avait couvert que `day.blade.php` et `waiting-room.blade.php` (usage Alpine `:style`). `mayor-election.blade.php` recalculait la couleur côté serveur avec sa propre copie du tableau `$avatarColors` dans un bloc `@php`, avec le même commentaire TODO resté non résolu.
+- **Cause :** la vue calcule l'avatar dans une boucle `@foreach` PHP plutôt que via `x-for` Alpine, donc le pattern `:style="playerAvatarColor(p.id)"` des deux autres vues n'était pas directement copiable.
+- **Fix :** remplacement du bloc `@php` local par un attribut conditionnel — `style` PHP statique pour l'avatar du joueur courant (couleur de rôle, logique inchangée), `:style` Alpine appelant `playerAvatarColor({{ $candidate->id }})` (fonction globale exposée par `app.js`) pour les autres candidats. Suppression du tableau `$avatarColors` dupliqué et du commentaire TODO. Équivalence vérifiée palette PHP vs JS pour les index 0–11 (sortie identique) + `php artisan test` 202/202 verts.
+
+---
+
 ### [x] 2026-06-20 — Double abonnement Echo sur mayor-election.blade.php et role-reveal.blade.php
 
 - **Symptôme :** `mayor-election.blade.php` et `role-reveal.blade.php` ouvraient un second `window.Echo.channel()` sur `game.{gameId}` en parallèle du store `game-state.js`, provoquant un double traitement de chaque event Reverb — dont une double logique de redirection concurrente vers `/night` (un `setTimeout` brut depuis la vue, une animation GSAP coordonnée depuis `game-state.js`).

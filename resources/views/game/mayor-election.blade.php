@@ -109,17 +109,13 @@
             }"
             @click="castVote({{ $candidate->id }})"
         >
-            @php
-            // TODO : cette fonction est dupliquée dans plusieurs vues.
-            // Source de vérité : config/game_ui.php > avatar_colors
-            // À centraliser dans un helper Alpine global en v1.3+
-            $avatarColors = ['#c9a84c','#a78bfa','#4ade80','#ff4444','#38bdf8','#fb923c','#f472b6','#34d399'];
-            $avatarColor  = $avatarColors[$candidate->id % count($avatarColors)];
-            @endphp
             <div class="avatar"
-                 style="{{ $candidate->id === $player->id
-                     ? 'background-color: rgba(' . implode(',', sscanf($myRoleConfig['color'], '#%02x%02x%02x')) . ', 0.15); border: 1px solid ' . $myRoleConfig['color'] . '55; font-size: 1.5rem;'
-                     : 'background-color: ' . $avatarColor . '; color: #0a0f1e; border: none; font-weight: 700;' }}">
+                 @if ($candidate->id === $player->id)
+                     style="background-color: rgba({{ implode(',', sscanf($myRoleConfig['color'], '#%02x%02x%02x')) }}, 0.15); border: 1px solid {{ $myRoleConfig['color'] }}55; font-size: 1.5rem;"
+                 @else
+                     :style="`background-color: ${playerAvatarColor({{ $candidate->id }})}; color: #0a0f1e; border: none; font-weight: 700;`"
+                 @endif
+            >
                 @if ($candidate->id === $player->id)
                     <span>{{ $myRoleConfig['icon'] }}</span>
                 @else
