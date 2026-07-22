@@ -41,6 +41,7 @@ class GameService
     public function __construct(
         private RoleDistributor $roleDistributor,
         private PhaseManager $phaseManager,
+        private PlayerEliminationService $eliminationService,
     ) {}
 
     /**
@@ -455,7 +456,8 @@ class GameService
     public function quitGame(Game $game, GamePlayer $player): void
     {
         DB::transaction(function () use ($player) {
-            $player->update(['is_alive' => false, 'is_inactive' => true]);
+            $this->eliminationService->eliminate($player);
+            $player->update(['is_inactive' => true]);
         });
         broadcast(new PlayerEliminated($game, $player, 'quit'));
     }

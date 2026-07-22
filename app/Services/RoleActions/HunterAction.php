@@ -6,10 +6,13 @@ use App\Models\Game;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
 use App\Services\PhaseGuard;
+use App\Services\PlayerEliminationService;
 use Illuminate\Support\Facades\DB;
 
 class HunterAction extends RoleAction
 {
+    public function __construct(private PlayerEliminationService $eliminationService) {}
+
     /**
      * Tir du Chasseur : élimine une cible après la mort du chasseur (nuit ou jour).
      * Guard atomique : impossible de tirer deux fois dans le même round.
@@ -55,7 +58,7 @@ class HunterAction extends RoleAction
                 abort(404, 'Cible invalide.');
             }
 
-            $target->update(['is_alive' => false]);
+            $this->eliminationService->eliminate($target);
 
             GameAction::create([
                 'game_id'          => $game->id,

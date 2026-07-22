@@ -491,6 +491,14 @@
 
 ---
 
+## Phase 35 — PlayerEliminationService, prérequis Cupidon (2026-07-22)
+
+- [x] `app/Services/PlayerEliminationService.php` créé — `eliminate(GamePlayer $player): void`
+      centralise `is_alive = false`, seul call site que Cupidon (v1.3) enrichira plus tard
+      avec la cascade de mort des amoureux (SPEC_CUPIDON.md §5). 11 call sites migrés
+      (`ProcessNightActions`, `VoteService` ×2, `GameService::quitGame`, `HunterAction`,
+      `WitchAction` ×6). Aucune signature publique changée. 205 tests verts.
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
