@@ -540,6 +540,31 @@
       (élimination simple, cascade amoureux, pas de re-élimination si déjà mort).
       210 tests verts (207 avant + 3 nouveaux, aucun cassé).
 
+## Phase 39 — Cupidon Étape 3 : CupidonAction + Jobs, non branchés (2026-07-22)
+
+- [x] `app/Services/RoleActions/CupidonAction.php` créée — méthode `link()`,
+      guards dans l'ordre exact de SPEC_CUPIDON.md §4 (rôle, phase, anti-double-action,
+      cibles distinctes, cibles vivantes). Pose `lover_player_id` symétrique,
+      crée 2 `GameAction cupidon_link` (historique), broadcast `LoverRevealed`
+      uniquement aux amoureux distincts de Cupidon (un seul broadcast si Cupidon
+      s'est choisi lui-même).
+- [x] `PhaseGuard::canCupidonLink()` ajoutée — `round === 1 && status === 'night'`.
+- [x] `app/Events/Game/CupidonTurnStarted.php` et `LoverRevealed.php` créés
+      (canal privé, modèle SeerTurnStarted/HunterTurnStarted).
+- [x] `app/Jobs/ProcessCupidonTurn.php` et `ProcessCupidonAutoAction.php` créés —
+      modèle ProcessSeerTurn/ProcessSeerAutoAction. Timeout sans action volontaire
+      → aucun couple formé (décision assumée, pas de tirage aléatoire contrairement
+      au Chasseur). **Non branchés dans PhaseManager::startNight()** — inatteignables
+      depuis le flux de jeu actuel, testés uniquement en dispatch manuel.
+- [x] `config/game.php` — `timers.cupidon => 30` + `limits.cupidon` (15-60s,
+      host_configurable) ajoutés sur le modèle des autres timers ; Jobs utilisent
+      `$game->timer('cupidon')` (pas `config()` direct — voir DECISIONS.md).
+- [x] `GamePlayerFactory::cupidon()` ajouté.
+- [x] Tests : `CupidonActionTest.php` (9 tests, guards + auto-sélection),
+      `CupidonJobsTest.php` (10 tests, dispatch manuel des 2 Jobs), 3 tests
+      `PhaseGuardTest::canCupidonLink`. 232 tests verts (210 avant + 22 nouveaux,
+      aucun cassé).
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
@@ -549,6 +574,6 @@
 - Étape 10 ✅ Terminée — Audit final de conformité CLAUDE.md
 - Roadmap Code Propre ✅ Complète (Étapes 1→10)
 - Phase 26 ✅ Terminée — Sursis maire + historique aléatoire
-- v1.3 Cupidon — Étape 2/8 ✅ (cascade de mort PlayerEliminationService) — voir SPEC_CUPIDON.md §8 pour la suite
+- v1.3 Cupidon — Étape 3/8 ✅ (CupidonAction + Jobs créés, non branchés) — voir SPEC_CUPIDON.md §8 pour la suite
 - Phase 27 ✅ Terminée — P1 succession sorcière, P2 persistance random_elimination, P3 couronne maire jour
 - v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md

@@ -47,6 +47,11 @@ class GamePlayerFactory extends Factory
         return $this->state(['role' => 'hunter']);
     }
 
+    public function cupidon(): static
+    {
+        return $this->state(['role' => 'cupidon']);
+    }
+
     public function villager(): static
     {
         return $this->state(['role' => 'villager']);
