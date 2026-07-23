@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 19h28
+Generated at: 19h40
 
 ## PHP Analysis (Core Logic)
 
@@ -246,7 +246,7 @@ ProcessWitchAutoAction.php
       - SerializesModels
     functions:
       - __construct(int $gameId, int $round) {}
-      - handle() → void
+      - handle(WitchAction $witchAction) → void
 
 // app/Jobs/CheckReconnectionTimeout.php
 CheckReconnectionTimeout.php
@@ -1065,6 +1065,10 @@ WitchAction.php
     functions:
       - __construct(VoteService $voteService, PlayerEliminationService $eliminationService) {}
       - act(GamePlayer $witch, string $action, ?int $targetId) → return $result
+      - resolveDeferredVictim(Game $game, GamePlayer $witch) → return [$witchDiedFromWolves, $deferredMayorVictim]
+      - broadcastDeferredVictim(Game $game, GamePlayer $witch, bool $witchDiedFromWolves, ?GamePlayer $deferredMayorVictim) → void
+      - finalizeOrdinaryVictim(Game $game) → void
+      - finalizeTimedOutVictim(Game $game, GamePlayer $witch) → void
 
 // app/Services/RoleActions/SeerAction.php
 SeerAction.php
@@ -1512,6 +1516,11 @@ WitchTest.php
       - test_sorciere_empoisonne_chasseur_maire_succession_pas_declenchee() → void
       - test_maire_en_sursis_chasseur_non_sauve_par_sorciere_cree_hunter_pending() → void
       - test_sorciere_auto_action_sans_victime_ne_bloque_pas() → void
+      - test_timeout_elimine_victime_ordinaire_des_loups() → void
+      - test_timeout_elimine_sorciere_si_elle_etait_la_victime() → void
+      - test_timeout_elimine_maire_en_sursis_et_declenche_succession() → void
+      - test_timeout_elimine_maire_chasseur_en_sursis_sans_declencher_succession() → void
+      - test_timeout_ne_finalise_pas_si_sorciere_a_deja_agi() → void
 
 // tests/Feature/Game/ProcessDayVoteTest.php
 ProcessDayVoteTest.php
