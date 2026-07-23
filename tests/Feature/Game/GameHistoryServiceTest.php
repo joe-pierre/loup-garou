@@ -383,4 +383,82 @@ class GameHistoryServiceTest extends TestCase
         $this->assertNull($night1['cupidon_couple'], 'cupidon_couple doit rester null sans Cupidon');
         $this->assertSame($victim->id, $night1['killed']['id']);
     }
+
+    /**
+     * Régression : dans la carte "Nuit 1" affichée par history.blade.php, le lien Cupidon
+     * doit apparaître EN PREMIER, avant la victime des loups, la sorcière, le tir du
+     * chasseur et la succession du maire — car Cupidon joue en tout premier au round 1.
+     * Vérifie l'ordre réel du rendu HTML (pas seulement la présence des données).
+     */
+    public function test_night1_affiche_le_lien_cupidon_avant_les_autres_evenements(): void
+    {
+        $game = Game::factory()->create([
+            'status'      => 'finished',
+            'winner_team' => 'villagers',
+            'round'       => 1,
+        ]);
+
+        $cupidon = GamePlayer::factory()->cupidon()->create(['game_id' => $game->id, 'pseudo' => 'Cupidon']);
+        $lover1  = GamePlayer::factory()->villager()->create(['game_id' => $game->id, 'pseudo' => 'Roméo']);
+        $lover2  = GamePlayer::factory()->villager()->create(['game_id' => $game->id, 'pseudo' => 'Juliette']);
+        $mayor   = GamePlayer::factory()->villager()->create(['game_id' => $game->id, 'pseudo' => 'Maire', 'is_mayor' => true]);
+        $hunter  = GamePlayer::factory()->hunter()->create(['game_id' => $game->id, 'pseudo' => 'Chasseur']);
+        $newMayor = GamePlayer::factory()->villager()->create(['game_id' => $game->id, 'pseudo' => 'Successeur']);
+        $shotTarget = GamePlayer::factory()->villager()->create(['game_id' => $game->id, 'pseudo' => 'Cible']);
+        $viewer  = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+
+        // La victime finale des loups est le chasseur ET le maire, pour que tir + succession
+        // soient tous les deux présents en même temps dans la carte Nuit 1.
+        GameAction::factory()->create([
+            'game_id'          => $game->id,
+            'player_id'        => $cupidon->id,
+            'type'             => 'cupidon_link',
+            'target_player_id' => $lover1->id,
+            'round'            => 1,
+            'phase'            => 'night',
+        ]);
+        GameAction::factory()->create([
+            'game_id'          => $game->id,
+            'player_id'        => $cupidon->id,
+            'type'             => 'cupidon_link',
+            'target_player_id' => $lover2->id,
+            'round'            => 1,
+            'phase'            => 'night',
+        ]);
+        GameAction::factory()->create([
+            'game_id'          => $game->id,
+            'player_id'        => $lover1->id,
+            'type'             => 'night_vote',
+            'target_player_id' => $hunter->id,
+            'round'            => 1,
+            'phase'            => 'night',
+        ]);
+        GameAction::factory()->create([
+            'game_id'          => $game->id,
+            'player_id'        => $hunter->id,
+            'type'             => 'hunter_shot',
+            'target_player_id' => $shotTarget->id,
+            'round'            => 1,
+            'phase'            => 'night',
+        ]);
+        GameAction::factory()->create([
+            'game_id'          => $game->id,
+            'player_id'        => $mayor->id,
+            'type'             => 'mayor_succession',
+            'target_player_id' => $newMayor->id,
+            'round'            => 1,
+            'phase'            => 'night',
+        ]);
+
+        $response = $this->actingAs($viewer->user)->get(route('game.history', $game->code));
+
+        $response->assertOk();
+        $response->assertSeeTextInOrder([
+            'Nuit 1',
+            'Cupidon a formé un couple',
+            'Tué cette nuit',
+            'Le chasseur',
+            'comme successeur',
+        ]);
+    }
 }

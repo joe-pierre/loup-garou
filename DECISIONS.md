@@ -1614,3 +1614,17 @@ une const locale d'une vue Blade.
 **Leçon :** Avant d'ajouter un paramètre à la signature d'une méthode `handle()` de Job, vérifier si des tests l'appellent directement (`(new Job(...))->handle($a, $b)`) plutôt que de compter sur la résolution automatique du container — un paramètre additionnel requis casse ces appels directs avec `ArgumentCountError`. Dans ce cas, résoudre la dépendance via `app(Xxx::class)` à l'intérieur du corps de la méthode plutôt que via la signature. Pour les classes de service uniquement instanciées par le container (`app(Xxx::class)->method(...)`), l'injection par constructeur reste préférable et sans risque — vérifier au préalable par `grep "new NomDeClasse"` dans `tests/` et `app/` qu'aucun call site n'instancie la classe directement avec `new`.
 
 **Statut :** 🔵 Choix assumé
+
+## [RÉSOLU] Ordre du lien Cupidon dans la carte "Nuit 1" de l'historique
+
+**Contexte :** `fix/history-cupidon-order-night1` — `resources/views/game/history.blade.php`.
+
+**Symptôme / Problème :** dans la carte "Nuit 1" de l'historique de fin de partie, le lien Cupidon s'affichait après la victime des loups, la sorcière, le tir du chasseur et la succession du maire, alors que Cupidon joue en tout premier au round 1 (avant la Voyante, avant la résolution du vote des loups).
+
+**Cause / Alternatives :** l'ordre des sous-lignes n'est PAS déterminé par l'ordre des clés du tableau retourné par `HistoryService::buildTimeline()` (l'ordre d'insertion dans cet array n'a aucun effet sur le rendu) mais par l'ordre séquentiel des blocs `@if(!empty($entry['xxx']))` codés en dur dans `history.blade.php`, bloc `@elseif($entry['type'] === 'night')` (~ligne 331). Le bloc `cupidon_couple` avait été ajouté en fin de séquence lors de l'implémentation initiale (Phase 49), sans considérer l'ordre réel de déroulement d'une nuit.
+
+**Fix / Décision :** déplacement du seul bloc `cupidon_couple` en tête de la séquence `night` dans `history.blade.php`, avant `killed`/`wolf_no_agreement`. Marge changée de `mt-1` à `mb-1` sur ce bloc pour un espacement autonome (ne dépend pas de ce qui suit, fonctionne que `killed` soit présent ou non). Le reste de l'ordre (`killed` → `witch_heal`/`witch_kill` → `hunter_shot` → `succession`) était déjà correct et n'a pas été touché.
+
+**Leçon :** dans `history.blade.php`, l'ordre d'affichage des sous-lignes d'une carte (`night`, `day`, etc.) se règle exclusivement en réordonnant les blocs `@if` de la vue — jamais en réordonnant les clés du tableau construit par `HistoryService::buildTimeline()`. Un test de régression sur l'ordre doit donc rendre la vue réelle (route `game.history` + `assertSeeTextInOrder()`), pas seulement inspecter le tableau PHP retourné par le service.
+
+**Statut :** ✅ Résolu
