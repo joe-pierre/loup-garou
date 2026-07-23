@@ -75,8 +75,9 @@ class PhaseManager
             }
 
             $locked->update([
-                'status'         => 'day',
-                'phase_deadline' => now()->addSeconds($timer),
+                'status'          => 'day',
+                'phase_deadline'  => now()->addSeconds($timer),
+                'night_sub_phase' => null,
             ]);
         });
 
@@ -124,9 +125,12 @@ class PhaseManager
             }
 
             $locked->update([
-                'status'         => 'night',
-                'round'          => $locked->round + 1,
-                'phase_deadline' => now()->addSeconds($timer),
+                'status'          => 'night',
+                'round'           => $locked->round + 1,
+                'phase_deadline'  => now()->addSeconds($timer),
+                // Purge la sous-phase du round précédent : aucun Job du tour de nuit
+                // n'a encore tourné pour ce nouveau round (voir DECISIONS.md).
+                'night_sub_phase' => null,
             ]);
         });
 

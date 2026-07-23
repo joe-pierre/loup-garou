@@ -8,6 +8,7 @@ use App\Models\GameAction;
 use App\Models\GamePlayer;
 use App\Services\GameService;
 use App\Services\HistoryService;
+use App\Services\NightResyncService;
 use App\Services\PhaseGuard;
 use App\Services\VoteService;
 use Illuminate\Http\JsonResponse;
@@ -22,6 +23,7 @@ class GameController extends Controller
         private GameService $gameService,
         private VoteService $voteService,
         private HistoryService $historyService,
+        private NightResyncService $nightResyncService,
     ) {}
 
 
@@ -272,6 +274,11 @@ class GameController extends Controller
         // werewolves_turn_active : status = 'wolves_turn' ou ('night' sans tour voyante actif)
         $werewolvesTurnActive = $isNight && ! $seerTurnActive && $deadlineActive;
 
+        // Resynchro de sous-phase de nuit (rattrapage refresh/reconnexion) — voir
+        // DECISIONS.md "Resynchronisation sous-phases de nuit". null si aucune
+        // sous-phase active ne concerne ce joueur (mauvais rôle, ou hors nuit).
+        $nightAction = $this->nightResyncService->currentSubPhase($game, $player);
+
         $allies = [];
         if ($player->isWerewolf()) {
             $allies = $game->players()
@@ -317,6 +324,7 @@ class GameController extends Controller
                 'phase_remaining_seconds' => $game->phaseRemainingSeconds(),
                 'seer_turn_active'        => $seerTurnActive,
                 'werewolves_turn_active'  => $werewolvesTurnActive,
+                'night_action'            => $nightAction,
                 'allies'                  => $allies,
                 'players'                 => $players,
             ],

@@ -101,6 +101,11 @@ class ProcessWitchTurn implements ShouldQueue
             return;
         }
 
+        $game->update([
+            'night_sub_phase' => 'witch_turn',
+            'phase_deadline'  => now()->addSeconds($game->timer('witch')),
+        ]);
+
         broadcast(new WitchTurnStarted($game, $witch, $victim, $healAvailable, $killAvailable));
 
         ProcessWitchAutoAction::dispatch($this->gameId, $this->round)

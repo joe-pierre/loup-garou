@@ -111,6 +111,13 @@ export function gameState(gameId, userId) {
                 else if (d.werewolves_turn_active) this.nightPhase = 'werewolves_turn';
                 this._allies              = d.allies ?? [];
                 this.players              = d.players ?? [];
+
+                // Rattrapage de sous-phase de nuit (loup/voyante/sorcière/chasseur/cupidon) —
+                // voir DECISIONS.md "Resynchronisation des sous-phases de nuit". Consommé par
+                // night.blade.php via window event, jamais via $dispatch (règle Alpine du projet).
+                if (d.night_action) {
+                    window.dispatchEvent(new CustomEvent('night-phase-resync', { detail: d.night_action }));
+                }
             } catch {
                 // silencieux — état sera reconstruit via WebSocket
             }
@@ -258,6 +265,11 @@ export function gameState(gameId, userId) {
                     }
                     if (sessionStorage.getItem('__internalNavigation')) return;
                     this._dispatchToast('Reconnecté !', 'success');
+                    // Une vraie coupure/reconnexion Echo peut avoir manqué le broadcast
+                    // de sous-phase de nuit (seer/wolves/witch/hunter/cupidon turn started) —
+                    // ré-appeler /state rattrape l'écran actif exactement comme au chargement
+                    // de page (voir DECISIONS.md "Resynchronisation des sous-phases de nuit").
+                    if (this.gameCode) this._loadState();
                 });
             } catch {}
 

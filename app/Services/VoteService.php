@@ -154,9 +154,10 @@ class VoteService
             $winner->update(['is_mayor' => true]);
 
             $locked->update([
-                'status'         => 'night',
-                'round'          => 1,
-                'phase_deadline' => now()->addSeconds($locked->timer('seer')),
+                'status'          => 'night',
+                'round'           => 1,
+                'phase_deadline'  => now()->addSeconds($locked->timer('seer')),
+                'night_sub_phase' => null,
             ]);
 
             return ['player' => $winner, 'game' => $locked, 'was_random' => $wasRandom];
@@ -616,10 +617,13 @@ class VoteService
     /**
      * Retourne l'état des votes nocturnes de tous les loups vivants.
      *
+     * Visibilité publique : réutilisée par NightResyncService pour la resynchro
+     * de sous-phase (GET /state), en plus de l'usage interne à castNightVote().
+     *
      * @param  Game $game La partie concernée
      * @return array<int, array{player_id: int, pseudo: string, has_voted: bool, target_player_id: int|null, target_pseudo: string|null}>
      */
-    private function getNightVoteState(Game $game): array
+    public function getNightVoteState(Game $game): array
     {
         $aliveWolves = $game->alivePlayers()
             ->whereIn('role', ['werewolf', 'white_wolf'])

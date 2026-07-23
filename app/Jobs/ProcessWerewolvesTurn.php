@@ -73,8 +73,9 @@ class ProcessWerewolvesTurn implements ShouldQueue
             $round       = $locked->round;
 
             $locked->update([
-                'status'         => 'wolves_turn',
-                'phase_deadline' => now()->addSeconds($wolvesTimer),
+                'status'          => 'wolves_turn',
+                'phase_deadline'  => now()->addSeconds($wolvesTimer),
+                'night_sub_phase' => 'werewolves_turn',
             ]);
 
             $game = $locked;

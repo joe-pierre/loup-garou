@@ -761,6 +761,31 @@
       avec Cupidon + victime + tir chasseur + succession tous présents simultanément au round 1.
 - [x] `php artisan test` : 260/260 verts (259 avant + 1 nouveau, aucun cassé).
 
+## Phase 51 — Bugfix resynchronisation des sous-phases de nuit (2026-07-23)
+
+- [x] `games.night_sub_phase` (migration) — vérité persistée de la sous-phase de nuit
+      active, posée par chaque `ProcessXTurn` (Cupidon/Voyante/Loups/Sorcière/Chasseur)
+      au moment du broadcast `XTurnStarted` ; `phase_deadline` posé aussi pour
+      Sorcière/Chasseur/Cupidon (absent auparavant). Purgée à chaque nouvelle nuit.
+- [x] `NightResyncService` (nouveau) — lecture seule, expose sous-phase active +
+      `already_acted` + payload minimal par rôle, branché dans `GET /state`
+      (clé additive `night_action`, `seer_turn_active`/`werewolves_turn_active`
+      existants inchangés).
+- [x] `game-state.js` — `_loadState()` dispatche `night-phase-resync` ; câblé aussi
+      à la reconnexion Echo réelle (`conn.bind('connected', ...)`), pas seulement
+      au chargement de page.
+- [x] `night.blade.php` — chemin unique `applyNightResync()` partagé entre les 5
+      listeners d'events live et le rattrapage resync (garde anti-double-reset),
+      barre de temps recalculée depuis le temps restant (jamais relancée pleine durée).
+- [x] `tests/Feature/Game/NightResyncTest.php` — 23 tests (5 rôles × refresh sans
+      action / avec action déjà soumise / reconnexion, cas négatifs, persistance
+      des Jobs). 283/283 tests verts (260 avant + 23 nouveaux, aucun cassé).
+- [!] Scénario manuel non rejoué en conditions réelles (OAuth Google requis, pas de
+      contournement de login local) — voir DECISIONS.md pour les vérifications de
+      substitution effectuées. Rejeu interactif recommandé avant merge/déploiement.
+- [ ] Gap connu, hors périmètre : tir du Chasseur pendant la phase JOUR non couvert
+      par la resynchro (voir ROADMAP dans BUGS_AND_ROADMAP.md).
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
@@ -775,4 +800,6 @@
   252/252 tests verts. Prêt pour le tag v1.3.0 (créé par le développeur après
   merge sur `dev`).
 - Phase 27 ✅ Terminée — P1 succession sorcière, P2 persistance random_elimination, P3 couronne maire jour
+- Phase 51 ✅ Terminée — Resynchro sous-phases de nuit (refresh/reconnexion), sur branche
+  `fix/night-phase-resync`, non mergée, non committée — en attente de revue et de rejeu manuel
 - v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md
