@@ -203,9 +203,16 @@ werewolves: écriture = loups vivants, phase night uniquement
 
 ### Visibilité des votes
 
-**Vote jour** — anonyme :
-- `DayVoteCast` → uniquement totaux par cible, jamais l'auteur
-- `GET /game/{code}/history` → `scope anonymized()` sur `GameAction` pour les `day_vote`
+> **Note de décision (2026-07-23)** : le vote jour était initialement anonyme par design, pour
+> préserver une tension sociale différente de celle de l'élection du maire (accusation publique
+> vs vote secret). Décision assumée d'inverser cette règle : le vote jour est désormais **public**,
+> aligné sur le même niveau de transparence que le vote maire. Ce n'est pas un correctif de bug —
+> c'est un changement de règle de jeu volontaire.
+
+**Vote jour** — public :
+- `DayVoteCast` → payload enrichi avec `voter_pseudo` et `target_pseudo`
+- Toast temps réel : "🗳️ Joueur X a voté pour Joueur Y" (ou "pour lui-même")
+- `GET /game/{code}/history` → votes jour **non anonymisés** : détail auteur + cible visible
 
 **Vote maire** — public :
 - `MayorVoteCast` → payload enrichi avec `voter_pseudo` et `target_pseudo`
@@ -310,7 +317,7 @@ game.{gameId}.player.{playerId}  → privé (joueur individuel)
 | `DayStarted` | game.{id} | joueur(s) tué(s) la nuit avec rôle révélé, round |
 | `MayorSuccessionStarted` | game.{id} | timer (15s) |
 | `MayorSuccessionDone` | game.{id} | nouveau maire, was_random |
-| `DayVoteCast` | game.{id} | nb votes par joueur (anonyme) |
+| `DayVoteCast` | game.{id} | nb votes par joueur + voter_pseudo/target_pseudo (public) |
 | `PlayerEliminated` | game.{id} | joueur, rôle révélé, raison (night_kill/day_vote) |
 | `NoElimination` | game.{id} | raison (equality/no_vote) |
 | `ChatMessageSent` | game.{id} ou werewolves | pseudo, message, channel, timestamp |

@@ -41,9 +41,12 @@ class VoteController extends Controller
             ->where('user_id', auth()->id())
             ->firstOrFail();
 
-        $summary = $this->voteService->castDayVote($player, $request->validated('target_player_id'));
+        $targetId = $request->validated('target_player_id');
+        $summary  = $this->voteService->castDayVote($player, $targetId);
 
-        broadcast(new DayVoteCast($game, $summary));
+        $targetPseudo = GamePlayer::find($targetId)->pseudo;
+
+        broadcast(new DayVoteCast($game, $summary, $player->pseudo, $targetPseudo));
 
         return response()->json(['success' => true, 'data' => ['votes' => $summary]]);
     }

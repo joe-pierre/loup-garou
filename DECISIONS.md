@@ -1,3 +1,27 @@
+## [CHOIX] Vote jour rendu public — inverse la règle d'anonymat, symétrique au vote maire (Bug 5)
+
+**Contexte :** `feature/day-vote-public` — `app/Events/Game/DayVoteCast.php`, `app/Http/Controllers/Game/VoteController.php` (`day()`), `app/Http/Controllers/Game/GameController.php` (`history()`), `app/Services/HistoryService.php` (`buildTimeline()`), `resources/js/game-state.js` (`_handleDayVoteCast`), `resources/views/game/history.blade.php`, `tests/Unit/Events/EventPayloadTest.php`, `SPEC.md` §"Visibilité des votes".
+
+**Symptôme / Problème :** Le vote jour était anonyme par design depuis l'origine du projet (`DayVoteCast` ne transportait jamais l'auteur, `history()` appliquait `anonymized()` sur `day_vote`) — un choix de design volontaire, documenté comme distinct du vote maire (rendu public par le Bug 5, corrigé le 24/06). Décision utilisateur explicite d'inverser cette règle : le vote jour doit désormais avoir le même niveau de transparence que le vote maire.
+
+**Cause / Alternatives :** Ce n'est pas un bug ni un oubli de symétrie — c'est un changement de règle de jeu assumé, demandé explicitement par l'utilisateur, qui annule l'argument initial ("tension sociale différente de l'élection du maire : accusation publique vs vote secret"). Aucune alternative technique à trancher : le pattern à suivre était déjà entièrement défini par `MayorVoteCast`/`castMayorVote()`/le bloc `mayor_vote sans anonymized()` de `history()`/le bloc `vote_details` de l'entrée `election` dans `HistoryService` — reproduit à l'identique pour `day_vote`.
+
+**Fix / Décision :**
+1. `DayVoteCast` : constructeur étendu avec `voterPseudo`/`targetPseudo` (mêmes types que `MayorVoteCast`), ajoutés au payload `broadcastWith()`. Docblock de classe réécrit (retrait des mentions anonymisation/`⚠️ Pas de player_id`, remplacé par la note de visibilité publique symétrique).
+2. `VoteController::day()` : récupère le pseudo de la cible via `GamePlayer::find($targetId)->pseudo` (pas de pseudo pré-chargé disponible côté `castDayVote()`, contrairement à `castMayorVote()` qui retourne déjà les pseudos dans ses totaux) et passe `$player->pseudo` comme pseudo du votant.
+3. `GameController::history()` : `day_vote` sorti de la requête `$otherActions` (`anonymized()`), nouvelle requête dédiée `$dayVoteActions` sans `anonymized()`, mergée dans `$actions` au même titre que `$mayorVoteActions`.
+4. `HistoryService::buildTimeline()` : `$dayEntry` reçoit une clé `vote_details` (array de `{voter_pseudo, target_pseudo}`), construite depuis `$dayVotes` exactement comme `vote_details` pour l'entrée `election` depuis `$mayorVotes`.
+5. `history.blade.php` : bloc `vote_details` dupliqué à l'identique dans la branche `@elseif($entry['type'] === 'day')`.
+6. `game-state.js` : `_handleDayVoteCast` affiche un toast si `voter_pseudo`/`target_pseudo` présents, emoji 🗳️ (distinct de 👑 réservé au maire) — même structure conditionnelle que `_handleMayorVoteCast`.
+7. `SPEC.md` : bloc "Vote jour — anonyme" remplacé par "Vote jour — public" sur le modèle du bloc maire, avec une note de décision datée (2026-07-23) expliquant l'inversion assumée. Table des events (§6) mise à jour pour `DayVoteCast`.
+8. Tests : `EventPayloadTest::test_day_vote_cast_payload_ne_contient_pas_player_id` mis à jour pour construire `DayVoteCast` avec les 2 nouveaux paramètres et vérifier la présence de `voter_pseudo`/`target_pseudo` (comme l'équivalent maire). Aucun autre test n'assertait spécifiquement l'anonymat du vote jour (`GameActionTest` teste le scope `anonymized()` générique avec `day_vote` comme simple exemple de données, pas une assertion sur son usage dans `history()` — non modifié). `weight = 2` maire sur `day_vote` non touché : seule la visibilité change, la résolution du vote (`VoteService::castDayVote`/`resolveDayVoteWinner`) est restée intacte. 254 tests verts (hors 6 échecs pré-existants `WinConditionCheckerTest`, dépendance à Reverb non démarré localement, sans rapport avec cette tâche).
+
+**Leçon :** Un bloc de code documenté comme "décision de design volontaire" (distinct d'un bug déjà corrigé sur un système symétrique) reste réversible sur demande explicite de l'utilisateur — l'inversion se fait alors en dupliquant fidèlement le pattern déjà validé sur le système frère (ici : vote maire) plutôt qu'en réinventant la structure. Vérifier systématiquement les points de duplication implicite entre deux systèmes symétriques (event, controller, historique, timeline, vue, toast) avant de déclarer la tâche terminée — un seul point oublié (ex. le toast JS ou `vote_details` dans la timeline) aurait laissé la transparence incomplète malgré un payload déjà public.
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [RÉSOLU] Cupidon absent du résultat d'inspection Voyante — repli silencieux sur "❓"/"Rôle inconnu" dans night.blade.php
 
 **Contexte :** suite de la Phase 46 ([[cupidon-role-display-tables]] si référencé ailleurs) — `resources/views/game/night.blade.php`, fonctions `roleEmoji(role)`/`roleLabel(role)` de `nightScreen()`, utilisées par l'écran `nightPhase === 'seer_result'`.

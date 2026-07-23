@@ -411,6 +411,15 @@
                                 @endforeach
                             </div>
                         @endif
+                        @if(!empty($entry['vote_details']))
+                            <div class="mt-1.5 space-y-0.5">
+                                @foreach($entry['vote_details'] as $vd)
+                                    <p class="text-xs" style="color:rgba(232,224,208,0.35);">
+                                        {{ $vd['voter_pseudo'] }} → {{ $vd['target_pseudo'] }}
+                                    </p>
+                                @endforeach
+                            </div>
+                        @endif
 
                         @if(!empty($entry['succession']))
                             <p class="text-sm mt-1" style="color:rgba(232,224,208,0.6);">
