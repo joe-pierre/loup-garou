@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 18h11
+Generated at: 19h28
 
 ## PHP Analysis (Core Logic)
 
@@ -859,7 +859,7 @@ LobbyController.php
 // app/Http/Controllers/Game/GameController.php
 GameController.php
     functions:
-      - __construct(GameService $gameService, VoteService $voteService, HistoryService $historyService) {}
+      - __construct(GameService $gameService, VoteService $voteService, HistoryService $historyService, NightResyncService $nightResyncService) {}
       - mayorElection(Request $request, string $code) → return view('game.mayor-election', compact('game', 'player', 'players', 'myVote', 'currentVotes', 'phaseRemainingSeconds'))
       - summary(Request $request, string $code) → return view('game.summary', compact('game', 'player'))
       - finished(Request $request, string $code) → return view('game.finished', compact('game', 'player', 'players'))
@@ -869,7 +869,7 @@ GameController.php
       - night(Request $request, string $code) → return view('game.night', compact('game', 'player', 'players'))
       - redirectToCurrentPhase(Game $game, string $code) → return match (true) { PhaseGuard::isDay($game) => redirect()->route('game.day', ['code' => $code]), PhaseGuard::isNight($game) => redirect()->route('game.night', ['code' => $code]), $game->status === 'electing_mayor' => redirect()->route('game.mayor-election', ['code' => $code]), $game->status === 'finished' && $game->winner_team !== null => redirect()->route('game.finished', ['code' => $code]), $game->status === 'finished' => redirect()->route('game.cancelled', ['code' => $code]), default => redirect()->route('game.role-reveal', ['code' => $code]), }
       - history(Request $request, string $code) → return view('game.history', compact('game', 'players', 'timeline', 'duration', 'myPlayer'))
-      - state(Request $request, string $code) → return response()->json(['success' => true, 'data' => ['phase' => $game->status, 'round' => $game->round, 'my_role' => $player->role, 'is_alive' => (bool) $player->is_alive, 'is_mayor' => (bool) $player->is_mayor, 'phase_remaining_seconds' => $game->phaseRemainingSeconds(), 'seer_turn_active' => $seerTurnActive, 'werewolves_turn_active' => $werewolvesTurnActive, 'allies' => $allies, 'players' => $players]])
+      - state(Request $request, string $code) → return response()->json(['success' => true, 'data' => ['phase' => $game->status, 'round' => $game->round, 'my_role' => $player->role, 'is_alive' => (bool) $player->is_alive, 'is_mayor' => (bool) $player->is_mayor, 'phase_remaining_seconds' => $game->phaseRemainingSeconds(), 'seer_turn_active' => $seerTurnActive, 'werewolves_turn_active' => $werewolvesTurnActive, 'night_action' => $nightAction, 'allies' => $allies, 'players' => $players]])
       - quit(Request $request, int $id) → return response()->json(['success' => true])
       - disconnect(Request $request, int $id) → return response()->json(['success' => true])
       - reconnect(Request $request, string $code) → return response()->json(['success' => true])
@@ -981,7 +981,7 @@ VoteService.php
     functions:
       - __construct(PhaseManager $phaseManager, WinConditionChecker $winConditionChecker, PlayerEliminationService $eliminationService) {}
       - castMayorVote(GamePlayer $voter, int $targetId) → return $totals
-      - resolveMayorElection(Game $game) → return DB::transaction(function () use ($game) { $locked = Game::where('id', $game->id)->where('status', 'electing_mayor')->lockForUpdate()->first(); if (!$locked) { return null; } if (!$locked->canTransition('start_night')) { Log::warning("Transition 'start_night' refusée depuis status={$locked->status}"); return null; } $votes = GameAction::where('game_id', $locked->id)->where('type', 'mayor_vote')->where('round', $locked->round)->selectRaw('target_player_id, COUNT(*) as vote_count')->groupBy('target_player_id')->orderByDesc('vote_count')->get(); $wasRandom = false; if ($votes->isEmpty()) { $winner = $locked->alivePlayers()->inRandomOrder()->first(); $wasRandom = true; } else { $maxVotes = $votes->first()->vote_count; $topCandidates = $votes->where('vote_count', $maxVotes); if ($topCandidates->count() > 1) { $wasRandom = true; $winnerId = $topCandidates->random()->target_player_id; } else { $winnerId = $topCandidates->first()->target_player_id; } $winner = GamePlayer::find($winnerId); } $winner->update(['is_mayor' => true]); $locked->update(['status' => 'night', 'round' => 1, 'phase_deadline' => now()->addSeconds($locked->timer('seer'))]); return ['player' => $winner, 'game' => $locked, 'was_random' => $wasRandom]; })
+      - resolveMayorElection(Game $game) → return DB::transaction(function () use ($game) { $locked = Game::where('id', $game->id)->where('status', 'electing_mayor')->lockForUpdate()->first(); if (!$locked) { return null; } if (!$locked->canTransition('start_night')) { Log::warning("Transition 'start_night' refusée depuis status={$locked->status}"); return null; } $votes = GameAction::where('game_id', $locked->id)->where('type', 'mayor_vote')->where('round', $locked->round)->selectRaw('target_player_id, COUNT(*) as vote_count')->groupBy('target_player_id')->orderByDesc('vote_count')->get(); $wasRandom = false; if ($votes->isEmpty()) { $winner = $locked->alivePlayers()->inRandomOrder()->first(); $wasRandom = true; } else { $maxVotes = $votes->first()->vote_count; $topCandidates = $votes->where('vote_count', $maxVotes); if ($topCandidates->count() > 1) { $wasRandom = true; $winnerId = $topCandidates->random()->target_player_id; } else { $winnerId = $topCandidates->first()->target_player_id; } $winner = GamePlayer::find($winnerId); } $winner->update(['is_mayor' => true]); $locked->update(['status' => 'night', 'round' => 1, 'phase_deadline' => now()->addSeconds($locked->timer('seer')), 'night_sub_phase' => null]); return ['player' => $winner, 'game' => $locked, 'was_random' => $wasRandom]; })
       - resolveNightVote(Game $game) → return GamePlayer::find($winnerId)
       - resolveNightVoteFromAction(Game $game) → return $action ? GamePlayer::find($action->target_player_id) : null
       - castNightVote(GamePlayer $wolf, int $targetId) → return $state
@@ -1094,6 +1094,19 @@ GameSettingsService.php
       - updateTimerSettings(Game $game, array $timers) → return $game
       - validateRoleSettings(array $roles) → void
       - updateRoleSettings(Game $game, array $roles) → return $game
+
+// app/Services/NightResyncService.php
+NightResyncService.php
+    functions:
+      - __construct(VoteService $voteService) {}
+      - currentSubPhase(Game $game, GamePlayer $player) → return match ($phase) { 'cupidon_turn' => $this->cupidonPayload($game, $player), 'seer_turn' => $this->seerPayload($game, $player), 'werewolves_turn' => $this->werewolvesPayload($game, $player), 'witch_turn' => $this->witchPayload($game, $player), 'hunter_turn' => $this->hunterPayload($game, $player), default => null, }
+      - appliesToPlayer(string $phase, GamePlayer $player) → return match ($phase) { 'cupidon_turn' => $player->role === 'cupidon' && $player->is_alive, 'seer_turn' => $player->role === 'seer' && $player->is_alive, 'werewolves_turn' => $player->isWerewolf() && $player->is_alive, 'witch_turn' => $player->isWitch() && $player->is_alive, 'hunter_turn' => $player->isHunter() && !$player->is_alive, default => false, }
+      - alreadyActed(Game $game, GamePlayer $player, array $types) → return GameAction::where('game_id', $game->id)->where('player_id', $player->id)->where('round', $game->round)->whereIn('type', $types)->exists()
+      - cupidonPayload(Game $game, GamePlayer $player) → return ['phase' => 'cupidon_turn', 'remaining_seconds' => $game->phaseRemainingSeconds(), 'already_acted' => $this->alreadyActed($game, $player, ['cupidon_link']), 'payload' => []]
+      - seerPayload(Game $game, GamePlayer $player) → return ['phase' => 'seer_turn', 'remaining_seconds' => $game->phaseRemainingSeconds(), 'already_acted' => $check !== null, 'payload' => ['result' => $result]]
+      - werewolvesPayload(Game $game, GamePlayer $player) → return ['phase' => 'werewolves_turn', 'remaining_seconds' => $game->phaseRemainingSeconds(), 'already_acted' => (bool) ($myState['has_voted'] ?? false), 'payload' => ['eligible_targets' => $eligibleTargets, 'vote_state' => $voteState, 'my_target_id' => $myState['target_player_id'] ?? null]]
+      - witchPayload(Game $game, GamePlayer $player) → return ['phase' => 'witch_turn', 'remaining_seconds' => $game->phaseRemainingSeconds(), 'already_acted' => $this->alreadyActed($game, $player, ['witch_heal', 'witch_kill', 'witch_pass']), 'payload' => ['victim' => $victim ? ['id' => $victim->id, 'pseudo' => $victim->pseudo] : null, 'heal_available' => !$healUsed && $victim !== null, 'kill_available' => !$killUsed]]
+      - hunterPayload(Game $game, GamePlayer $player) → return ['phase' => 'hunter_turn', 'remaining_seconds' => $game->phaseRemainingSeconds(), 'already_acted' => $this->alreadyActed($game, $player, ['hunter_shot']), 'payload' => []]
 
 // app/Services/WinConditionChecker.php
 WinConditionChecker.php
@@ -1292,6 +1305,37 @@ TimerSettingsTest.php
       - test_game_timer_fallback_sur_config() → void
       - test_timers_fixes_ignorent_settings() → void
       - test_modification_impossible_hors_waiting() → void
+
+// tests/Feature/Game/NightResyncTest.php
+NightResyncTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - makeGame(?string $subPhase, int $round) → return Game::factory()->create(['status' => 'night', 'max_players' => 8, 'round' => $round, 'phase_deadline' => now()->addSeconds(20), 'night_sub_phase' => $subPhase])
+      - assertReconnectionRestoresSamePayload(Game $game, User $user, string $expectedPhase) → void
+      - test_cupidon_turn_refresh_sans_action_soumise() → void
+      - test_cupidon_turn_refresh_avec_action_deja_soumise() → void
+      - test_cupidon_turn_reconnexion_echo() → void
+      - test_seer_turn_refresh_sans_action_soumise() → void
+      - test_seer_turn_refresh_avec_action_deja_soumise() → void
+      - test_seer_turn_reconnexion_echo() → void
+      - test_werewolves_turn_refresh_sans_action_soumise() → void
+      - test_werewolves_turn_refresh_avec_vote_deja_soumis() → void
+      - test_werewolves_turn_reconnexion_echo() → void
+      - test_witch_turn_refresh_sans_action_soumise() → void
+      - test_witch_turn_refresh_avec_action_deja_soumise() → void
+      - test_witch_turn_reconnexion_echo() → void
+      - test_hunter_turn_refresh_sans_action_soumise() → void
+      - test_hunter_turn_refresh_avec_tir_deja_effectue() → void
+      - test_hunter_turn_reconnexion_echo() → void
+      - test_night_action_null_si_role_ne_correspond_pas_a_la_sous_phase_active() → void
+      - test_night_action_null_hors_phase_nuit_meme_si_night_sub_phase_stale() → void
+      - test_process_witch_turn_persiste_night_sub_phase_et_deadline() → void
+      - test_process_hunter_turn_persiste_night_sub_phase_et_deadline() → void
+      - test_process_cupidon_turn_persiste_night_sub_phase_et_deadline() → void
+      - test_process_seer_turn_persiste_night_sub_phase() → void
+      - test_process_werewolves_turn_persiste_night_sub_phase() → void
+      - test_start_night_purge_night_sub_phase_du_round_precedent() → void
 
 // tests/Feature/Game/RoleSettingsTest.php
 RoleSettingsTest.php
@@ -1703,6 +1747,12 @@ TestCase.php
 
 // database/migrations/2026_06_10_000003_add_wolves_turn_to_games_status.php
 2026_06_10_000003_add_wolves_turn_to_games_status.php
+    functions:
+      - up() → void
+      - down() → void
+
+// database/migrations/2026_07_23_182008_add_night_sub_phase_to_games_table.php
+2026_07_23_182008_add_night_sub_phase_to_games_table.php
     functions:
       - up() → void
       - down() → void
