@@ -36,6 +36,7 @@
     .role-seer     { color: #a78bfa; }
     .role-witch    { color: #3493d3; }
     .role-hunter   { color: #fbbf24; }
+    .role-cupidon  { color: #f472b6; }
     .role-villager { color: #e8e0d0; }
     .progress-bar-bg {
         background: rgba(201,168,76,0.12);
@@ -204,6 +205,7 @@ if (!window._summaryScreenInitialized) {
                     seer:     'Voyante',
                     witch:    'Sorcière',
                     hunter:   'Chasseur',
+                    cupidon:  'Cupidon',
                 };
                 return labels[role] ?? role ?? '?';
             },

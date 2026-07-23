@@ -675,6 +675,24 @@
       paramètre `PhaseManager` de `handle()`.
 - [x] `php artisan test` : 257/257 verts (254 avant + 3 nouveaux, aucun cassé).
 
+## Phase 46 — Icône/couleur Cupidon dans les écrans d'affichage de rôle (2026-07-23)
+
+- [x] Grep exhaustif `witch`+`hunter` sur `resources/` et `app/` — 9 tables rôle→icône/couleur/label
+      identifiées où Cupidon manquait : `mayor-election.blade.php`, `role-card.blade.php` (composant
+      inutilisé), `player-list.blade.php`, `finished.blade.php` (2 tables), `summary.blade.php`,
+      `history.blade.php`, `day.blade.php` (`revealed_role_label`, PHP+JS), `role-reveal.blade.php`,
+      `game-state.js` (toast d'élimination).
+- [x] Couleur rose déjà établie retrouvée : `#f472b6` (4 usages dans `night.blade.php` pour l'UI
+      Cupidon spécifique). Standardisée partout, aucune nouvelle couleur introduite. Icône `💘`
+      (cohérente avec `💞` déjà utilisé côté "Cupidon a frappé").
+- [x] Bug trouvé dans `role-reveal.blade.php` : le bloc Villageois utilisait
+      `role !== 'werewolf' && !== 'seer' && !== 'witch' && !== 'hunter'` — un joueur Cupidon tombait
+      donc silencieusement dans le bloc Villageois par défaut (icône 🧑‍🌾, label "Villageois", pas
+      son vrai rôle). Corrigé : condition étendue avec `&& role !== 'cupidon'` + bloc Cupidon dédié
+      ajouté (voir DECISIONS.md).
+- [x] Aucune icône/couleur/label de rôle existant modifiée. `php artisan test` relancé après chaque
+      fichier : 257/257 verts en continu.
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`

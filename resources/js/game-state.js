@@ -490,7 +490,7 @@ export function gameState(gameId, userId) {
 
             const roleLabels = {
                 werewolf: 'Loup-Garou', seer: 'Voyante', witch: 'Sorcière',
-                hunter: 'Chasseur', villager: 'Villageois',
+                hunter: 'Chasseur', cupidon: 'Cupidon', villager: 'Villageois',
             };
             const roleLabel = roleLabels[e.role] ?? e.role ?? '';
             const msg = `💀 ${e.pseudo} était le ${roleLabel || e.role}`;
