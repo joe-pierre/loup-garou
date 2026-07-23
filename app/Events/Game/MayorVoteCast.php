@@ -18,7 +18,7 @@ use Illuminate\Queue\SerializesModels;
  *
  * Visibilité : le vote maire est PUBLIC — l'auteur et la cible sont exposés via leurs pseudos.
  *   ⚠️ Ne PAS ajouter player_id (anti-spoofing) — seuls les pseudos sont autorisés.
- *   Contrairement au vote jour (DayVoteCast), qui reste entièrement anonyme.
+ *   Même niveau de transparence que le vote jour (DayVoteCast), public depuis le 2026-07-23.
  */
 class MayorVoteCast implements ShouldBroadcastNow
 {

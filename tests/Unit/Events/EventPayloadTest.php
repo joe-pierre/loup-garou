@@ -44,15 +44,22 @@ class EventPayloadTest extends TestCase
         $game    = Game::factory()->inProgress()->create();
         $summary = [5 => 3, 6 => 1];
 
-        $event   = new DayVoteCast($game, $summary);
+        $event   = new DayVoteCast($game, $summary, 'Bob', 'Alice');
         $payload = $event->broadcastWith();
 
+        // Anti-spoofing : player_id ne doit jamais apparaître dans le payload
         $this->assertArrayNotHasKey('player_id', $payload);
         $this->assertArrayHasKey('votes', $payload);
         // Vérifie l'absence de player_id dans les entrées de votes
         foreach ($payload['votes'] as $entry) {
             $this->assertArrayNotHasKey('player_id', $entry);
         }
+
+        // Les pseudos auteur et cible sont exposés (vote jour public depuis le 2026-07-23)
+        $this->assertArrayHasKey('voter_pseudo', $payload);
+        $this->assertArrayHasKey('target_pseudo', $payload);
+        $this->assertSame('Bob', $payload['voter_pseudo']);
+        $this->assertSame('Alice', $payload['target_pseudo']);
     }
 
     public function test_seer_result_broadcasté_sur_channel_privé_uniquement(): void
