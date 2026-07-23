@@ -15,6 +15,7 @@ use App\Models\Game;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
 use App\Models\User;
+use App\Services\RoleActions\WitchAction;
 use App\Services\VoteService;
 use App\Services\WinConditionChecker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -337,7 +338,7 @@ class WitchTest extends TestCase
         // ProcessWitchAutoAction ne doit PAS créer de witch_pass puisque witch_kill existe
         Queue::assertPushed(\App\Jobs\ProcessWitchAutoAction::class);
         // Simuler l'exécution du job
-        (new \App\Jobs\ProcessWitchAutoAction($game->id, 1))->handle();
+        (new \App\Jobs\ProcessWitchAutoAction($game->id, 1))->handle(app(WitchAction::class));
 
         $this->assertSame(
             0,
@@ -551,12 +552,169 @@ class WitchTest extends TestCase
         $witch = GamePlayer::factory()->witch()->create(['game_id' => $game->id]);
         GamePlayer::factory()->count(4)->villager()->create(['game_id' => $game->id]);
 
-        (new ProcessWitchAutoAction($game->id, $game->round))->handle();
+        (new ProcessWitchAutoAction($game->id, $game->round))->handle(app(WitchAction::class));
 
         $this->assertDatabaseHas('game_actions', [
             'game_id' => $game->id, 'player_id' => $witch->id, 'type' => 'witch_pass',
             'round' => $game->round,
         ]);
         Queue::assertPushed(ProcessNightEnd::class, fn ($job) => $job->gameId === $game->id && $job->round === $game->round);
+    }
+
+    /**
+     * Fix witch-timeout-victim-not-eliminated, cas 1/3 : victime ordinaire (ni sorcière,
+     * ni maire) toujours vivante quand le timer de la Sorcière expire sans qu'elle agisse.
+     * Avant le fix, is_alive restait true indéfiniment (bug de prod).
+     */
+    public function test_timeout_elimine_victime_ordinaire_des_loups(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game  = $this->makeNightGame();
+        $witch = GamePlayer::factory()->witch()->create(['game_id' => $game->id]);
+        $victim = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+        GamePlayer::factory()->count(3)->villager()->create(['game_id' => $game->id]);
+
+        GameAction::factory()->create([
+            'game_id' => $game->id, 'player_id' => $victim->id, 'type' => 'night_resolve',
+            'target_player_id' => $victim->id, 'round' => 1, 'phase' => 'night',
+        ]);
+
+        (new ProcessWitchAutoAction($game->id, $game->round))->handle(app(WitchAction::class));
+
+        $this->assertFalse($victim->fresh()->is_alive);
+        $this->assertDatabaseHas('game_actions', [
+            'game_id' => $game->id, 'player_id' => $witch->id, 'type' => 'witch_pass',
+            'round' => 1,
+        ]);
+        Event::assertDispatched(PlayerEliminated::class, fn ($e) => $e->player->id === $victim->id);
+    }
+
+    /**
+     * Fix witch-timeout-victim-not-eliminated, cas 2/3 : la Sorcière elle-même était la
+     * victime des loups et n'a pas utilisé son soin avant l'expiration du timer.
+     */
+    public function test_timeout_elimine_sorciere_si_elle_etait_la_victime(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game  = $this->makeNightGame();
+        $witch = GamePlayer::factory()->witch()->create(['game_id' => $game->id]);
+        GamePlayer::factory()->count(4)->villager()->create(['game_id' => $game->id]);
+
+        GameAction::factory()->create([
+            'game_id' => $game->id, 'player_id' => $witch->id, 'type' => 'night_resolve',
+            'target_player_id' => $witch->id, 'round' => 1, 'phase' => 'night',
+        ]);
+
+        (new ProcessWitchAutoAction($game->id, $game->round))->handle(app(WitchAction::class));
+
+        $this->assertFalse($witch->fresh()->is_alive);
+        Event::assertDispatched(PlayerEliminated::class, fn ($e) => $e->player->id === $witch->id);
+    }
+
+    /**
+     * Fix witch-timeout-victim-not-eliminated, cas 3/3 (sans Chasseur) : le maire en sursis
+     * (victime des loups, ni sorcière ni déjà mort) doit être éliminé et sa succession
+     * déclenchée quand le timer sorcière expire sans action.
+     */
+    public function test_timeout_elimine_maire_en_sursis_et_declenche_succession(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game = $this->makeNightGame();
+        GamePlayer::factory()->witch()->create(['game_id' => $game->id]);
+        $mayor = GamePlayer::factory()->villager()->create(['game_id' => $game->id, 'is_mayor' => true]);
+        GamePlayer::factory()->count(3)->villager()->create(['game_id' => $game->id]);
+
+        GameAction::factory()->create([
+            'game_id' => $game->id, 'player_id' => $mayor->id, 'type' => 'night_resolve',
+            'target_player_id' => $mayor->id, 'round' => 1, 'phase' => 'night',
+        ]);
+
+        (new ProcessWitchAutoAction($game->id, $game->round))->handle(app(WitchAction::class));
+
+        $this->assertFalse($mayor->fresh()->is_alive);
+        $this->assertTrue($mayor->fresh()->is_mayor);
+        Event::assertDispatched(PlayerEliminated::class, fn ($e) => $e->player->id === $mayor->id);
+        Event::assertDispatched(MayorSuccessionStarted::class);
+        Queue::assertPushed(ProcessMayorSuccession::class);
+    }
+
+    /**
+     * Fix witch-timeout-victim-not-eliminated, cas 3/3 (sous-cas Chasseur-maire) : priorité
+     * tir > succession — hunter_pending doit être créé et la succession NE DOIT PAS être
+     * déclenchée par ce chemin, exactement comme pour le pass manuel (voir DECISIONS.md
+     * "Chasseur Maire — tir avant succession du maire").
+     */
+    public function test_timeout_elimine_maire_chasseur_en_sursis_sans_declencher_succession(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game = $this->makeNightGame();
+        GamePlayer::factory()->witch()->create(['game_id' => $game->id]);
+        $hunterMayor = GamePlayer::factory()->hunter()->create([
+            'game_id' => $game->id, 'is_mayor' => true,
+        ]);
+        GamePlayer::factory()->count(3)->villager()->create(['game_id' => $game->id]);
+
+        GameAction::factory()->create([
+            'game_id' => $game->id, 'player_id' => $hunterMayor->id, 'type' => 'night_resolve',
+            'target_player_id' => $hunterMayor->id, 'round' => 1, 'phase' => 'night',
+        ]);
+
+        (new ProcessWitchAutoAction($game->id, $game->round))->handle(app(WitchAction::class));
+
+        $this->assertFalse($hunterMayor->fresh()->is_alive);
+        $this->assertTrue($hunterMayor->fresh()->is_mayor);
+        $this->assertDatabaseHas('game_actions', [
+            'game_id' => $game->id, 'player_id' => $hunterMayor->id, 'type' => 'hunter_pending',
+            'round' => 1, 'phase' => 'night',
+        ]);
+        Event::assertDispatched(PlayerEliminated::class, fn ($e) => $e->player->id === $hunterMayor->id);
+        Event::assertNotDispatched(MayorSuccessionStarted::class);
+        Queue::assertNotPushed(ProcessMayorSuccession::class);
+    }
+
+    /**
+     * Guard anti-doublon (contrainte de non-régression) : si une action sorcière manuelle
+     * existe déjà pour ce round au moment où ProcessWitchAutoAction s'exécute (course
+     * gagnée par le chemin manuel), le timeout ne doit ni re-créer de witch_pass, ni
+     * re-finaliser/re-broadcaster une victime déjà traitée par WitchAction::act().
+     */
+    public function test_timeout_ne_finalise_pas_si_sorciere_a_deja_agi(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game   = $this->makeNightGame();
+        $witch  = GamePlayer::factory()->witch()->create(['game_id' => $game->id]);
+        $victim = GamePlayer::factory()->villager()->dead()->create(['game_id' => $game->id]);
+        GamePlayer::factory()->count(3)->villager()->create(['game_id' => $game->id]);
+
+        GameAction::factory()->create([
+            'game_id' => $game->id, 'player_id' => $victim->id, 'type' => 'night_resolve',
+            'target_player_id' => $victim->id, 'round' => 1, 'phase' => 'night',
+        ]);
+
+        // Le chemin manuel a déjà résolu ce round (pass déjà posé, victime déjà finalisée).
+        GameAction::factory()->create([
+            'game_id' => $game->id, 'player_id' => $witch->id, 'type' => 'witch_pass',
+            'target_player_id' => null, 'round' => 1, 'phase' => 'night',
+        ]);
+
+        (new ProcessWitchAutoAction($game->id, $game->round))->handle(app(WitchAction::class));
+
+        $this->assertSame(
+            1,
+            GameAction::where('game_id', $game->id)->where('type', 'witch_pass')->count(),
+            'Aucun second witch_pass ne doit être créé par le timeout.'
+        );
+        Event::assertNotDispatched(PlayerEliminated::class);
+        Event::assertNotDispatched(MayorSuccessionStarted::class);
     }
 }

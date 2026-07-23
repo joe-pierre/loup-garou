@@ -786,6 +786,31 @@
 - [ ] Gap connu, hors périmètre : tir du Chasseur pendant la phase JOUR non couvert
       par la resynchro (voir ROADMAP dans BUGS_AND_ROADMAP.md).
 
+## Phase 52 — Bugfix victime des loups jamais éliminée au timeout Sorcière (2026-07-23)
+
+- [x] Confirmé : `ProcessWitchAutoAction` créait le `GameAction witch_pass` (traçabilité
+      historique) mais ne reprenait jamais la logique de finalisation de la branche `pass`
+      de `WitchAction::act()` — la victime des loups (sorcière elle-même, maire en sursis,
+      ou victime ordinaire) restait `is_alive = true` indéfiniment si la Sorcière n'agissait
+      pas avant l'expiration de son timer.
+- [x] `WitchAction` — logique de finalisation de la branche `pass` extraite en 3 méthodes
+      privées réutilisables (`resolveDeferredVictim()`, `broadcastDeferredVictim()`,
+      `finalizeOrdinaryVictim()`) + une méthode publique `finalizeTimedOutVictim()` pour
+      le chemin timeout. Branche `pass` de `act()` inchangée en comportement observable ;
+      branche `kill` (duplication préexistante de la même logique) non touchée.
+- [x] `ProcessWitchAutoAction::handle()` — injection de `WitchAction`, appelle
+      `finalizeTimedOutVictim()` uniquement si CE job a créé le `witch_pass` (guard
+      anti-doublon existant), jamais si une action manuelle a déjà résolu le round.
+- [x] `WitchTest.php` — 5 nouveaux tests (victime ordinaire, sorcière victime, maire en
+      sursis, maire-chasseur en sursis sans succession, guard anti-doublon). 2 tests
+      existants mis à jour (`app(WitchAction::class)` passé explicitement à `->handle()`,
+      comme pour les autres Jobs de la suite).
+- [x] `php artisan test` : 288/288 verts (283 avant + 5 nouveaux, aucun cassé).
+- [x] Vérification manuelle via `php artisan tinker` (scénario reproduisant le bug de prod) :
+      `is_alive` passe bien de `true` à `false` après timeout.
+- [!] Branche `fix/witch-timeout-victim-not-eliminated`, non mergée, non committée — en
+      attente de revue.
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
@@ -802,4 +827,7 @@
 - Phase 27 ✅ Terminée — P1 succession sorcière, P2 persistance random_elimination, P3 couronne maire jour
 - Phase 51 ✅ Terminée — Resynchro sous-phases de nuit (refresh/reconnexion), sur branche
   `fix/night-phase-resync`, non mergée, non committée — en attente de revue et de rejeu manuel
+- Phase 52 ✅ Terminée — Fix victime des loups jamais éliminée au timeout Sorcière, sur
+  branche `fix/witch-timeout-victim-not-eliminated`, non mergée, non committée — en attente
+  de revue
 - v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md

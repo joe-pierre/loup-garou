@@ -4,7 +4,9 @@ namespace App\Jobs;
 
 use App\Models\Game;
 use App\Models\GameAction;
+use App\Models\GamePlayer;
 use App\Services\PhaseGuard;
+use App\Services\RoleActions\WitchAction;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -45,12 +47,17 @@ class ProcessWitchAutoAction implements ShouldQueue
      *   - status IN ('night', 'processing_night').
      *
      * Si aucune action sorcière (witch_heal/witch_kill/witch_pass) n'existe pour ce round,
-     * crée un GameAction de type witch_pass.
+     * crée un GameAction de type witch_pass, puis finalise (élimination + broadcasts) la
+     * victime des loups laissée en sursis : la sorcière elle-même, le maire en sursis, ou
+     * la victime ordinaire — voir WitchAction::finalizeTimedOutVictim(). Ce chemin de
+     * finalisation ne s'exécute que si CE job a créé le witch_pass (guard anti-doublon) :
+     * si une action manuelle existait déjà, un autre chemin (WitchAction::act()) a déjà
+     * finalisé la victime, jamais les deux.
      *
      * Dispatche :
      *   - ProcessNightEnd($gameId, $round)::delay(0) — toujours.
      */
-    public function handle(): void
+    public function handle(WitchAction $witchAction): void
     {
         $game = Game::find($this->gameId);
 
@@ -60,7 +67,10 @@ class ProcessWitchAutoAction implements ShouldQueue
 
         $game->refresh();
 
-        DB::transaction(function () use ($game) {
+        $witch          = null;
+        $shouldFinalize = false;
+
+        DB::transaction(function () use ($game, &$witch, &$shouldFinalize) {
             $alreadyActed = $game->actions()
                 ->where('round', $this->round)
                 ->whereIn('type', ['witch_heal', 'witch_kill', 'witch_pass'])
@@ -82,8 +92,14 @@ class ProcessWitchAutoAction implements ShouldQueue
                     'round'            => $this->round,
                     'phase'            => 'night',
                 ]);
+
+                $shouldFinalize = true;
             }
         });
+
+        if ($shouldFinalize && $witch instanceof GamePlayer) {
+            $witchAction->finalizeTimedOutVictim($game, $witch);
+        }
 
         ProcessNightEnd::dispatch($this->gameId, $this->round)->delay(0);
     }

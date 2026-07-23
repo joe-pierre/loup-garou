@@ -170,43 +170,7 @@ class WitchAction extends RoleAction
                     }
                 }
             } else {
-                // Si la sorcière était la victime des loups et qu'elle passe, la marquer morte maintenant
-                $nightResolveForPass = GameAction::where('game_id', $game->id)
-                    ->where('type', 'night_resolve')
-                    ->where('round', $game->round)
-                    ->first();
-                if ($nightResolveForPass
-                    && $nightResolveForPass->target_player_id === $witch->id
-                    && $witch->is_alive) {
-                    $this->eliminationService->eliminate($witch);
-                    $witchDiedFromWolves = true;
-                }
-
-                // Si la victime résolue est le maire en sursis (ni la sorcière, ni déjà mort)
-                if ($nightResolveForPass && $nightResolveForPass->target_player_id !== $witch->id) {
-                    $mayorCandidate = GamePlayer::where('id', $nightResolveForPass->target_player_id)
-                        ->lockForUpdate()
-                        ->first();
-                    if ($mayorCandidate?->is_mayor && $mayorCandidate->is_alive) {
-                        $this->eliminationService->eliminate($mayorCandidate);
-
-                        // Priorité chasseur > maire : si le maire en sursis est aussi le Chasseur,
-                        // créer hunter_pending et NE PAS déclencher la succession ici — la chaîne
-                        // ProcessNightEnd → ProcessHunterTurn gère la succession différée après le
-                        // tir. Voir DECISIONS.md "Chasseur Maire — tir avant succession du maire".
-                        if ($mayorCandidate->isHunter()) {
-                            GameAction::create([
-                                'game_id'   => $game->id,
-                                'player_id' => $mayorCandidate->id,
-                                'type'      => 'hunter_pending',
-                                'round'     => $game->round,
-                                'phase'     => 'night',
-                            ]);
-                        }
-
-                        $deferredMayorVictim = $mayorCandidate;
-                    }
-                }
+                [$witchDiedFromWolves, $deferredMayorVictim] = $this->resolveDeferredVictim($game, $witch);
 
                 GameAction::create([
                     'game_id'          => $game->id,
@@ -221,7 +185,95 @@ class WitchAction extends RoleAction
             return ['action' => $action, 'target' => $target];
         });
 
-        // Broadcast hors transaction : la sorcière était la victime des loups et n'a pas utilisé son soin
+        // Broadcast hors transaction : la sorcière était la victime des loups et n'a pas utilisé son soin,
+        // et/ou le maire en sursis (victime initiale des loups, non soignée) a été résolu mort par cette
+        // action sorcière (kill ou pass) — jamais les deux à la fois, un seul maire en jeu.
+        $this->broadcastDeferredVictim($game, $witch, $witchDiedFromWolves, $deferredMayorVictim);
+
+        // Broadcast hors transaction : le maire était en sursis et n'a pas été soigné
+        if ($mayorVictim) {
+            $mayorVictim->load('user');
+            broadcast(new PlayerEliminated($game, $mayorVictim, 'night_kill'));
+
+            $successionDelay = $mayorVictim->is_inactive ? 0 : $game->timer('mayor_succession');
+            broadcast(new MayorSuccessionStarted($game, $mayorVictim->pseudo));
+            ProcessMayorSuccession::dispatch($game->id, $game->round, shouldStartNight: true)
+                ->delay(now()->addSeconds($successionDelay));
+        }
+
+        // Broadcast hors transaction : élimination de la victime nocturne ordinaire différée
+        // depuis ProcessNightActions (ni sorcière, ni maire, et soin non utilisé sur elle).
+        if ($action !== 'heal') {
+            $this->finalizeOrdinaryVictim($game);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Résout, DANS une transaction déjà ouverte par l'appelant, le sort de la sorcière et du
+     * maire en sursis lorsque la sorcière n'a pas soigné la victime des loups (kill ou pass,
+     * volontaire ou timeout). Lit le `night_resolve` du round pour déterminer si la victime
+     * des loups était la sorcière elle-même, ou le maire (ni la sorcière, ni déjà mort).
+     *
+     * N'élimine JAMAIS une victime ordinaire (ni sorcière, ni maire) — voir finalizeOrdinaryVictim().
+     *
+     * @return array{0: bool, 1: ?GamePlayer} [$witchDiedFromWolves, $deferredMayorVictim]
+     */
+    private function resolveDeferredVictim(Game $game, GamePlayer $witch): array
+    {
+        $witchDiedFromWolves = false;
+        $deferredMayorVictim = null;
+
+        $nightResolve = GameAction::where('game_id', $game->id)
+            ->where('type', 'night_resolve')
+            ->where('round', $game->round)
+            ->first();
+
+        // Si la sorcière était la victime des loups et n'a pas été sauvée, la marquer morte maintenant
+        if ($nightResolve
+            && $nightResolve->target_player_id === $witch->id
+            && $witch->is_alive) {
+            $this->eliminationService->eliminate($witch);
+            $witchDiedFromWolves = true;
+        }
+
+        // Si la victime résolue est le maire en sursis (ni la sorcière, ni déjà mort)
+        if ($nightResolve && $nightResolve->target_player_id !== $witch->id) {
+            $mayorCandidate = GamePlayer::where('id', $nightResolve->target_player_id)
+                ->lockForUpdate()
+                ->first();
+            if ($mayorCandidate?->is_mayor && $mayorCandidate->is_alive) {
+                $this->eliminationService->eliminate($mayorCandidate);
+
+                // Priorité chasseur > maire : si le maire en sursis est aussi le Chasseur,
+                // créer hunter_pending et NE PAS déclencher la succession ici — la chaîne
+                // ProcessNightEnd → ProcessHunterTurn gère la succession différée après le
+                // tir. Voir DECISIONS.md "Chasseur Maire — tir avant succession du maire".
+                if ($mayorCandidate->isHunter()) {
+                    GameAction::create([
+                        'game_id'   => $game->id,
+                        'player_id' => $mayorCandidate->id,
+                        'type'      => 'hunter_pending',
+                        'round'     => $game->round,
+                        'phase'     => 'night',
+                    ]);
+                }
+
+                $deferredMayorVictim = $mayorCandidate;
+            }
+        }
+
+        return [$witchDiedFromWolves, $deferredMayorVictim];
+    }
+
+    /**
+     * Broadcast HORS transaction du résultat de resolveDeferredVictim() : PlayerEliminated
+     * pour la sorcière et/ou le maire en sursis, puis succession du maire si nécessaire
+     * (sauf priorité Chasseur > Maire, gérée par hunter_pending déjà créé).
+     */
+    private function broadcastDeferredVictim(Game $game, GamePlayer $witch, bool $witchDiedFromWolves, ?GamePlayer $deferredMayorVictim): void
+    {
         if ($witchDiedFromWolves) {
             $witch->load('user');
             broadcast(new PlayerEliminated($game, $witch, 'night_kill'));
@@ -235,22 +287,6 @@ class WitchAction extends RoleAction
             }
         }
 
-        // Broadcast hors transaction : le maire était en sursis et n'a pas été soigné
-        if ($mayorVictim) {
-            $mayorVictim->load('user');
-            broadcast(new PlayerEliminated($game, $mayorVictim, 'night_kill'));
-
-            $successionDelay = $mayorVictim->is_inactive ? 0 : $game->timer('mayor_succession');
-            broadcast(new MayorSuccessionStarted($game, $mayorVictim->pseudo));
-            ProcessMayorSuccession::dispatch($game->id, $game->round, shouldStartNight: true)
-                ->delay(now()->addSeconds($successionDelay));
-        }
-
-        // Broadcast hors transaction : le maire en sursis (victime initiale des loups,
-        // non soignée) a été résolu mort par cette action sorcière (kill ou pass).
-        // Priorité chasseur > maire : si ce maire est aussi le Chasseur, hunter_pending a déjà
-        // été créé dans la transaction — la succession est déclenchée plus tard par la chaîne
-        // ProcessNightEnd → ProcessHunterTurn, jamais ici.
         if ($deferredMayorVictim) {
             $deferredMayorVictim->load('user');
             broadcast(new PlayerEliminated($game, $deferredMayorVictim, 'night_kill'));
@@ -262,43 +298,64 @@ class WitchAction extends RoleAction
                     ->delay(now()->addSeconds($successionDelay));
             }
         }
+    }
 
-        // Broadcast hors transaction : élimination de la victime nocturne ordinaire différée
-        // depuis ProcessNightActions (ni sorcière, ni maire, et soin non utilisé sur elle).
-        if ($action !== 'heal') {
-            $nightResolve = GameAction::where('game_id', $game->id)
-                ->where('type', 'night_resolve')
-                ->where('round', $game->round)
-                ->first();
+    /**
+     * Élimine et broadcast, HORS transaction, la victime nocturne ordinaire (ni sorcière,
+     * ni maire) toujours vivante d'après le `night_resolve` du round — cas où la sorcière
+     * n'a pas soigné (kill, pass volontaire, ou timeout via ProcessWitchAutoAction).
+     */
+    private function finalizeOrdinaryVictim(Game $game): void
+    {
+        $nightResolve = GameAction::where('game_id', $game->id)
+            ->where('type', 'night_resolve')
+            ->where('round', $game->round)
+            ->first();
 
-            $ordinaryVictim = null;
-            if ($nightResolve) {
-                $candidate = GamePlayer::find($nightResolve->target_player_id);
-                if ($candidate
-                    && $candidate->is_alive
-                    && ! $candidate->isWitch()
-                    && ! $candidate->is_mayor) {
-                    $ordinaryVictim = $candidate;
-                }
-            }
-
-            if ($ordinaryVictim) {
-                $this->eliminationService->eliminate($ordinaryVictim);
-                $ordinaryVictim->load('user');
-                broadcast(new PlayerEliminated($game, $ordinaryVictim, 'night_kill'));
-
-                if ($ordinaryVictim->isHunter()) {
-                    GameAction::create([
-                        'game_id'   => $game->id,
-                        'player_id' => $ordinaryVictim->id,
-                        'type'      => 'hunter_pending',
-                        'round'     => $game->round,
-                        'phase'     => 'night',
-                    ]);
-                }
+        $ordinaryVictim = null;
+        if ($nightResolve) {
+            $candidate = GamePlayer::find($nightResolve->target_player_id);
+            if ($candidate
+                && $candidate->is_alive
+                && ! $candidate->isWitch()
+                && ! $candidate->is_mayor) {
+                $ordinaryVictim = $candidate;
             }
         }
 
-        return $result;
+        if ($ordinaryVictim) {
+            $this->eliminationService->eliminate($ordinaryVictim);
+            $ordinaryVictim->load('user');
+            broadcast(new PlayerEliminated($game, $ordinaryVictim, 'night_kill'));
+
+            if ($ordinaryVictim->isHunter()) {
+                GameAction::create([
+                    'game_id'   => $game->id,
+                    'player_id' => $ordinaryVictim->id,
+                    'type'      => 'hunter_pending',
+                    'round'     => $game->round,
+                    'phase'     => 'night',
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Point d'entrée pour ProcessWitchAutoAction (timeout) : reproduit exactement la
+     * finalisation de la branche 'pass' de act() (resolveDeferredVictim dans sa propre
+     * transaction, puis les broadcasts hors transaction), pour le cas où la Sorcière
+     * n'a pas cliqué avant l'expiration de son timer. À appeler UNIQUEMENT après avoir
+     * créé le GameAction witch_pass du round (guard anti-doublon déjà vérifié par
+     * l'appelant), jamais si une action sorcière existait déjà pour ce round.
+     */
+    public function finalizeTimedOutVictim(Game $game, GamePlayer $witch): void
+    {
+        [$witchDiedFromWolves, $deferredMayorVictim] = DB::transaction(
+            fn () => $this->resolveDeferredVictim($game, $witch)
+        );
+
+        $this->broadcastDeferredVictim($game, $witch, $witchDiedFromWolves, $deferredMayorVictim);
+
+        $this->finalizeOrdinaryVictim($game);
     }
 }
