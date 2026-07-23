@@ -329,6 +329,15 @@
                         @endif
 
                     @elseif($entry['type'] === 'night')
+                        @if(!empty($entry['cupidon_couple']))
+                            <p class="text-sm mb-1" style="color:#f472b6;">
+                                💘 Cupidon a formé un couple :
+                                <span class="font-semibold">{{ $entry['cupidon_couple']['player1']['pseudo'] }}</span>
+                                &amp;
+                                <span class="font-semibold">{{ $entry['cupidon_couple']['player2']['pseudo'] }}</span>
+                            </p>
+                        @endif
+
                         @if($entry['wolf_no_agreement'])
                             <p class="text-sm" style="color:rgba(232,224,208,0.5);">Les loups ne se sont pas mis d'accord cette nuit.</p>
                         @elseif(!empty($entry['killed']))
@@ -373,15 +382,6 @@
                                 @endif
                                 <span class="font-semibold" style="color:#c9a84c;">{{ $entry['succession']['new_mayor']['pseudo'] }}</span>
                                 comme successeur.
-                            </p>
-                        @endif
-
-                        @if(!empty($entry['cupidon_couple']))
-                            <p class="text-sm mt-1" style="color:#f472b6;">
-                                💘 Cupidon a formé un couple :
-                                <span class="font-semibold">{{ $entry['cupidon_couple']['player1']['pseudo'] }}</span>
-                                &amp;
-                                <span class="font-semibold">{{ $entry['cupidon_couple']['player2']['pseudo'] }}</span>
                             </p>
                         @endif
 

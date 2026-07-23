@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-23 — Ordre des sous-lignes de la carte "Nuit 1" incorrect dans l'historique (history.blade.php)
+
+- **Symptôme :** dans la carte "Nuit 1" de l'historique de fin de partie, le lien Cupidon s'affichait en dernier (après victime des loups, sorcière, tir du chasseur, succession du maire) alors que Cupidon joue en tout premier lors du round 1, avant même la résolution du vote des loups.
+- **Cause :** l'ordre d'affichage des sous-lignes d'une carte nuit est déterminé par l'ordre séquentiel des blocs `@if` dans `history.blade.php` (bloc `@elseif($entry['type'] === 'night')`, ~ligne 331) — pas par l'ordre des clés du tableau retourné par `HistoryService::buildTimeline()`, qui n'a aucun effet sur le rendu. Le bloc `cupidon_couple` avait été ajouté en fin de séquence lors de l'implémentation initiale, sans tenir compte de l'ordre réel de déroulement d'une nuit.
+- **Fix :** déplacement du bloc `cupidon_couple` en tête de la séquence `night` (avant `killed`/`wolf_no_agreement`), avec `mb-1` (au lieu de `mt-1`) pour un espacement autonome ne dépendant pas du bloc suivant — le reste de l'ordre (`killed` → `witch_heal`/`witch_kill` → `hunter_shot` → `succession`) était déjà correct et n'a pas été touché. Test `test_night1_affiche_le_lien_cupidon_avant_les_autres_evenements` ajouté dans `GameHistoryServiceTest`, vérifiant l'ordre réel du rendu HTML via `assertSeeTextInOrder()` sur la route `game.history` (un test sur le tableau PHP de `buildTimeline()` n'aurait pas suffi : l'ordre d'affichage vient de la vue, pas de la structure de données).
+
+---
+
 ### [x] 2026-07-23 — Couple formé par Cupidon absent de l'historique de fin de partie (GameController::history() + HistoryService)
 
 - **Symptôme :** l'écran d'historique (`/history`, accessible uniquement une fois la partie `finished`) n'affichait jamais le couple formé par Cupidon au round 1, alors que tous les rôles y sont déjà révélés.

@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 10h47
+Generated at: 10h54
 
 ## PHP Analysis (Core Logic)
 
@@ -1155,6 +1155,7 @@ GameHistoryServiceTest.php
       - test_election_timeline_contient_le_detail_des_votes_par_candidat() → void
       - test_night_round1_contient_la_paire_cupidon_couple() → void
       - test_night_round1_sans_cupidon_couple_reste_null() → void
+      - test_night1_affiche_le_lien_cupidon_avant_les_autres_evenements() → void
 
 // tests/Feature/Game/ReconnectionTest.php
 ReconnectionTest.php

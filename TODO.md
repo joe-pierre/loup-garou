@@ -745,6 +745,22 @@
       night).
 - [x] `php artisan test` : 259/259 verts (257 avant + 2 nouveaux, aucun cassé).
 
+## Phase 50 — Bugfix ordre du lien Cupidon dans la carte "Nuit 1" (2026-07-23)
+
+- [x] Confirmé : l'ordre des sous-lignes d'une carte nuit est déterminé par l'ordre
+      séquentiel des blocs `@if` dans `history.blade.php` (`@elseif($entry['type'] === 'night')`,
+      ~ligne 331) — pas par l'ordre des clés du tableau retourné par
+      `HistoryService::buildTimeline()`, qui n'a aucun effet sur le rendu.
+- [x] `history.blade.php` — bloc `cupidon_couple` déplacé en tête de la séquence `night`
+      (avant `killed`/`wolf_no_agreement`), reflétant le fait que Cupidon joue en tout
+      premier au round 1. Reste de l'ordre inchangé (déjà correct) : `killed` →
+      `witch_heal`/`witch_kill` → `hunter_shot` → `succession`. Marge `mb-1` (au lieu de
+      `mt-1`) sur le bloc Cupidon pour un espacement autonome, sans dépendance au bloc suivant.
+- [x] `GameHistoryServiceTest` — 1 test ajouté (`test_night1_affiche_le_lien_cupidon_avant_les_autres_evenements`),
+      vérifie l'ordre réel du rendu HTML via `assertSeeTextInOrder()` sur la route `game.history`
+      avec Cupidon + victime + tir chasseur + succession tous présents simultanément au round 1.
+- [x] `php artisan test` : 260/260 verts (259 avant + 1 nouveau, aucun cassé).
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
