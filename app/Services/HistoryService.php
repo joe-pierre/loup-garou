@@ -64,6 +64,7 @@ class HistoryService
                 'witch_kill'        => null,
                 'hunter_shot'       => null,
                 'succession'        => null,
+                'cupidon_couple'    => null,
             ];
 
             if ($nightVotes->isEmpty()) {
@@ -98,6 +99,17 @@ class HistoryService
                     'former_mayor' => $successionNight->player_id ? $this->playerSnapshot($players, $successionNight->player_id) : null,
                     'new_mayor'    => $this->playerSnapshot($players, $successionNight->target_player_id),
                 ];
+            }
+
+            // Cupidon n'agit qu'au round 1 — 2 GameAction cupidon_link (une par amoureux) regroupées en une paire
+            if ($round === 1) {
+                $cupidonLinks = $actions->where('type', 'cupidon_link')->where('round', 1)->values();
+                if ($cupidonLinks->count() === 2) {
+                    $nightEntry['cupidon_couple'] = [
+                        'player1' => $this->playerSnapshot($players, $cupidonLinks[0]->target_player_id),
+                        'player2' => $this->playerSnapshot($players, $cupidonLinks[1]->target_player_id),
+                    ];
+                }
             }
 
             $timeline[] = $nightEntry;

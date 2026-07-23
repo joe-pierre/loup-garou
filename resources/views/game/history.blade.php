@@ -376,6 +376,15 @@
                             </p>
                         @endif
 
+                        @if(!empty($entry['cupidon_couple']))
+                            <p class="text-sm mt-1" style="color:#f472b6;">
+                                💘 Cupidon a formé un couple :
+                                <span class="font-semibold">{{ $entry['cupidon_couple']['player1']['pseudo'] }}</span>
+                                &amp;
+                                <span class="font-semibold">{{ $entry['cupidon_couple']['player2']['pseudo'] }}</span>
+                            </p>
+                        @endif
+
                     @elseif($entry['type'] === 'day')
                         @if($entry['result'] === 'eliminated' && !empty($entry['eliminated']))
                             <p class="text-sm">
