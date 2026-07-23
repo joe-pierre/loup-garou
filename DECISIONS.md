@@ -1,3 +1,19 @@
+## [RÉSOLU] Cupidon jamais déclenché au round 1 — chemin d'élection du maire oublié
+
+**Contexte :** `fix/cupidon-missing-from-mayor-election-path` — `app/Jobs/ProcessMayorElection.php`, `app/Services/PhaseManager.php`, `tests/Feature/Game/ProcessMayorElectionTest.php`.
+
+**Symptôme / Problème :** La condition « round 1 + Cupidon distribué → dispatcher `ProcessCupidonTurn` plutôt que `ProcessSeerTurn` » (SPEC_CUPIDON.md §3, ajoutée Phase 40) n'existait que dans `PhaseManager::startNight()`, qui gère les transitions `day`/`processing_day` → `night` (rounds 2+). Le tout premier round de la partie transite par `electing_mayor` → `night` via `ProcessMayorElection::handle()`, qui dispatchait `ProcessSeerTurn` inconditionnellement (ligne 89) — Cupidon n'était donc jamais déclenché au round 1, alors que c'est précisément le seul round où il agit (round 1 exclusivement, guard `PhaseGuard::canCupidonLink()`). Aucune partie avec Cupidon activé ne pouvait jamais former de couple.
+
+**Cause / Alternatives :** Deux points d'entrée distincts vers la nuit (`electing_mayor` → `night` la première fois, `day`/`processing_day` → `night` ensuite), chacun avec son propre Job, et la condition Cupidon n'avait été branchée que dans un seul (Phase 40, dont le prompt ne mentionnait que `PhaseManager::startNight()`). Alternative rejetée : dupliquer le bloc `if`/`else` dans `ProcessMayorElection::handle()` — aurait recréé le même risque d'oubli au prochain rôle « premier tour de nuit » (ex. futur v1.4+).
+
+**Fix / Décision :** Factorisation dans `PhaseManager::dispatchNightOpeningTurn(Game $game, string $timerName)` — même logique (`round === 1 && Cupidon distribué` → `ProcessCupidonTurn`, sinon `ProcessSeerTurn`), le nom du timer passé en paramètre plutôt que figé en dur car les deux appelants utilisent des timers sémantiquement différents (`night_start_delay` depuis `startNight()`, `mayor_reveal` depuis `ProcessMayorElection` — laisse le temps à l'UI d'afficher `MayorElected` avant la première nuit). `ProcessMayorElection::handle()` reçoit `PhaseManager` par injection de méthode (comme `VoteService`) et appelle `dispatchNightOpeningTurn($result['game'], 'mayor_reveal')` à la place du dispatch direct — le try/catch autour des broadcasts `MayorElected`/`NightStarted` est resté strictement inchangé. Grep `ProcessSeerTurn::dispatch` sur tout `app/` : 3 autres call sites trouvés (`ProcessCupidonTurn`, `ProcessCupidonAutoAction`, `CupidonAction::link()`) mais tous sont des dispatches *après* que le tour de Cupidon a déjà eu lieu ou a expiré — pas des points de décision « ouverture de nuit » — laissés inchangés à dessein.
+
+**Leçon :** Quand une condition de branchement est ajoutée à un seul point d'entrée d'un flux qui en a plusieurs (ici : deux chemins distincts vers `night`, un seul pour round 1), toujours `grep` le nom du Job/event visé (`ProcessSeerTurn::dispatch` ici) dans tout `app/` avant de considérer la tâche terminée — et distinguer les call sites qui *décident* du prochain tour de ceux qui se contentent d'y *enchaîner* après coup (ces derniers ne doivent pas passer par la méthode factorisée).
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] Cupidon activé par défaut — annule le défaut désactivé décidé en Étape 4
 
 **Contexte :** `fix/cupidon-role-settings-missing` — `config/game.php` (`roles.cupidon`), `app/Services/RoleDistributor.php` (docblock), `tests/Feature/Game/RoleSettingsTest.php`, `resources/views/game/waiting-room.blade.php`. Suite directe de la tâche "Cupidon absent des rôles configurables côté host" (voir BUGS_AND_ROADMAP.md) : une fois `cupidon` ajouté à `GameSettingsService::validateRoleSettings()` et à la modale host, l'utilisateur a explicitement demandé que Cupidon soit activé par défaut, au même titre que witch/hunter.

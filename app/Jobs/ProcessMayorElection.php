@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Events\Game\MayorElected;
 use App\Events\Game\NightStarted;
 use App\Models\Game;
+use App\Services\PhaseManager;
 use App\Services\VoteService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -19,8 +20,10 @@ use Illuminate\Support\Facades\Log;
  * Dispatché par WaitForReadyPlayers avec un délai égal au timer mayor_election.
  *
  * En cas d'égalité ou d'absence de votes, le maire est désigné aléatoirement.
- * Après l'élection, dispatche ProcessSeerTurn avec un délai mayor_reveal pour laisser
- * l'UI afficher MayorElected avant le début de la première nuit.
+ * Après l'élection, dispatche le premier Job du tour de nuit (Cupidon si round 1 et
+ * Cupidon distribué, sinon ProcessSeerTurn — via PhaseManager::dispatchNightOpeningTurn(),
+ * voir DECISIONS.md) avec un délai mayor_reveal pour laisser l'UI afficher MayorElected
+ * avant le début de la première nuit.
  */
 class ProcessMayorElection implements ShouldQueue
 {
@@ -43,9 +46,10 @@ class ProcessMayorElection implements ShouldQueue
      * et la transaction interne → return (idempotent).
      *
      * Dispatche :
-     *   - ProcessSeerTurn($gameId)::delay(mayor_reveal).
+     *   - PhaseManager::dispatchNightOpeningTurn($game, 'mayor_reveal') — Cupidon ou
+     *     ProcessSeerTurn selon la composition, délai mayor_reveal.
      */
-    public function handle(VoteService $voteService): void
+    public function handle(VoteService $voteService, PhaseManager $phaseManager): void
     {
         $game = Game::find($this->gameId);
 
@@ -85,8 +89,8 @@ class ProcessMayorElection implements ShouldQueue
             ]);
         }
 
-        // Délai avant le premier tour voyante : laisse le temps à l'UI d'afficher MayorElected.
-        ProcessSeerTurn::dispatch($this->gameId, $result['game']->round)
-            ->delay(now()->addSeconds($game->timer('mayor_reveal')));
+        // Délai avant le premier tour de nuit (Cupidon ou Voyante) : laisse le temps
+        // à l'UI d'afficher MayorElected.
+        $phaseManager->dispatchNightOpeningTurn($result['game'], 'mayor_reveal');
     }
 }

@@ -655,6 +655,26 @@
 - [x] `php artisan test` : 252/252 verts (243 avant + 9 nouveaux, aucun cassé) — validation finale
       avant le tag v1.3.0.
 
+## Phase 45 — Bugfix Cupidon jamais déclenché au round 1 (chemin élection du maire) (2026-07-23)
+
+- [x] `PhaseManager::dispatchNightOpeningTurn(Game $game, string $timerName)` créée — factorise
+      la décision Cupidon vs Voyante (round === 1 && Cupidon distribué), timer paramétrable
+      (voir DECISIONS.md).
+- [x] `PhaseManager::startNight()` — bloc `if`/`else` remplacé par un appel à
+      `dispatchNightOpeningTurn($locked, 'night_start_delay')`, comportement inchangé.
+- [x] `ProcessMayorElection::handle()` — dispatch inconditionnel de `ProcessSeerTurn` remplacé
+      par `$phaseManager->dispatchNightOpeningTurn($result['game'], 'mayor_reveal')`
+      (`PhaseManager` injecté par paramètre de méthode) ; try/catch broadcasts
+      `MayorElected`/`NightStarted` strictement inchangés.
+- [x] Grep `ProcessSeerTurn::dispatch` sur tout `app/` — 3 autres call sites trouvés
+      (`ProcessCupidonTurn`, `ProcessCupidonAutoAction`, `CupidonAction::link()`), tous des
+      enchaînements post-tour-Cupidon, laissés inchangés à dessein (voir DECISIONS.md).
+- [x] `tests/Feature/Game/ProcessMayorElectionTest.php` — 3 tests ajoutés (Cupidon déclenché
+      dès l'élection du maire round 1, comportement inchangé sans Cupidon, `dispatchNightOpeningTurn`
+      ne redéclenche jamais Cupidon au round 2+) ; test existant mis à jour pour le nouveau
+      paramètre `PhaseManager` de `handle()`.
+- [x] `php artisan test` : 257/257 verts (254 avant + 3 nouveaux, aucun cassé).
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`

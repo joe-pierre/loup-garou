@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 08h22
+Generated at: 09h18
 
 ## PHP Analysis (Core Logic)
 
@@ -268,7 +268,7 @@ ProcessMayorElection.php
       - SerializesModels
     functions:
       - __construct(int $gameId) {}
-      - handle(VoteService $voteService) → void
+      - handle(VoteService $voteService, PhaseManager $phaseManager) → void
 
 // app/Jobs/WaitForReadyPlayers.php
 WaitForReadyPlayers.php
@@ -1018,6 +1018,7 @@ PhaseManager.php
     functions:
       - startDay(Game $game, ?GamePlayer $victim, bool $witchActed, ?int $savedPlayerId, ?int $witchPlayerId, ?int $poisonedPlayerId, ?string $poisonedPlayerPseudo) → void
       - startNight(Game $game) → void
+      - dispatchNightOpeningTurn(Game $game, string $timerName) → void
       - endNight(Game $game) → void
 
 // app/Services/TimerCalculator.php
@@ -1353,6 +1354,9 @@ ProcessMayorElectionTest.php
       - RefreshDatabase
     functions:
       - test_processseerturn_dispatche_meme_si_broadcast_mayorelected_echoue() → void
+      - test_cupidon_turn_started_des_election_du_maire_si_cupidon_distribue() → void
+      - test_seer_turn_started_des_election_du_maire_si_pas_de_cupidon() → void
+      - test_pas_de_cupidon_turn_started_si_round_deja_superieur_a_1() → void
 
 // tests/Feature/Game/AutoActionTest.php
 AutoActionTest.php
