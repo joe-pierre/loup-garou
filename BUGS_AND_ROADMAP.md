@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-23 — Couple formé par Cupidon absent de l'historique de fin de partie (GameController::history() + HistoryService)
+
+- **Symptôme :** l'écran d'historique (`/history`, accessible uniquement une fois la partie `finished`) n'affichait jamais le couple formé par Cupidon au round 1, alors que tous les rôles y sont déjà révélés.
+- **Cause :** `cupidon_link` n'était ni dans le `whereIn()` des types d'actions chargées par `GameController::history()`, ni géré par `HistoryService::buildTimeline()` — omission lors de l'ajout de Cupidon (v1.3), la timeline n'avait jamais été auditée pour ce rôle.
+- **Fix :** `cupidon_link` chargé via une requête dédiée sans `anonymized()` (même pattern que `mayor_vote`, les deux identités doivent rester lisibles) et mergé aux autres actions dans `GameController::history()`. `HistoryService::buildTimeline()` regroupe les 2 `GameAction cupidon_link` du round 1 (une par amoureux) en une paire `cupidon_couple` sur l'entrée `night` du round 1. `history.blade.php` affiche cette paire avec l'icône/couleur Cupidon déjà standardisées (💘, `#f472b6`). Rien n'est affiché si Cupidon n'a pas agi (timeout ou rôle non distribué). Tests ajoutés dans `GameHistoryServiceTest` (couple présent round 1, absence sans régression).
+
+---
+
 ### [x] 2026-07-23 — Witch/Hunter/Cupidon retombaient sur "Villageois" dans le message de victime de nuit (day.blade.php) + Cupidon absent de /state
 
 - **Symptôme :** le message "C'était un [rôle]" affiché sous la bannière de victime de nuit dans `day.blade.php` (~ligne 101) affichait "Villageois" pour une victime Sorcière, Chasseur ou Cupidon — fausse information en jeu. Par ailleurs, `GameController::state()` (`revealed_role_label`, endpoint `/state`) ne couvrait pas `cupidon` (witch/hunter déjà présents).

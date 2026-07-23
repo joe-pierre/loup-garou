@@ -727,6 +727,24 @@
       test créé, test existant déjà pertinent enrichi.
 - [x] `php artisan test` : 257/257 verts.
 
+## Phase 49 — Bugfix couple Cupidon absent de l'historique de fin de partie (2026-07-23)
+
+- [x] `GameController::history()` — `cupidon_link` chargé via une requête dédiée sans
+      `anonymized()` (pattern identique à `mayor_vote`, les 2 identités doivent rester
+      lisibles) et mergé aux autres actions.
+- [x] `HistoryService::buildTimeline()` — les 2 `GameAction cupidon_link` du round 1 (une
+      par amoureux, `player_id` = Cupidon, `target_player_id` = amoureux) regroupées en une
+      paire `cupidon_couple` ajoutée à l'entrée `night` du round 1 uniquement (Cupidon n'agit
+      qu'une fois). `null` si Cupidon n'a pas agi (timeout ou rôle non distribué) — aucun
+      placeholder affiché.
+- [x] `history.blade.php` — affichage de la paire dans la carte "Nuit 1", icône/couleur
+      Cupidon déjà standardisées (💘, `#f472b6`), sur le modèle visuel des autres lignes
+      d'action de la carte (`witch_heal`, `succession`).
+- [x] `GameHistoryServiceTest` — 2 tests ajoutés : paire `cupidon_couple` présente au round 1,
+      `cupidon_couple` reste `null` sans Cupidon (aucune régression sur le reste de l'entrée
+      night).
+- [x] `php artisan test` : 259/259 verts (257 avant + 2 nouveaux, aucun cassé).
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`

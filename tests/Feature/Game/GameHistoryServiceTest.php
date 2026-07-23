@@ -296,4 +296,91 @@ class GameHistoryServiceTest extends TestCase
         $this->assertNotEmpty($bobVotes, 'Aucun vote de Bob trouvé dans vote_details');
         $this->assertSame('Charlie', $bobVotes[0]['target_pseudo'], 'Bob doit avoir voté pour Charlie');
     }
+
+    /**
+     * Les 2 GameAction cupidon_link du round 1 (une par amoureux, player_id = Cupidon,
+     * target_player_id = amoureux) doivent être regroupées en une seule paire cupidon_couple
+     * dans l'entrée night du round 1.
+     */
+    public function test_night_round1_contient_la_paire_cupidon_couple(): void
+    {
+        $game = Game::factory()->create([
+            'status'      => 'finished',
+            'winner_team' => 'villagers',
+            'round'       => 1,
+        ]);
+
+        $cupidon = GamePlayer::factory()->cupidon()->create(['game_id' => $game->id, 'pseudo' => 'Cupidon']);
+        $lover1  = GamePlayer::factory()->villager()->create(['game_id' => $game->id, 'pseudo' => 'Roméo']);
+        $lover2  = GamePlayer::factory()->villager()->create(['game_id' => $game->id, 'pseudo' => 'Juliette']);
+
+        $players = $game->players()->get()->keyBy('id');
+
+        $actions = collect([
+            GameAction::factory()->create([
+                'game_id'          => $game->id,
+                'player_id'        => $cupidon->id,
+                'type'             => 'cupidon_link',
+                'target_player_id' => $lover1->id,
+                'round'            => 1,
+                'phase'            => 'night',
+            ]),
+            GameAction::factory()->create([
+                'game_id'          => $game->id,
+                'player_id'        => $cupidon->id,
+                'type'             => 'cupidon_link',
+                'target_player_id' => $lover2->id,
+                'round'            => 1,
+                'phase'            => 'night',
+            ]),
+        ]);
+
+        $service  = new HistoryService();
+        $timeline = $service->buildTimeline($game, $players, $actions);
+
+        $night1 = collect($timeline)->where('type', 'night')->keyBy('round')->get(1);
+
+        $this->assertNotNull($night1, 'Nuit round 1 absente');
+        $this->assertNotNull($night1['cupidon_couple'], 'cupidon_couple absent de la nuit round 1');
+        $this->assertSame($lover1->id, $night1['cupidon_couple']['player1']['id']);
+        $this->assertSame($lover2->id, $night1['cupidon_couple']['player2']['id']);
+    }
+
+    /**
+     * Partie sans Cupidon (rôle non distribué ou timeout) : cupidon_couple doit rester null,
+     * aucune régression sur le reste de l'entrée night round 1.
+     */
+    public function test_night_round1_sans_cupidon_couple_reste_null(): void
+    {
+        $game = Game::factory()->create([
+            'status'      => 'finished',
+            'winner_team' => 'werewolves',
+            'round'       => 1,
+        ]);
+
+        $wolf   = GamePlayer::factory()->werewolf()->create(['game_id' => $game->id]);
+        $victim = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+
+        $players = $game->players()->get()->keyBy('id');
+
+        $actions = collect([
+            GameAction::factory()->create([
+                'game_id'          => $game->id,
+                'player_id'        => $wolf->id,
+                'type'             => 'night_vote',
+                'target_player_id' => $victim->id,
+                'round'            => 1,
+                'phase'            => 'night',
+            ]),
+        ]);
+
+        $service  = new HistoryService();
+        $timeline = $service->buildTimeline($game, $players, $actions);
+
+        $night1 = collect($timeline)->where('type', 'night')->keyBy('round')->get(1);
+
+        $this->assertNotNull($night1, 'Nuit round 1 absente');
+        $this->assertNull($night1['cupidon_couple'], 'cupidon_couple doit rester null sans Cupidon');
+        $this->assertSame($victim->id, $night1['killed']['id']);
+    }
 }

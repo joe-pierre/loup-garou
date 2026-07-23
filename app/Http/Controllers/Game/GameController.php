@@ -183,13 +183,20 @@ class GameController extends Controller
             ->orderBy('round')
             ->get();
 
+        // cupidon_link sans anonymized() : les deux identités (Cupidon + amoureux) conservées,
+        // cohérent avec le fait que tous les rôles sont déjà révélés en fin de partie
+        $cupidonLinkActions = GameAction::where('game_id', $game->id)
+            ->where('type', 'cupidon_link')
+            ->orderBy('round')
+            ->get();
+
         $otherActions = GameAction::where('game_id', $game->id)
             ->anonymized()
             ->whereIn('type', ['night_vote', 'day_vote', 'mayor_succession', 'witch_heal', 'witch_kill', 'hunter_shot', 'random_elimination'])
             ->orderBy('round')
             ->get();
 
-        $actions = $mayorVoteActions->merge($otherActions)->sortBy('round')->values();
+        $actions = $mayorVoteActions->merge($cupidonLinkActions)->merge($otherActions)->sortBy('round')->values();
 
         $duration = ($game->started_at && $game->finished_at)
             ? (int) $game->started_at->diffInMinutes($game->finished_at)
