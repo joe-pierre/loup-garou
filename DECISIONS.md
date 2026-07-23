@@ -1,3 +1,19 @@
+## [CHOIX] Cupidon activé par défaut — annule le défaut désactivé décidé en Étape 4
+
+**Contexte :** `fix/cupidon-role-settings-missing` — `config/game.php` (`roles.cupidon`), `app/Services/RoleDistributor.php` (docblock), `tests/Feature/Game/RoleSettingsTest.php`, `resources/views/game/waiting-room.blade.php`. Suite directe de la tâche "Cupidon absent des rôles configurables côté host" (voir BUGS_AND_ROADMAP.md) : une fois `cupidon` ajouté à `GameSettingsService::validateRoleSettings()` et à la modale host, l'utilisateur a explicitement demandé que Cupidon soit activé par défaut, au même titre que witch/hunter.
+
+**Symptôme / Problème :** Ce choix annule directement la décision documentée en "Cupidon Étape 4" (`config/game.php roles.cupidon => 0`), qui reposait sur l'argument "zéro régression, aucun host n'a demandé cette activation" — argument qui ne tient plus puisque l'hôte peut désormais explicitement le configurer, et que l'utilisateur demande maintenant la parité avec witch/hunter.
+
+**Cause / Alternatives :** Aucune alternative réelle — instruction explicite et sans ambiguïté de l'utilisateur. Seul arbitrage technique : `computeCounts()` (`RoleDistributor`) inclut Cupidon dans la même passe que witch/hunter, donc toute partie déjà testée avec un décompte implicite `villager = total - (loups+voyante+witch+hunter)` voit son nombre de villageois réduit d'une unité dès que Cupidon est actif par défaut. Vérifié par grep qu'aucun test hors `RoleSettingsTest` n'appelle `RoleDistributor::distribute()` directement — seul ce fichier avait des assertions de comptage à corriger (`test_role_distributor_remplit_villageois_automatiquement` : villageois 3→2, cupidon ajouté aux assertions).
+
+**Fix / Décision :** `config/game.php roles.cupidon => 1`. `waiting-room.blade.php` (`roleSettings()`) : fallback `roles.cupidon` `?? 0` → `?? 1`, cohérent avec witch/hunter. `RoleDistributor` docblock mis à jour (retrait de la mention "désactivé par défaut"). Test `test_role_distributor_ninclut_pas_cupidon_par_defaut` remplacé par `test_role_distributor_inclut_cupidon_par_defaut` (assertion inversée) ; nouveau test `test_host_peut_desactiver_cupidon` ajouté (le host garde la capacité de désactiver Cupidon via `{cupidon: 0}`, seul le défaut change) ; `test_role_distributor_remplit_villageois_automatiquement` mis à jour (villageois 3→2, assertion cupidon=1 ajoutée). L'entrée DECISIONS.md "Cupidon Étape 4" n'est pas modifiée (elle documente un choix qui était correct au moment où il a été pris, avant que la configurabilité host n'existe) — cette entrée-ci documente le renversement explicite.
+
+**Leçon :** Une décision "zéro régression" prise à un stade où une fonctionnalité n'est pas encore configurable (ici : Cupidon sans UI host) n'est pas figée — dès que la configurabilité existe, l'argument initial ne s'applique plus et le défaut peut légitimement changer sur demande explicite. Avant de changer un défaut de rôle lu par `RoleDistributor::computeCounts()`, toujours `grep` les tests qui appellent `distribute()` directement (pas seulement ceux qui passent par un flux HTTP complet) — un changement de défaut redistribue silencieusement les villageois restants et casse les assertions de comptage exact, pas seulement les assertions de présence/absence du rôle changé.
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [CHOIX] Cupidon Étape 7 — Tests d'intégration bout en bout : Event::fake()+Queue::fake() avec chaînage manuel des Jobs, plutôt qu'un flux 100% réel
 
 **Contexte :** `test/cupidon-integration` — `tests/Feature/Game/CupidonTest.php` (nouveau, 9 tests). Étape 7 de l'implémentation Cupidon (SPEC_CUPIDON.md §8 tâche 7), validation finale avant le tag v1.3.0. Toutes les briques Cupidon étaient déjà en place et mergées sur `dev` (schéma, cascade, action, intégration nuit, win condition, frontend — Phases 37 à 42 du TODO), avec 243 tests verts.

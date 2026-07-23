@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-23 — Cupidon absent des rôles configurables côté host (GameSettingsService + waiting-room)
+
+- **Symptôme :** malgré RoleDistributor/config/enums déjà en place depuis les Étapes 1→4 de Cupidon, `POST /game/{id}/settings/roles` avec `{cupidon: 1}` était rejeté (422 "n'est pas configurable"), et la modale ⚙️ Paramètres de la waiting-room n'affichait aucune option Cupidon — deux listes codées en dur limitées à `witch`/`hunter`.
+- **Cause :** `GameSettingsService::validateRoleSettings()` (whitelist de clés acceptées) et `roleSettings()` dans `waiting-room.blade.php` (objets `roles`/`labels` du store Alpine) n'avaient jamais été étendus à `cupidon` lors des étapes précédentes — chacune scopée à sa propre couche (schéma, distribution, intégration nuit, win condition, frontend jeu) sans jamais toucher la configuration host.
+- **Fix :** `cupidon` ajouté à la whitelist des deux boucles de `validateRoleSettings()`, au store `roleSettings()` (`roles.cupidon`, `labels.cupidon = 'Cupidon'`). Docblock de `GameService::validateRoleSettings()` (délégation) mis à jour en cohérence. Test `test_host_peut_activer_cupidon()` ajouté dans `RoleSettingsTest`. Audit grep `witch.*hunter`/`hunter.*witch` sur `app/` et `resources/` : aucune 3e liste de rôles configurables oubliée (RoleDistributor et GamePolicy déjà corrects). Suite à une demande explicite de l'utilisateur, `config('game.roles.cupidon')` est ensuite passé de `0` à `1` (activé par défaut, parité witch/hunter) — voir DECISIONS.md "Cupidon activé par défaut" pour le détail (annule le choix "désactivé par défaut" de la Phase 40).
+
+---
+
 ### [x] 2026-07-23 — Docblock obsolète dans CupidonTurnStarted.php
 
 - **Symptôme :** le docblock de `app/Events/Game/CupidonTurnStarted.php` affirmait encore "Non branché dans PhaseManager à ce stade", laissant croire que le tour de Cupidon était inatteignable depuis le flux de jeu réel.
@@ -1051,3 +1059,4 @@ Implémentation envisagée :
   tous les rôles stables.
 
 - [ ] `WinConditionCheckerTest` broadcaste réellement (`GameFinished`/`PhaseAnnouncement` non protégés par `try/catch`, aucun `Event::fake()`) et échoue si Reverb n'est pas démarré localement — l'aligner sur le reste de la suite (`Event::fake()`) pour ne plus dépendre d'un service externe pendant `php artisan test` (découvert lors de Cupidon Étape 7, voir DECISIONS.md).
+- [ ] `config/game_ui.php` (`role_labels`, `role_labels_emoji`) et le `ROLE_NAMES` JS de `role-reveal.blade.php` ne couvrent pas `cupidon` (ni `white_wolf` pour `role_labels_emoji`) — un joueur Cupidon verrait un label de rôle manquant/incorrect à l'écran de révélation. Distinct de la configurabilité host (déjà corrigée), simple gap d'affichage découvert lors de l'audit grep `witch.*hunter`/`hunter.*witch` du 2026-07-23.

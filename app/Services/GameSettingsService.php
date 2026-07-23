@@ -55,7 +55,7 @@ class GameSettingsService
     }
 
     /**
-     * Valide un tableau de rôles : seuls 'witch' et 'hunter' sont configurables, chacun valant 0 ou 1.
+     * Valide un tableau de rôles : seuls 'witch', 'hunter' et 'cupidon' sont configurables, chacun valant 0 ou 1.
      *
      * @param  array<string, int> $roles Tableau [nom_role => 0|1] à valider
      * @return void
@@ -63,14 +63,14 @@ class GameSettingsService
      */
     public function validateRoleSettings(array $roles): void
     {
-        foreach (['witch', 'hunter'] as $key) {
+        foreach (['witch', 'hunter', 'cupidon'] as $key) {
             if (array_key_exists($key, $roles) && ! in_array($roles[$key], [0, 1], true)) {
                 abort(422, "Le rôle '{$key}' doit être 0 ou 1.");
             }
         }
 
         foreach (array_keys($roles) as $key) {
-            if (! in_array($key, ['witch', 'hunter'], true)) {
+            if (! in_array($key, ['witch', 'hunter', 'cupidon'], true)) {
                 abort(422, "Le rôle '{$key}' n'est pas configurable.");
             }
         }

@@ -498,7 +498,7 @@ class GameService
     }
 
     /**
-     * Valide un tableau de rôles : seuls 'witch' et 'hunter' sont configurables, chacun valant 0 ou 1.
+     * Valide un tableau de rôles : seuls 'witch', 'hunter' et 'cupidon' sont configurables, chacun valant 0 ou 1.
      *
      * @param  array<string, int> $roles Tableau [nom_role => 0|1] à valider
      * @return void

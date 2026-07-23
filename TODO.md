@@ -616,6 +616,29 @@
 - [x] 243 tests verts (inchangé — tâche frontend, pas de nouveau test automatisé demandé),
       `npm run build` sans erreur.
 
+## Phase 44 — Bugfix Cupidon absent des rôles configurables host (2026-07-23)
+
+- [x] `GameSettingsService::validateRoleSettings()` — `cupidon` ajouté à la whitelist
+      (deux boucles : validation valeur 0|1, validation clé configurable), même motif
+      que `witch`/`hunter`. Docblock de `GameService::validateRoleSettings()` (délégation)
+      mis à jour en cohérence.
+- [x] `waiting-room.blade.php` (`roleSettings()`) — `roles.cupidon` et
+      `labels.cupidon = 'Cupidon'` ajoutés, même structure que `witch`/`hunter`.
+- [x] Audit grep `witch.*hunter`/`hunter.*witch` sur `app/` et `resources/` — aucune
+      3e liste de rôles configurables oubliée (`RoleDistributor`, `GamePolicy` déjà
+      corrects). Gap d'affichage distinct trouvé (`config/game_ui.php` role labels,
+      `role-reveal.blade.php` ROLE_NAMES) — ajouté à la ROADMAP, hors périmètre de
+      cette tâche (configurabilité, pas affichage).
+- [x] Test `test_host_peut_activer_cupidon()` ajouté dans `RoleSettingsTest`.
+- [x] `config/game.php roles.cupidon` : `0` → `1` (activé par défaut, parité
+      witch/hunter demandée explicitement — annule le défaut désactivé de la
+      Phase 40, voir DECISIONS.md). `waiting-room.blade.php` fallback `?? 0` → `?? 1`.
+      Tests mis à jour : `test_role_distributor_ninclut_pas_cupidon_par_defaut` →
+      `test_role_distributor_inclut_cupidon_par_defaut` (assertion inversée),
+      `test_host_peut_desactiver_cupidon` ajouté, `test_role_distributor_remplit_villageois_automatiquement`
+      corrigé (villageois 3→2, cupidon compté).
+      254 tests verts (252 avant + 2 nouveaux, aucun cassé).
+
 ## Phase 43 — Cupidon Étape 7 : tests d'intégration bout en bout + validation finale (2026-07-23)
 
 - [x] `tests/Feature/Game/CupidonTest.php` créé (9 tests, de vraies parties factory jusqu'au bout

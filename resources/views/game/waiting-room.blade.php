@@ -481,12 +481,14 @@
     function roleSettings() {
         return {
             roles: {
-                witch:  @json($game->settings['roles']['witch'] ?? 1),
-                hunter: @json($game->settings['roles']['hunter'] ?? 1),
+                witch:   @json($game->settings['roles']['witch'] ?? 1),
+                hunter:  @json($game->settings['roles']['hunter'] ?? 1),
+                cupidon: @json($game->settings['roles']['cupidon'] ?? 1),
             },
             labels: {
-                witch:  'Sorcière',
-                hunter: 'Chasseur',
+                witch:   'Sorcière',
+                hunter:  'Chasseur',
+                cupidon: 'Cupidon',
             },
 
             saving: false,

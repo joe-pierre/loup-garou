@@ -51,6 +51,21 @@ class RoleSettingsTest extends TestCase
         $this->assertSame(1, $game->fresh()->settings['roles']['hunter'] ?? null);
     }
 
+    public function test_host_peut_activer_cupidon(): void
+    {
+        $game = $this->makeWaitingGame();
+        $user = User::factory()->create();
+        GamePlayer::factory()->host()->create(['game_id' => $game->id, 'user_id' => $user->id]);
+
+        $response = $this->actingAs($user)->postJson("/game/{$game->id}/settings/roles", [
+            'roles' => ['cupidon' => 1],
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+        $this->assertSame(1, $game->fresh()->settings['roles']['cupidon'] ?? null);
+    }
+
     public function test_joueur_non_host_ne_peut_pas_modifier_roles(): void
     {
         $game = $this->makeWaitingGame();
@@ -133,11 +148,10 @@ class RoleSettingsTest extends TestCase
     }
 
     /**
-     * Zéro régression : cupidon est désactivé par défaut (config/game.php roles.cupidon = 0),
-     * aucune UI host ne permet encore de le configurer — une partie sans settings explicites
-     * ne doit jamais recevoir de Cupidon.
+     * Cupidon est activé par défaut (config/game.php roles.cupidon = 1), au même
+     * titre que witch/hunter — une partie sans settings explicites reçoit Cupidon.
      */
-    public function test_role_distributor_ninclut_pas_cupidon_par_defaut(): void
+    public function test_role_distributor_inclut_cupidon_par_defaut(): void
     {
         $game = $this->makeWaitingGame(8);
 
@@ -145,7 +159,21 @@ class RoleSettingsTest extends TestCase
 
         $assignments = app(RoleDistributor::class)->distribute($players, $game->fresh());
 
-        $this->assertSame(0, count(array_filter($assignments, fn ($role) => $role === 'cupidon')));
+        $this->assertSame(1, count(array_filter($assignments, fn ($role) => $role === 'cupidon')));
+    }
+
+    public function test_host_peut_desactiver_cupidon(): void
+    {
+        $game = $this->makeWaitingGame();
+        $user = User::factory()->create();
+        GamePlayer::factory()->host()->create(['game_id' => $game->id, 'user_id' => $user->id]);
+
+        $response = $this->actingAs($user)->postJson("/game/{$game->id}/settings/roles", [
+            'roles' => ['cupidon' => 0],
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertSame(0, $game->fresh()->settings['roles']['cupidon'] ?? null);
     }
 
     public function test_role_distributor_remplit_villageois_automatiquement(): void
@@ -163,7 +191,9 @@ class RoleSettingsTest extends TestCase
         $this->assertSame(1, $counts['seer'] ?? 0);
         $this->assertSame(1, $counts['witch'] ?? 0);
         $this->assertSame(1, $counts['hunter'] ?? 0);
-        $this->assertSame(3, $counts['villager'] ?? 0);
+        // cupidon activé par défaut (config/game.php roles.cupidon = 1), non désactivé ici
+        $this->assertSame(1, $counts['cupidon'] ?? 0);
+        $this->assertSame(2, $counts['villager'] ?? 0);
         $this->assertSame(8, count($assignments));
     }
 
