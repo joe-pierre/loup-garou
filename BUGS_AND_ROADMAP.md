@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-23 — Avatar de la salle d'attente laissait deviner le pseudo des autres joueurs
+
+- **Symptôme :** le fix du 2026-06-13 masquait le pseudo de l'hôte dans la salle d'attente, mais l'avatar de tous les joueurs (y compris l'hôte) affichait toujours l'initiale du vrai pseudo (`p.pseudo.charAt(0).toUpperCase()`), rendant le pseudo facilement devinable.
+- **Cause :** le masquage de pseudo n'avait été appliqué qu'au libellé texte, pas à l'avatar, et ne concernait que l'hôte — pas les autres joueurs.
+- **Fix :** généralisation à tous les joueurs dans `waiting-room.blade.php` : avatar affiche l'initiale réelle uniquement si `p.id === currentPlayerId` (sinon `'?'`) ; libellé affiche le vrai pseudo uniquement pour soi-même, `'Hôte'` pour l'hôte vu par les autres, `'Joueur N'` (index + 1) pour les autres joueurs. La modale d'exclusion (host uniquement) continue d'afficher les vrais pseudos/avatars, nécessaire pour identifier qui exclure.
+
+---
+
 ### [x] 2026-07-23 — Ordre des sous-lignes de la carte "Nuit 1" incorrect dans l'historique (history.blade.php)
 
 - **Symptôme :** dans la carte "Nuit 1" de l'historique de fin de partie, le lien Cupidon s'affichait en dernier (après victime des loups, sorcière, tir du chasseur, succession du maire) alors que Cupidon joue en tout premier lors du round 1, avant même la résolution du vote des loups.
