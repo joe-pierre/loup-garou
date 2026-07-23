@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 23h58
+Generated at: 00h11
 
 ## PHP Analysis (Core Logic)
 
@@ -757,6 +757,13 @@ ExcludePlayerRequest.php
       - rules() → return ['reason' => ['required', 'string', 'max:500']]
       - messages() → return ['reason.required' => 'Le motif est obligatoire.', 'reason.max' => 'Le motif ne peut pas dépasser 500 caractères.']
 
+// app/Http/Requests/CupidonLinkRequest.php
+CupidonLinkRequest.php
+    functions:
+      - authorize() → return true
+      - rules() → return ['target1_player_id' => ['required', 'integer', Rule::exists('game_players', 'id')->where('game_id', $gameId)->where('is_alive', true)], 'target2_player_id' => ['required', 'integer', 'different:target1_player_id', Rule::exists('game_players', 'id')->where('game_id', $gameId)->where('is_alive', true)]]
+      - messages() → return ['target1_player_id.required' => 'Le premier amoureux est obligatoire.', 'target1_player_id.exists' => 'Ce joueur n\'existe pas ou est déjà éliminé.', 'target2_player_id.required' => 'Le second amoureux est obligatoire.', 'target2_player_id.exists' => 'Ce joueur n\'existe pas ou est déjà éliminé.', 'target2_player_id.different' => 'Cupidon ne peut pas coupler un joueur avec lui-même en double.']
+
 // app/Http/Requests/MayorVoteRequest.php
 MayorVoteRequest.php
     functions:
@@ -880,6 +887,7 @@ ActionController.php
     functions:
       - __construct(GameService $gameService) {}
       - ready(Request $request, int $id) → return response()->json(['success' => true, 'data' => []])
+      - cupidonLink(CupidonLinkRequest $request, int $id) → return response()->json(['success' => true, 'data' => []])
       - seerCheck(SeerCheckRequest $request, int $id) → return response()->json(['success' => true, 'data' => ['target_player_id' => $target->id, 'pseudo' => $target->pseudo, 'role' => $target->role]])
       - witchAct(WitchActRequest $request, int $id) → return response()->json(['success' => true, 'data' => $result['action'] === 'pass' ? [] : ['target_player_id' => $result['target']?->id]])
       - hunterShoot(HunterShootRequest $request, int $id) → return response()->json(['success' => true, 'data' => ['target_player_id' => $target->id]])
@@ -1042,6 +1050,7 @@ GameService.php
       - updateRoleSettings(Game $game, array $roles) → return app(\App\Services\GameSettingsService::class)->updateRoleSettings($game, $roles)
       - witchAct(GamePlayer $witch, string $action, ?int $targetId) → return app(\App\Services\RoleActions\WitchAction::class)->act($witch, $action, $targetId)
       - hunterShoot(GamePlayer $hunter, int $targetId) → return app(\App\Services\RoleActions\HunterAction::class)->shoot($hunter, $targetId)
+      - cupidonLink(GamePlayer $cupidon, int $target1Id, int $target2Id) → void
       - cancelGame(Game $game) → void
       - generateUniqueCode() → return $code
 

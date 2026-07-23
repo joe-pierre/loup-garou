@@ -67,6 +67,7 @@ Route::middleware('auth')->group(function () {
         // ══════════════════════════════════════════════════════
         // ACTIONS DE JEU — Rôles spéciaux (voyante, sorcière, chasseur)
         // ══════════════════════════════════════════════════════
+        Route::post('/game/{id}/cupidon/link', [ActionController::class, 'cupidonLink'])->name('game.cupidon.link'); // Guard: rôle cupidon + round 1 + phase night, cibles distinctes et vivantes
         Route::post('/game/{id}/seer/check', [ActionController::class, 'seerCheck'])->name('game.seer.check');     // Guard: rôle seer + phase night, cible ≠ soi-même
         Route::post('/game/{id}/witch/act', [ActionController::class, 'witchAct'])->name('game.witch.act');        // Guard: rôle witch + phase night + potion disponible, auto-soin interdit
         Route::post('/game/{id}/hunter/shoot', [ActionController::class, 'hunterShoot'])->name('game.hunter.shoot'); // Guard: rôle hunter + hunter_pending en base, cible ≠ soi-même

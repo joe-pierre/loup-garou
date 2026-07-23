@@ -599,6 +599,23 @@
       village gagne, loups gagnent ; garde `nb_vivants !== 2`). 243 tests verts
       (237 avant + 6 nouveaux, aucun cassé).
 
+## Phase 42 — Cupidon Étape 6 : Frontend (route + modale + notification amoureux) (2026-07-23)
+
+- [x] `routes/web.php` — `POST /game/{id}/cupidon/link` ajoutée dans le groupe `auth` + `throttle:60,1`,
+      sur le modèle exact de `hunter/shoot`.
+- [x] `CupidonLinkRequest` créée — `target1_player_id`/`target2_player_id` vivants + dans la partie,
+      `different` entre eux (pas de `notIn` sur l'id de Cupidon — auto-sélection autorisée, SPEC_CUPIDON.md §1).
+- [x] `GameService::cupidonLink()` (délégation) + `ActionController::cupidonLink()` ajoutés, pattern
+      identique à `hunterShoot()`/`seerCheck()`.
+- [x] `night.blade.php` — modale Cupidon (sélection de 2 cibles par clic, y compris soi-même) sur le
+      modèle visuel du panel Chasseur ; modale privée "Tu es amoureux de X" (`loverRevealed`), gated sans
+      condition de rôle, auto-fermeture 8s + bouton dismiss.
+- [x] `game-state.js` — 2 nouveaux `.listen()` sur le canal privé joueur déjà souscrit
+      (`.cupidon.turn.started`, `.lover.revealed`), aucun nouveau canal Echo.
+- [x] Docblock stale corrigé dans `CupidonTurnStarted.php` (voir BUGS_AND_ROADMAP.md).
+- [x] 243 tests verts (inchangé — tâche frontend, pas de nouveau test automatisé demandé),
+      `npm run build` sans erreur.
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
@@ -608,9 +625,9 @@
 - Étape 10 ✅ Terminée — Audit final de conformité CLAUDE.md
 - Roadmap Code Propre ✅ Complète (Étapes 1→10)
 - Phase 26 ✅ Terminée — Sursis maire + historique aléatoire
-- v1.3 Cupidon — Étape 5/7 ✅ (WinConditionChecker camp amoureux, priorité sur
-  loups/village) — voir SPEC_CUPIDON.md §8 pour la suite (tâche 6 : Frontend/endpoint ;
-  tâche 7 : tests d'intégration bout en bout couvrant auto-sélection, timeout sans
-  couple, cascade de mort, victoire amoureux loup+villageois)
+- v1.3 Cupidon — Étape 6/7 ✅ (Frontend : route, modale sélection, notification
+  amoureux privée) — voir SPEC_CUPIDON.md §8 pour la suite (tâche 7 : tests
+  d'intégration bout en bout couvrant auto-sélection, timeout sans couple,
+  cascade de mort, victoire amoureux loup+villageois)
 - Phase 27 ✅ Terminée — P1 succession sorcière, P2 persistance random_elimination, P3 couronne maire jour
 - v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md

@@ -10,6 +10,7 @@ use App\Events\Game\SeerResult;
 use App\Events\Game\WitchActed;
 use App\Events\Game\WitchActedPublic;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CupidonLinkRequest;
 use App\Http\Requests\HunterShootRequest;
 use App\Http\Requests\MayorSuccessionRequest;
 use App\Http\Requests\SeerCheckRequest;
@@ -38,6 +39,21 @@ class ActionController extends Controller
             ->firstOrFail();
 
         $this->gameService->markReady($player);
+
+        return response()->json(['success' => true, 'data' => []]);
+    }
+
+    public function cupidonLink(CupidonLinkRequest $request, int $id): JsonResponse
+    {
+        $cupidon = GamePlayer::where('game_id', $id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        $this->gameService->cupidonLink(
+            $cupidon,
+            $request->validated('target1_player_id'),
+            $request->validated('target2_player_id'),
+        );
 
         return response()->json(['success' => true, 'data' => []]);
     }

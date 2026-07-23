@@ -190,6 +190,13 @@ export function gameState(gameId, userId) {
             if (this.playerId) {
                 echo.private(`game.${this.gameId}.player.${this.playerId}`)
                     .listen('.game.started',       e => this._handleRoleAssigned(e))
+                    .listen('.cupidon.turn.started', e => {
+                        this.nightPhase = 'cupidon_turn';
+                        window.dispatchEvent(new CustomEvent('cupidon-turn-started', { detail: e }));
+                    })
+                    .listen('.lover.revealed',     e => {
+                        window.dispatchEvent(new CustomEvent('lover-revealed', { detail: e }));
+                    })
                     .listen('.seer.turn.started',  e => {
                         this.pendingSeerEvent = e;
                         // Propager sur window pour que night.blade.php puisse réagir
