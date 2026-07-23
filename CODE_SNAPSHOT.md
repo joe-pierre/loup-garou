@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 00h11
+Generated at: 00h29
 
 ## PHP Analysis (Core Logic)
 
@@ -1179,6 +1179,24 @@ CancelGameTest.php
       - test_game_finished_revele_roles_si_victoire_normale() → void
       - test_cancel_game_no_op_si_partie_deja_terminee() → void
       - test_cancel_game_no_op_si_partie_en_attente() → void
+
+// tests/Feature/Game/CupidonTest.php
+CupidonTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - makeDayGameRoundZero(int $maxPlayers) → return Game::factory()->create(['status' => 'day', 'max_players' => $maxPlayers, 'round' => 0])
+      - makeNightGame(int $round, int $maxPlayers) → return Game::factory()->create(['status' => 'night', 'max_players' => $maxPlayers, 'round' => $round])
+      - linkLovers(GamePlayer $a, GamePlayer $b) → void
+      - test_cupidon_forme_un_couple_au_round_1_avant_la_voyante() → void
+      - test_cupidon_se_choisit_lui_meme_comme_amoureux() → void
+      - test_timeout_cupidon_sans_action_aucun_couple_puis_round_2_sans_cupidon() → void
+      - test_amoureux_meurt_tue_par_les_loups_cascade_immediate() → void
+      - test_amoureux_empoisonne_par_la_sorciere_cascade_immediate() → void
+      - test_amoureux_elimine_par_vote_jour_cascade_immediate() → void
+      - test_amoureux_tue_par_le_tir_du_chasseur_cascade_immediate() → void
+      - test_victoire_amoureux_loup_et_villageois_derniers_survivants() → void
+      - test_partie_sans_cupidon_comportement_v1_2_inchange() → void
 
 // tests/Feature/Game/HunterTest.php
 HunterTest.php

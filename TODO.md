@@ -616,6 +616,22 @@
 - [x] 243 tests verts (inchangé — tâche frontend, pas de nouveau test automatisé demandé),
       `npm run build` sans erreur.
 
+## Phase 43 — Cupidon Étape 7 : tests d'intégration bout en bout + validation finale (2026-07-23)
+
+- [x] `tests/Feature/Game/CupidonTest.php` créé (9 tests, de vraies parties factory jusqu'au bout
+      via les Services/Jobs réels — voir DECISIONS.md) :
+      - couple formé au round 1 avant la Voyante, couple confidentiel préservé jusqu'en phase jour
+      - Cupidon se choisit lui-même (1 seul `LoverRevealed`, vers l'autre amoureux uniquement)
+      - timeout sans action volontaire → aucun couple, la nuit continue, round 2 sans Cupidon
+        (`ProcessCupidonTurn` poussé une seule fois sur toute la partie)
+      - cascade de mort testée aux 4 points d'entrée réels : loups (`ProcessNightActions`),
+        sorcière (`WitchAction::act('kill')`), vote jour (`VoteService::resolveDayVote()`),
+        chasseur (`HunterAction::shoot()`)
+      - victoire amoureux loup+villageois derniers survivants, priorité sur le calcul loups/village
+      - partie sans Cupidon : flux v1.2 (Voyante, Sorcière, Loups, Jour) strictement inchangé
+- [x] `php artisan test` : 252/252 verts (243 avant + 9 nouveaux, aucun cassé) — validation finale
+      avant le tag v1.3.0.
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
@@ -625,9 +641,9 @@
 - Étape 10 ✅ Terminée — Audit final de conformité CLAUDE.md
 - Roadmap Code Propre ✅ Complète (Étapes 1→10)
 - Phase 26 ✅ Terminée — Sursis maire + historique aléatoire
-- v1.3 Cupidon — Étape 6/7 ✅ (Frontend : route, modale sélection, notification
-  amoureux privée) — voir SPEC_CUPIDON.md §8 pour la suite (tâche 7 : tests
-  d'intégration bout en bout couvrant auto-sélection, timeout sans couple,
-  cascade de mort, victoire amoureux loup+villageois)
+- v1.3 Cupidon ✅ Terminé — Étapes 1→7 complètes (schéma, cascade, action+jobs,
+  intégration nuit, win condition, frontend, tests d'intégration bout en bout).
+  252/252 tests verts. Prêt pour le tag v1.3.0 (créé par le développeur après
+  merge sur `dev`).
 - Phase 27 ✅ Terminée — P1 succession sorcière, P2 persistance random_elimination, P3 couronne maire jour
 - v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md
