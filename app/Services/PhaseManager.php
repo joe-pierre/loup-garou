@@ -137,18 +137,36 @@ class PhaseManager
         broadcast(new PhaseAnnouncement($locked->id, 'night_fall', "Le village s'endort\u{2026}", 4000));
         broadcast(new NightStarted($locked));
 
-        // Cupidon agit une seule fois, au tout premier round, avant la Voyante
-        // (SPEC_CUPIDON.md §3). Rounds suivants ou parties sans Cupidon distribué :
-        // comportement v1.1/v1.2 inchangé, ProcessSeerTurn dispatché directement.
-        $hasCupidon = $locked->round === 1
-            && $locked->players()->where('role', 'cupidon')->exists();
+        $this->dispatchNightOpeningTurn($locked, 'night_start_delay');
+    }
+
+    /**
+     * Dispatche le premier Job du tour de nuit : Cupidon si round 1 et Cupidon
+     * distribué (SPEC_CUPIDON.md §3), sinon la Voyante — comportement v1.1/v1.2
+     * inchangé pour les rounds suivants ou les parties sans Cupidon.
+     *
+     * Point d'entrée unique appelé à la fois par startNight() (rounds 2+, transition
+     * day/processing_day → night) et par ProcessMayorElection (round 1, transition
+     * electing_mayor → night) pour éviter de dupliquer la condition Cupidon.
+     *
+     * @param  Game   $game      La partie dont la nuit démarre (round déjà à jour)
+     * @param  string $timerName Nom du timer à utiliser pour le délai de dispatch
+     *                           ('night_start_delay' depuis startNight(), 'mayor_reveal'
+     *                           depuis ProcessMayorElection — les deux appelants gardent
+     *                           leur timer sémantique propre)
+     * @return void
+     */
+    public function dispatchNightOpeningTurn(Game $game, string $timerName): void
+    {
+        $hasCupidon = $game->round === 1
+            && $game->players()->where('role', 'cupidon')->exists();
 
         if ($hasCupidon) {
-            ProcessCupidonTurn::dispatch($locked->id, $locked->round)
-                ->delay(now()->addSeconds($locked->timer('night_start_delay')));
+            ProcessCupidonTurn::dispatch($game->id, $game->round)
+                ->delay(now()->addSeconds($game->timer($timerName)));
         } else {
-            ProcessSeerTurn::dispatch($locked->id, $locked->round)
-                ->delay(now()->addSeconds($locked->timer('night_start_delay')));
+            ProcessSeerTurn::dispatch($game->id, $game->round)
+                ->delay(now()->addSeconds($game->timer($timerName)));
         }
     }
 
