@@ -43,7 +43,7 @@ return [
         'werewolf' => 'auto',
         'witch'    => 1,
         'hunter'   => 1,
-        'cupidon'  => 0,
+        'cupidon'  => 1,
         'villager' => 'fill',
     ],
 

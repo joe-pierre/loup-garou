@@ -13,9 +13,8 @@ use Illuminate\Support\Collection;
  * Villageois ('villager') : toujours en mode 'fill', complète les slots restants — non configurable.
  * Loups ('werewolf') : mode 'auto', calcul via werewolfCount() (table d'overrides ou formule floor(n×0.2)).
  *
- * cupidon (v1.3) : désactivé par défaut (config/game.php roles.cupidon = 0) — aucune UI
- * host ne le rend encore configurable (GameSettingsService::validateRoleSettings() ne
- * couvre que witch/hunter), voir DECISIONS.md.
+ * cupidon (v1.3) : activé par défaut (config/game.php roles.cupidon = 1), au même titre
+ * que witch/hunter — configurable par le host via GameSettingsService::validateRoleSettings().
  * v1.4+ uniquement : ne pas anticiper white_wolf, petite_fille — absents de l'enum DB.
  */
 class RoleDistributor

@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 00h29
+Generated at: 08h22
 
 ## PHP Analysis (Core Logic)
 
@@ -1297,13 +1297,15 @@ RoleSettingsTest.php
       - makeWaitingGame(int $maxPlayers) → return Game::factory()->create(['status' => 'waiting', 'max_players' => $maxPlayers, 'round' => 0])
       - test_host_peut_activer_sorciere() → void
       - test_host_peut_activer_chasseur() → void
+      - test_host_peut_activer_cupidon() → void
       - test_joueur_non_host_ne_peut_pas_modifier_roles() → void
       - test_modification_roles_impossible_hors_waiting() → void
       - test_role_invalide_est_rejete() → void
       - test_role_distributor_inclut_sorciere_si_configuree() → void
       - test_role_distributor_inclut_chasseur_si_configure() → void
       - test_role_distributor_inclut_cupidon_si_configure() → void
-      - test_role_distributor_ninclut_pas_cupidon_par_defaut() → void
+      - test_role_distributor_inclut_cupidon_par_defaut() → void
+      - test_host_peut_desactiver_cupidon() → void
       - test_role_distributor_remplit_villageois_automatiquement() → void
       - test_deux_sorcieres_impossibles() → void
       - test_villageois_residuels_toujours_positifs() → void
