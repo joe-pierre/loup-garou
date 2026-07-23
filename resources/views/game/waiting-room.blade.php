@@ -157,20 +157,20 @@
 
         {{-- Liste des joueurs --}}
         <div id="wr-players" class="mb-6 flex flex-col gap-3">
-            <template x-for="p in players" :key="p.id">
+            <template x-for="(p, index) in players" :key="p.id">
                 <div class="player-card">
                     <div class="avatar"
                          :style="`background-color: ${playerAvatarColor(p.id)}; color: #0a0f1e; border: none; font-weight: 700;`"
-                         x-text="p.pseudo.charAt(0).toUpperCase()"></div>
+                         x-text="p.id === currentPlayerId ? p.pseudo.charAt(0).toUpperCase() : '?'"></div>
                     <span class="flex-1 text-base" style="color: #e8e0d0;">
-                        <template x-if="p.is_host && p.id !== currentPlayerId">
-                            <span>Hôte</span>
-                        </template>
-                        <template x-if="!(p.is_host && p.id !== currentPlayerId)">
+                        <template x-if="p.id === currentPlayerId">
                             <span>
                                 <span x-text="p.pseudo"></span>
-                                <span x-show="p.is_host && p.id === currentPlayerId" class="text-xs italic" style="color:#c9a84c;">(Hôte)</span>
+                                <span x-show="p.is_host" class="text-xs italic" style="color:#c9a84c;">(Hôte)</span>
                             </span>
+                        </template>
+                        <template x-if="p.id !== currentPlayerId">
+                            <span x-text="p.is_host ? 'Hôte' : 'Joueur ' + (index + 1)"></span>
                         </template>
                     </span>
                     <span
