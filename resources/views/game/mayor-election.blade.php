@@ -58,6 +58,7 @@
         'seer'     => ['icon' => '🔮', 'label' => 'Voyante',     'color' => '#a78bfa'],
         'witch'    => ['icon' => '🧙‍♀️', 'label' => 'Sorcière',   'color' => '#3493d3'],
         'hunter'   => ['icon' => '🏹', 'label' => 'Chasseur',    'color' => '#fbbf24'],
+        'cupidon'  => ['icon' => '💘', 'label' => 'Cupidon',     'color' => '#f472b6'],
         default    => ['icon' => '🧑‍🌾', 'label' => 'Villageois', 'color' => '#e8e0d0'],
     };
 @endphp

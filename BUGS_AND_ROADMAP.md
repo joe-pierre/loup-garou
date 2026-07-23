@@ -982,6 +982,7 @@
       et valeurs minimales — prompt séparé après validation prod
 - [ ] Étendre players[] du store central à night.blade.php et spectator.blade.php
 - [ ] `ProcessWitchAutoAction` ne passe pas par `WitchAction::act()` : la victime ordinaire déférée par `ProcessNightActions` (quand `$witchCanSaveVictim=true`) n'est pas tuée ni broadcastée si le timer sorcière expire sans action manuelle. Ajouter dans `ProcessWitchAutoAction::handle()` le même bloc de résolution de victime ordinaire qu'en fin de `WitchAction::act()` (kill/pass).
+- [ ] `role-reveal.blade.php` (bloc Villageois) et tout autre bloc utilisant une condition en liste blanche d'exclusions (`role !== 'a' && role !== 'b' && ...`) plutôt qu'un `match()`/tableau associatif avec `default` : risque de régression silencieuse à chaque nouveau rôle (v1.4+ Loup Blanc, Petite Fille) — un rôle non exclu explicitement se fait passer pour Villageois sans erreur. Envisager d'inverser en liste blanche positive (`role === 'villager'`) une fois tous les rôles v1.3 stabilisés.
 
 ## Refactoring architectural planifié
 

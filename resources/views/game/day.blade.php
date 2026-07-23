@@ -472,6 +472,7 @@
             'seer'     => 'Voyante',
             'witch'    => 'Sorcière',
             'hunter'   => 'Chasseur',
+            'cupidon'  => 'Cupidon',
             default    => 'Villageois',
         },
     ])->values();
@@ -663,6 +664,7 @@
                             seer:     'Voyante',
                             witch:    'Sorcière',
                             hunter:   'Chasseur',
+                            cupidon:  'Cupidon',
                             villager: 'Villageois',
                         };
                         p.revealed_role       = e.detail?.role ?? null;

@@ -143,9 +143,9 @@
                 <div class="role-desc" x-show="role === 'seer'" style="color: #c4b5fd;">
                     Chaque nuit, tu découvres la vraie nature d'un joueur de ton choix.
                 </div>
-                <div class="role-icon" x-show="role !== 'werewolf' && role !== 'seer' && role !== 'witch' && role !== 'hunter'">🧑‍🌾</div>
-                <div class="role-name" x-show="role !== 'werewolf' && role !== 'seer' && role !== 'witch' && role !== 'hunter'" style="color: #e8e0d0;">Villageois</div>
-                <div class="role-desc" x-show="role !== 'werewolf' && role !== 'seer' && role !== 'witch' && role !== 'hunter'" style="color: #e8e0d0;">
+                <div class="role-icon" x-show="role !== 'werewolf' && role !== 'seer' && role !== 'witch' && role !== 'hunter' && role !== 'cupidon'">🧑‍🌾</div>
+                <div class="role-name" x-show="role !== 'werewolf' && role !== 'seer' && role !== 'witch' && role !== 'hunter' && role !== 'cupidon'" style="color: #e8e0d0;">Villageois</div>
+                <div class="role-desc" x-show="role !== 'werewolf' && role !== 'seer' && role !== 'witch' && role !== 'hunter' && role !== 'cupidon'" style="color: #e8e0d0;">
                     Identifie et élimine les loups-garous avant qu'ils ne vous déciment.
                 </div>
                 <div class="role-icon" x-show="role === 'witch'">🧙‍♀️</div>
@@ -157,6 +157,11 @@
                 <div class="role-name" x-show="role === 'hunter'" style="color: #fbbf24;">Chasseur</div>
                 <div class="role-desc" x-show="role === 'hunter'" style="color: #fbbf24;">
                     Si tu meurs, tu emportes un ennemi avec toi.
+                </div>
+                <div class="role-icon" x-show="role === 'cupidon'">💘</div>
+                <div class="role-name" x-show="role === 'cupidon'" style="color: #f472b6;">Cupidon</div>
+                <div class="role-desc" x-show="role === 'cupidon'" style="color: #f472b6;">
+                    La première nuit, désigne deux joueurs qui tomberont amoureux. Si l'un meurt, l'autre le suit.
                 </div>
             </div>
         </div>
@@ -193,7 +198,7 @@
     const GAME_ID      = {{ $game->id }};
     const REVEAL_TIMER = {{ $game->timer('mayor_reveal') }};
     const READY_TIMER  = {{ $game->timer('ready_timeout') }};
-    const ROLE_NAMES   = { villager: 'Villageois', werewolf: 'Loup-Garou', seer: 'Voyante', witch: 'Sorcière', hunter: 'Chasseur' };
+    const ROLE_NAMES   = { villager: 'Villageois', werewolf: 'Loup-Garou', seer: 'Voyante', witch: 'Sorcière', hunter: 'Chasseur', cupidon: 'Cupidon' };
 
     function roleReveal() {
         return {

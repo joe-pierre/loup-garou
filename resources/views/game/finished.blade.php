@@ -10,6 +10,7 @@ $roleLabel = fn(?string $r) => match($r) {
     'seer'     => '🔮 Voyante',
     'witch'    => '🧙‍♀️ Sorcière',
     'hunter'   => '🏹 Chasseur',
+    'cupidon'  => '💘 Cupidon',
     default    => $r ?? '?',
 };
 $roleClass = fn(?string $r) => match($r) {
@@ -17,6 +18,7 @@ $roleClass = fn(?string $r) => match($r) {
     'seer'     => 'role-badge-seer',
     'witch'    => 'role-badge-witch',
     'hunter'   => 'role-badge-hunter',
+    'cupidon'  => 'role-badge-cupidon',
     default    => 'role-badge-villager',
 };
 @endphp
@@ -59,6 +61,7 @@ $roleClass = fn(?string $r) => match($r) {
     .role-badge-seer     { background: rgba(124,58,237,0.2); color: #a78bfa; }
     .role-badge-witch    { background: rgba(52,147,211,0.2); color: #3493d3; }
     .role-badge-hunter   { background: rgba(247,191,36,0.2); color: #fbbf24; }
+    .role-badge-cupidon  { background: rgba(244,114,182,0.2); color: #f472b6; }
     .btn-primary {
         background-color: #c9a84c;
         color: #0a0f1e;
@@ -129,6 +132,7 @@ $roleClass = fn(?string $r) => match($r) {
                         'villager' => '#4ade80',
                         'witch'    => '#3493d3',
                         'hunter'   => '#fbbf24',
+                        'cupidon'  => '#f472b6',
                         default    => '#e8e0d0',
                     };
                     $roleLabel2 = match($p->role) {
@@ -137,6 +141,7 @@ $roleClass = fn(?string $r) => match($r) {
                         'villager' => 'Villageois',
                         'witch'    => 'Sorcière',
                         'hunter'   => 'Chasseur',
+                        'cupidon'  => 'Cupidon',
                         default    => $p->role,
                     };
                     $rowBg = $loop->even

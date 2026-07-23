@@ -14,6 +14,7 @@
         'seer'     => '🔮 Voyante',
         'witch'    => '🧙‍♀️ Sorcière',
         'hunter'   => '🏹 Chasseur',
+        'cupidon'  => '💘 Cupidon',
         default    => ($r ?? '?'),
     };
     $roleBg = fn(?string $r) => match($r) {
@@ -21,6 +22,7 @@
         'seer'     => 'rgba(124,58,237,0.2)',
         'witch'    => 'rgba(52,147,211,0.2)',
         'hunter'   => 'rgba(247,191,36,0.2)',
+        'cupidon'  => 'rgba(244,114,182,0.2)',
         default    => 'rgba(232,224,208,0.08)',
     };
     $roleColor = fn(?string $r) => match($r) {
@@ -28,6 +30,7 @@
         'seer'     => '#a78bfa',
         'witch'    => '#3493d3',
         'hunter'   => '#fbbf24',
+        'cupidon'  => '#f472b6',
         default    => 'rgba(232,224,208,0.7)',
     };
     $computedMax = $showVotes && count($votes) > 0 ? max(array_values($votes)) : 1;

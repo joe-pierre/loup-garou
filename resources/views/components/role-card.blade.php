@@ -35,6 +35,12 @@
             'color'       => '#fbbf24',
             'description' => 'Si vous êtes éliminé, emportez un adversaire avec vous.',
         ],
+        'cupidon'  => [
+            'label'       => 'Cupidon',
+            'emoji'       => '💘',
+            'color'       => '#f472b6',
+            'description' => 'La première nuit, désignez deux joueurs qui tomberont amoureux. Si l\'un meurt, l\'autre le suit.',
+        ],
     ];
     $info = $roles[$role] ?? ['label' => $role, 'emoji' => '?', 'color' => '#e8e0d0', 'description' => ''];
 @endphp

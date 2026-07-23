@@ -40,12 +40,14 @@
         .role-seer     { color: #7c3aed; }
         .role-witch    { color: #3493d3; }
         .role-hunter   { color: #fbbf24; }
+        .role-cupidon  { color: #f472b6; }
 
         .role-badge-villager { background-color: rgba(232,224,208,0.1); color: #e8e0d0; }
         .role-badge-werewolf { background-color: rgba(139,0,0,0.2);     color: #e57373; }
         .role-badge-seer     { background-color: rgba(124,58,237,0.2);  color: #a78bfa; }
         .role-badge-witch    { background-color: rgba(52,147,211,0.2); color: #3493d3; }
         .role-badge-hunter   { background-color: rgba(247,191,36,0.2); color: #fbbf24; }
+        .role-badge-cupidon  { background-color: rgba(244,114,182,0.2); color: #f472b6; }
 
         .winner-villagers  { background-color: rgba(22,163,74,0.2);   color: #4ade80;  border: 1px solid rgba(22,163,74,0.4); }
         .winner-werewolves { background-color: rgba(139,0,0,0.25);    color: #f87171;  border: 1px solid rgba(139,0,0,0.4); }
@@ -134,6 +136,7 @@
         'seer'     => '🔮 Voyante',
         'witch'    => '🧙‍♀️ Sorcière',
         'hunter'   => '🏹 Chasseur',
+        'cupidon'  => '💘 Cupidon',
         default    => $r ?? '?',
     };
     $roleClass = fn(?string $r) => match($r) {
@@ -142,6 +145,7 @@
         'seer'     => 'role-badge-seer',
         'witch'    => 'role-badge-witch',
         'hunter'   => 'role-badge-hunter',
+        'cupidon'  => 'role-badge-cupidon',
         default    => 'role-badge-villager',
     };
     $myPseudo = $myPlayer?->pseudo ?? '';
