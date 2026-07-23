@@ -709,6 +709,24 @@
       demandé) — voir BUGS_AND_ROADMAP.md.
 - [x] `php artisan test` : 257/257 verts (aucun cassé, aucun test ajouté — bugfix d'affichage pur).
 
+## Phase 48 — Bugfix des 2 emplacements laissés hors périmètre par la Phase 47 (2026-07-23)
+
+- [x] Confirmé préexistant (bug antérieur à Cupidon, pas une régression) : `day.blade.php:101`
+      ne couvrait que `werewolf`/`seer` avec `default => 'Villageois'` depuis le commit initial
+      des vues de jeu (`7239050`), avant même l'existence de Sorcière/Chasseur (v1.2). Les deux
+      autres emplacements du même fichier (`$playersJson` ~ligne 470, `roleLabels` du listener
+      `player-eliminated` ~ligne 662) couvraient déjà les 6 rôles — confirme l'oubli isolé de
+      cette seule ligne, pas un pattern plus large.
+- [x] `day.blade.php:101` (message "C'était un ..." victime de nuit) — `witch`, `hunter`,
+      `cupidon` ajoutés au `match()`.
+- [x] `GameController::state()` (`revealed_role_label`) — `'cupidon' => 'Cupidon'` ajouté
+      (label court, cohérent avec les entrées sœurs du même tableau — pas la phrase longue
+      de `night.blade.php`, qui sert un contexte d'affichage différent).
+- [x] `ReconnectionTest::test_state_endpoint_retourne_la_liste_des_joueurs` étendu pour
+      couvrir witch/hunter/cupidon (jusqu'ici seul werewolf était testé) — pas de nouveau
+      test créé, test existant déjà pertinent enrichi.
+- [x] `php artisan test` : 257/257 verts.
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
