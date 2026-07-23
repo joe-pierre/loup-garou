@@ -177,9 +177,16 @@ class GameController extends Controller
 
         $players = $game->players()->get()->keyBy('id');
 
-        // mayor_vote sans anonymized() : player_id conservé (votes maire publics depuis Bug 5)
+        // mayor_vote et day_vote sans anonymized() : player_id conservé (votes maire publics
+        // depuis Bug 5, votes jour publics depuis la décision du 2026-07-23 — voir SPEC.md
+        // §"Visibilité des votes")
         $mayorVoteActions = GameAction::where('game_id', $game->id)
             ->where('type', 'mayor_vote')
+            ->orderBy('round')
+            ->get();
+
+        $dayVoteActions = GameAction::where('game_id', $game->id)
+            ->where('type', 'day_vote')
             ->orderBy('round')
             ->get();
 
@@ -192,11 +199,11 @@ class GameController extends Controller
 
         $otherActions = GameAction::where('game_id', $game->id)
             ->anonymized()
-            ->whereIn('type', ['night_vote', 'day_vote', 'mayor_succession', 'witch_heal', 'witch_kill', 'hunter_shot', 'random_elimination'])
+            ->whereIn('type', ['night_vote', 'mayor_succession', 'witch_heal', 'witch_kill', 'hunter_shot', 'random_elimination'])
             ->orderBy('round')
             ->get();
 
-        $actions = $mayorVoteActions->merge($cupidonLinkActions)->merge($otherActions)->sortBy('round')->values();
+        $actions = $mayorVoteActions->merge($dayVoteActions)->merge($cupidonLinkActions)->merge($otherActions)->sortBy('round')->values();
 
         $duration = ($game->started_at && $game->finished_at)
             ? (int) $game->started_at->diffInMinutes($game->finished_at)

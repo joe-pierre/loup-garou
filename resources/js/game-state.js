@@ -580,6 +580,14 @@ export function gameState(gameId, userId) {
 
         _handleDayVoteCast(e) {
             this.votes = this._buildVoteMap(e.votes ?? []);
+
+            if (e.voter_pseudo && e.target_pseudo) {
+                const msg = e.voter_pseudo === e.target_pseudo
+                    ? `🗳️ ${e.voter_pseudo} a voté pour lui-même`
+                    : `🗳️ ${e.voter_pseudo} a voté pour ${e.target_pseudo}`;
+                this._dispatchToast(msg, 'info');
+            }
+
             window.dispatchEvent(new CustomEvent('day-vote-cast', { detail: e }));
         },
 

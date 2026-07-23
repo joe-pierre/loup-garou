@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 10h54
+Generated at: 13h52
 
 ## PHP Analysis (Core Logic)
 
@@ -394,10 +394,10 @@ DayVoteCast.php
       - InteractsWithSockets
       - SerializesModels
     functions:
-      - __construct(Game $game, array $summary) {}
+      - __construct(Game $game, array $summary, string $voterPseudo, string $targetPseudo) {}
       - broadcastOn() → return [new Channel("game.{$this->game->id}")]
       - broadcastAs() → return 'day.vote.cast'
-      - broadcastWith() → return ['votes' => collect($this->summary)->map(fn($totalWeight, $targetPlayerId) => ['target_player_id' => $targetPlayerId, 'total_weight' => $totalWeight])->values()->toArray()]
+      - broadcastWith() → return ['votes' => collect($this->summary)->map(fn($totalWeight, $targetPlayerId) => ['target_player_id' => $targetPlayerId, 'total_weight' => $totalWeight])->values()->toArray(), 'voter_pseudo' => $this->voterPseudo, 'target_pseudo' => $this->targetPseudo]
 
 // app/Events/Game/MayorVoteCast.php
 MayorVoteCast.php

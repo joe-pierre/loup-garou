@@ -119,11 +119,12 @@ class HistoryService
             $hunterDay = $actions->where('type', 'hunter_shot')->where('round', $round)->where('phase', 'day')->first();
 
             $dayEntry = [
-                'type'        => 'day',
-                'round'       => $round,
-                'label'       => "Jour {$round}",
-                'vote_totals' => [],
-                'hunter_shot' => null,
+                'type'         => 'day',
+                'round'        => $round,
+                'label'        => "Jour {$round}",
+                'vote_totals'  => [],
+                'vote_details' => [],
+                'hunter_shot'  => null,
             ];
 
             if ($dayVotes->isNotEmpty()) {
@@ -134,6 +135,13 @@ class HistoryService
                 $dayEntry['vote_totals'] = $totals->map(function ($weight, $targetId) use ($players) {
                     $snap = $this->playerSnapshot($players, (int) $targetId);
                     return ['pseudo' => $snap['pseudo'], 'vote_count' => $weight];
+                })->values()->toArray();
+
+                $dayEntry['vote_details'] = $dayVotes->map(function ($action) use ($players) {
+                    return [
+                        'voter_pseudo'  => $this->playerSnapshot($players, $action->player_id)['pseudo'],
+                        'target_pseudo' => $this->playerSnapshot($players, $action->target_player_id)['pseudo'],
+                    ];
                 })->values()->toArray();
 
                 if (count($topIds) > 1) {
