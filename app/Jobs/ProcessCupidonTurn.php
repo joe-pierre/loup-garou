@@ -50,6 +50,11 @@ class ProcessCupidonTurn implements ShouldQueue
             return;
         }
 
+        $game->update([
+            'night_sub_phase' => 'cupidon_turn',
+            'phase_deadline'  => now()->addSeconds($game->timer('cupidon')),
+        ]);
+
         broadcast(new CupidonTurnStarted($game, $cupidon));
 
         ProcessCupidonAutoAction::dispatch($this->gameId, $cupidon->id, $this->round)

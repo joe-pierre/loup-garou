@@ -824,6 +824,14 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                     sessionStorage.removeItem('dead_' + MY_PLAYER_ID);
                 });
 
+                // Rattrapage de sous-phase de nuit — au chargement de page ET à la
+                // reconnexion Echo (dispatché par game-state.js::_loadState()). Un seul
+                // chemin d'application (applyNightResync) partagé, jamais de logique
+                // dupliquée entre "premier chargement" et "reconnexion".
+                window.addEventListener('night-phase-resync', (e) => {
+                    this.applyNightResync(e.detail);
+                });
+
                 // Amoureux — notification privée, n'importe quel rôle peut être concerné
                 window.addEventListener('lover-revealed', (e) => {
                     this.loverPartnerPseudo = e.detail?.partner_pseudo ?? '';
@@ -841,13 +849,14 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 });
 
                 if (this.isCupidon) {
+                    // Un event live représente toujours un tour qui démarre à zéro
+                    // (already_acted: false, temps restant = durée pleine) — applyNightResync
+                    // gère aussi bien ce cas que le rattrapage /state (garde #4 : un seul
+                    // chemin de reset, déterministe, que la source soit live ou resync).
                     window.addEventListener('cupidon-turn-started', () => {
-                        this.nightPhase             = 'cupidon_turn';
-                        this.cupidonSelectedTargets = [];
-                        this.cupidonActionDone      = false;
-                        this.$nextTick(() => {
-                            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-                            gsap.to('#cupidon-timer-bar', { width: '0%', duration: CUPIDON_TIMER, ease: 'none' });
+                        this.applyNightResync({
+                            phase: 'cupidon_turn', remaining_seconds: CUPIDON_TIMER,
+                            already_acted: false, payload: {},
                         });
                     });
                 }
@@ -888,15 +897,13 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 if (this.isWitch) {
                     window.addEventListener('witch-turn-started', (e) => {
                         const data = e.detail;
-                        this.nightPhase         = 'witch_turn';
-                        this.witchVictim        = data.victim ?? null;
-                        this.witchHealAvailable = !!data.heal_available;
-                        this.witchKillAvailable = !!data.kill_available;
-                        this.witchSelectedTarget = null;
-                        this.witchActionDone    = false;
-                        this.$nextTick(() => {
-                            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-                            gsap.to('#witch-timer-bar', { width: '0%', duration: WITCH_TIMER, ease: 'none' });
+                        this.applyNightResync({
+                            phase: 'witch_turn', remaining_seconds: WITCH_TIMER, already_acted: false,
+                            payload: {
+                                victim:         data.victim ?? null,
+                                heal_available: !!data.heal_available,
+                                kill_available: !!data.kill_available,
+                            },
                         });
                     });
                     window.addEventListener('witch-acted', () => {
@@ -905,17 +912,12 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 }
 
                 if (this.isHunter) {
+                    // Guard #7 RISK_GUARDS (succession vs tir) appliqué dans applyNightResync,
+                    // pour le live event comme pour le rattrapage resync.
                     window.addEventListener('hunter-turn-started', () => {
-                        // Le maire-chasseur mort a pu voir la modale succession s'ouvrir avant
-                        // que son propre tour de tir n'arrive (délai witch_timer + mayor_succession_timer + 5s) :
-                        // elle doit systématiquement céder la place au panel de tir, jamais coexister.
-                        this.successionOpen        = false;
-                        this.nightPhase            = 'hunter_turn';
-                        this.hunterSelectedTarget = null;
-                        this.hunterActionDone     = false;
-                        this.$nextTick(() => {
-                            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-                            gsap.to('#hunter-timer-bar', { width: '0%', duration: HUNTER_TIMER, ease: 'none' });
+                        this.applyNightResync({
+                            phase: 'hunter_turn', remaining_seconds: HUNTER_TIMER,
+                            already_acted: false, payload: {},
                         });
                     });
                 }
@@ -924,32 +926,13 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                     // Loups : écoute via window (game-state.js abonne le canal privé et dispatch)
                     window.addEventListener('werewolves-turn-started', (e) => {
                         const data = e.detail;
-                        this.nightPhase          = 'werewolves_turn';
-                        this.wolfEligibleTargets = data.eligible_targets ?? [];
-                        this.wolfVoteLocked      = false;
-                        this.wolfSelectedTarget  = null;
-
-                        // Réinitialiser le chat loups pour ce tour
-                        this.wolfChatVisible    = false;
-                        this.wolfManualOverride = false;
-                        this.wolfAutoOpened     = false;
-                        this.wolfAutoClosed     = false;
-                        this.wolfUnreadMessages = 0;
-                        this.wolfTimerSeconds   = WOLVES_TIMER;
-
-                        if (this._wolfTimerInterval) clearInterval(this._wolfTimerInterval);
-                        this._wolfTimerInterval = setInterval(() => {
-                            this.wolfTimerSeconds = Math.max(0, this.wolfTimerSeconds - 1);
-                            this._checkWolfChatAuto();
-                            if (this.wolfTimerSeconds <= 0) {
-                                clearInterval(this._wolfTimerInterval);
-                                this._wolfTimerInterval = null;
-                            }
-                        }, 1000);
-
-                        this.$nextTick(() => {
-                            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-                            gsap.to('#wolf-timer-bar', { width: '0%', duration: WOLVES_TIMER, ease: 'none' });
+                        this.applyNightResync({
+                            phase: 'werewolves_turn', remaining_seconds: WOLVES_TIMER, already_acted: false,
+                            payload: {
+                                eligible_targets: data.eligible_targets ?? [],
+                                vote_state:       null, // null = ne pas écraser (alimenté par wolves-vote-cast)
+                                my_target_id:     null,
+                            },
                         });
                     });
                     window.addEventListener('wolves-vote-cast', (e) => {
@@ -982,20 +965,148 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
 
             handleSeerTurnReady() {
                 if (this.isSeer && this.pendingSeerEvent !== null) {
-                    this.nightPhase = 'seer_turn';
+                    // Un event live représente toujours un tour qui démarre à zéro — applyNightResync
+                    // ne réinitialise (et n'anime la barre) que si nightPhase n'est pas déjà 'seer_turn'
+                    // (garde #4 : un seul chemin de reset, que la source soit live ou resync).
+                    const wasAlreadyActive = this.nightPhase === 'seer_turn';
+                    this.applyNightResync({
+                        phase: 'seer_turn', remaining_seconds: SEER_TIMER,
+                        already_acted: false, payload: { result: null },
+                    });
+                    if (wasAlreadyActive) return;
                     this.$nextTick(() => {
                         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
                         gsap.fromTo('.seer-player-row',
                             { opacity: 0, x: 20 },
                             { opacity: 1, x: 0, stagger: 0.1, duration: 0.4 }
                         );
-                        gsap.to('#seer-timer-bar', { width: '0%', duration: SEER_TIMER, ease: 'none' });
                         if (SEER_TIMER > 5) {
                             setTimeout(() => {
                                 gsap.to('#seer-timer-bar', { backgroundColor: '#f97316', duration: 0.3 });
                             }, (SEER_TIMER - 5) * 1000);
                         }
                     });
+                }
+            },
+
+            // ── Rattrapage de sous-phase de nuit (refresh / reconnexion Echo) ──────
+            //
+            // Point d'entrée unique pour hydrater nightPhase depuis /state, que ce
+            // soit au chargement de page ou après une reconnexion WebSocket. Respecte :
+            //   - Garde #4 (RISK_GUARDS-like) : si nightPhase correspond déjà à la phase
+            //     resynchronisée (event live déjà reçu avant l'appel resync), on ne
+            //     réinitialise PAS la sélection en cours / le chat / le timer — seuls
+            //     les champs sûrs (already_acted, vote_state) sont rafraîchis.
+            //   - Respect des actions déjà soumises : jamais de formulaire vierge si
+            //     already_acted est vrai côté serveur.
+            //   - Guard #7 (succession vs chasseur) : ferme successionOpen avant
+            //     d'ouvrir hunter_turn, exactement comme le listener live.
+            applyNightResync(data) {
+                if (!data || !data.phase) return;
+                const isNewPhase = this.nightPhase !== data.phase;
+                const payload    = data.payload ?? {};
+
+                switch (data.phase) {
+                    case 'cupidon_turn':
+                        if (!this.isCupidon) return;
+                        this.cupidonActionDone = !!data.already_acted;
+                        if (isNewPhase) {
+                            this.nightPhase             = 'cupidon_turn';
+                            this.cupidonSelectedTargets = [];
+                            this.$nextTick(() => this._startTimerBar('#cupidon-timer-bar', CUPIDON_TIMER, data.remaining_seconds));
+                        }
+                        break;
+
+                    case 'seer_turn':
+                        if (!this.isSeer) return;
+                        if (data.already_acted && payload.result) {
+                            this.seerResult = {
+                                pseudo:     payload.result.pseudo,
+                                role:       payload.result.role,
+                                isWerewolf: !!payload.result.is_werewolf,
+                            };
+                            this.seerActionDone = true;
+                            if (this.nightPhase !== 'seer_result') {
+                                this.nightPhase = 'seer_result';
+                            }
+                        } else if (isNewPhase) {
+                            this.nightPhase = 'seer_turn';
+                            this.$nextTick(() => this._startTimerBar('#seer-timer-bar', SEER_TIMER, data.remaining_seconds));
+                        }
+                        break;
+
+                    case 'werewolves_turn':
+                        if (!this.isWerewolf) return;
+                        this.wolfEligibleTargets = payload.eligible_targets ?? this.wolfEligibleTargets;
+                        this.wolfVoteState       = payload.vote_state ?? this.wolfVoteState;
+                        this.wolfVoteLocked      = !!data.already_acted;
+                        this.wolfSelectedTarget  = (data.already_acted && payload.my_target_id)
+                            ? payload.my_target_id
+                            : (isNewPhase ? null : this.wolfSelectedTarget);
+                        if (isNewPhase) {
+                            this.nightPhase         = 'werewolves_turn';
+                            this.wolfChatVisible    = false;
+                            this.wolfManualOverride = false;
+                            this.wolfAutoOpened     = false;
+                            this.wolfAutoClosed     = false;
+                            this.wolfUnreadMessages = 0;
+                            this.wolfTimerSeconds   = data.remaining_seconds;
+
+                            if (this._wolfTimerInterval) clearInterval(this._wolfTimerInterval);
+                            this._wolfTimerInterval = setInterval(() => {
+                                this.wolfTimerSeconds = Math.max(0, this.wolfTimerSeconds - 1);
+                                this._checkWolfChatAuto();
+                                if (this.wolfTimerSeconds <= 0) {
+                                    clearInterval(this._wolfTimerInterval);
+                                    this._wolfTimerInterval = null;
+                                }
+                            }, 1000);
+
+                            this.$nextTick(() => this._startTimerBar('#wolf-timer-bar', WOLVES_TIMER, data.remaining_seconds));
+                        }
+                        break;
+
+                    case 'witch_turn':
+                        if (!this.isWitch) return;
+                        this.witchVictim        = payload.victim ?? null;
+                        this.witchHealAvailable = !!payload.heal_available;
+                        this.witchKillAvailable = !!payload.kill_available;
+                        this.witchActionDone    = !!data.already_acted;
+                        if (isNewPhase) {
+                            this.nightPhase          = 'witch_turn';
+                            this.witchSelectedTarget = null;
+                            this.$nextTick(() => this._startTimerBar('#witch-timer-bar', WITCH_TIMER, data.remaining_seconds));
+                        }
+                        break;
+
+                    case 'hunter_turn':
+                        if (!this.isHunter) return;
+                        this.hunterActionDone = !!data.already_acted;
+                        if (isNewPhase) {
+                            // Guard #7 RISK_GUARDS : jamais de coexistence avec la modale succession.
+                            this.successionOpen      = false;
+                            this.nightPhase           = 'hunter_turn';
+                            this.hunterSelectedTarget = null;
+                            this.$nextTick(() => this._startTimerBar('#hunter-timer-bar', HUNTER_TIMER, data.remaining_seconds));
+                        }
+                        break;
+                }
+            },
+
+            // Anime la barre de temps depuis le temps RESTANT (jamais la durée pleine) —
+            // évite de relancer une animation pleine durée lors d'un rattrapage mi-phase.
+            _startTimerBar(selector, fullSeconds, remainingSeconds) {
+                const el = document.querySelector(selector);
+                if (!el || !fullSeconds) return;
+                const pct = Math.max(0, Math.min(100, (remainingSeconds / fullSeconds) * 100));
+
+                if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                    el.style.width = pct + '%';
+                    return;
+                }
+                gsap.set(el, { width: pct + '%' });
+                if (remainingSeconds > 0) {
+                    gsap.to(el, { width: '0%', duration: remainingSeconds, ease: 'none' });
                 }
             },
 

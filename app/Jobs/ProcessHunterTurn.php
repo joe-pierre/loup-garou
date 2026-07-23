@@ -84,6 +84,14 @@ class ProcessHunterTurn implements ShouldQueue
             return;
         }
 
+        // night_sub_phase n'est consommé par NightResyncService que si le statut est
+        // encore une variante de nuit (isNightPhase()) — inoffensif si $fromNight est
+        // faux (tir de jour), la lecture côté resync ignore alors ce champ.
+        $game->update([
+            'night_sub_phase' => 'hunter_turn',
+            'phase_deadline'  => now()->addSeconds($game->timer('hunter')),
+        ]);
+
         broadcast(new HunterTurnStarted($game, $hunter));
 
         ProcessHunterAutoAction::dispatch($this->gameId, $this->round, $this->hunterId, $fromNight, $this->isMayor)

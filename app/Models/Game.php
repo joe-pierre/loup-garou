@@ -19,6 +19,7 @@ class Game extends Model
         'max_players',
         'round',
         'phase_deadline',
+        'night_sub_phase',
         'timers',
         'settings',
         'winner_team',

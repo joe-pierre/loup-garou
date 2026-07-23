@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-23 — Vote loup perdu si refresh/reconnexion pendant une sous-phase de nuit
+
+- **Symptôme :** un loup choisissait sa cible, la page restait figée, et après rechargement il se retrouvait sur l'écran générique d'attente au lieu de l'écran loups — vote jamais enregistré, personne tué cette nuit-là. Le même défaut touchait voyante, sorcière, chasseur et cupidon.
+- **Cause :** `nightPhase` (client, `night.blade.php`) ne progresse que via des events Echo one-shot, jamais persistés côté serveur au-delà de `games.status` — aucun moyen de rattraper la sous-phase active après un refresh ou une coupure réseau.
+- **Fix :** nouvelle colonne `games.night_sub_phase` (vérité persistée, posée par chaque `ProcessXTurn` au moment du broadcast) + `NightResyncService` exposé via `GET /state` (`night_action`) + rattrapage câblé au chargement de page et à la reconnexion Echo. Voir DECISIONS.md "Resynchronisation des sous-phases de nuit" pour le détail complet.
+
+---
+
 ### [x] 2026-07-23 — Avatar de la salle d'attente laissait deviner le pseudo des autres joueurs
 
 - **Symptôme :** le fix du 2026-06-13 masquait le pseudo de l'hôte dans la salle d'attente, mais l'avatar de tous les joueurs (y compris l'hôte) affichait toujours l'initiale du vrai pseudo (`p.pseudo.charAt(0).toUpperCase()`), rendant le pseudo facilement devinable.
@@ -1020,6 +1028,9 @@
 - [ ] `phase-header.blade.php` : `$roleLabel`/`$roleBg`/`$roleColor` ne couvrent pas encore witch/hunter et utilisent toujours 🏘 pour villageois (même pattern que `player-list.blade.php`)
 - [ ] Révision timers par défaut config/game.php (day_vote, seer, werewolves)
       et valeurs minimales — prompt séparé après validation prod
+- [ ] `NightResyncService` ne couvre que le tir du Chasseur en phase NUIT — un maire-chasseur
+      éliminé par le vote du JOUR puis un refresh pendant son tir de riposte n'est pas rattrapé
+      (gap préexistant, hors périmètre de fix/night-phase-resync, voir DECISIONS.md)
 - [ ] Étendre players[] du store central à night.blade.php et spectator.blade.php
 - [ ] `ProcessWitchAutoAction` ne passe pas par `WitchAction::act()` : la victime ordinaire déférée par `ProcessNightActions` (quand `$witchCanSaveVictim=true`) n'est pas tuée ni broadcastée si le timer sorcière expire sans action manuelle. Ajouter dans `ProcessWitchAutoAction::handle()` le même bloc de résolution de victime ordinaire qu'en fin de `WitchAction::act()` (kill/pass).
 - [ ] `role-reveal.blade.php` (bloc Villageois) et tout autre bloc utilisant une condition en liste blanche d'exclusions (`role !== 'a' && role !== 'b' && ...`) plutôt qu'un `match()`/tableau associatif avec `default` : risque de régression silencieuse à chaque nouveau rôle (v1.4+ Loup Blanc, Petite Fille) — un rôle non exclu explicitement se fait passer pour Villageois sans erreur. Envisager d'inverser en liste blanche positive (`role === 'villager'`) une fois tous les rôles v1.3 stabilisés.

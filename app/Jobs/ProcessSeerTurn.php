@@ -63,7 +63,10 @@ class ProcessSeerTurn implements ShouldQueue
         $seerTimer = $game->timer('seer');
         $halfTimer = (int) ceil($seerTimer / 2);
 
-        $game->update(['phase_deadline' => now()->addSeconds($seerTimer)]);
+        $game->update([
+            'phase_deadline'  => now()->addSeconds($seerTimer),
+            'night_sub_phase' => 'seer_turn',
+        ]);
 
         broadcast(new SeerTurnStarted($game, $seer));
 
