@@ -1049,3 +1049,5 @@ Implémentation envisagée :
   test_night_starts_after_timeout_if_player_disconnected.
 - Priorité : après stabilisation de v1.2. Ne pas faire avant d'avoir
   tous les rôles stables.
+
+- [ ] `WinConditionCheckerTest` broadcaste réellement (`GameFinished`/`PhaseAnnouncement` non protégés par `try/catch`, aucun `Event::fake()`) et échoue si Reverb n'est pas démarré localement — l'aligner sur le reste de la suite (`Event::fake()`) pour ne plus dépendre d'un service externe pendant `php artisan test` (découvert lors de Cupidon Étape 7, voir DECISIONS.md).
