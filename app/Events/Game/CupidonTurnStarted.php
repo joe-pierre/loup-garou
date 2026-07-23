@@ -18,7 +18,7 @@ use Illuminate\Queue\SerializesModels;
  * qu'un tour Cupidon a eu lieu (cf. SPEC_CUPIDON.md §1 : confidentialité totale).
  *
  * Déclencheur : ProcessCupidonTurn::handle(), au tout début de la nuit 1.
- * Non branché dans PhaseManager à ce stade — voir DECISIONS.md.
+ * Branché dans PhaseManager::startNight() (round === 1, Cupidon distribué) — voir DECISIONS.md.
  */
 class CupidonTurnStarted implements ShouldBroadcastNow
 {

@@ -559,6 +559,23 @@ class GameService
     }
 
     /**
+     * Cupidon forme un couple d'amoureux (round 1 uniquement, une seule fois par partie).
+     * Guard atomique : impossible d'agir deux fois dans le même round.
+     * Cupidon peut se choisir lui-même comme un des deux amoureux (SPEC_CUPIDON.md §1).
+     * Broadcast LoverRevealed et dispatch du tour suivant gérés par CupidonAction::link().
+     *
+     * @param  GamePlayer $cupidon   Cupidon (rôle 'cupidon' requis)
+     * @param  int        $target1Id ID du premier amoureux (peut être $cupidon->id)
+     * @param  int        $target2Id ID du second amoureux (peut être $cupidon->id, distinct de $target1Id)
+     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException (403) si $cupidon n'est pas Cupidon
+     * @throws \Symfony\Component\HttpKernel\Exception\ConflictHttpException     (409) si hors round 1 / phase nuit, ou action déjà posée ce round
+     */
+    public function cupidonLink(GamePlayer $cupidon, int $target1Id, int $target2Id): void
+    {
+        app(\App\Services\RoleActions\CupidonAction::class)->link($cupidon, $target1Id, $target2Id);
+    }
+
+    /**
      * Annule une partie en cours : passe le statut à 'finished' avec winner_team = null.
      * Guard atomique : no-op si la partie est déjà terminée ou encore en 'waiting'.
      * Déclenché quand plus de 50% des joueurs sont inactifs (winner_team = null → rôles non révélés).

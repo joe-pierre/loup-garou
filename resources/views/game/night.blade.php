@@ -47,6 +47,27 @@
         box-shadow: 0 0 28px rgba(201,168,76,0.12);
         background: linear-gradient(135deg, #1a1505 0%, #0d0a02 100%); border-radius: 1rem;
     }
+    .cupidon-panel {
+        border: 1px solid rgba(236,72,153,0.4);
+        box-shadow: 0 0 28px rgba(236,72,153,0.12);
+        background: linear-gradient(135deg, #2a0a1a 0%, #150510 100%); border-radius: 1rem;
+    }
+    .target-btn.cupidon-sel { background-color: rgba(236,72,153,0.15); border-color: rgba(236,72,153,0.5); }
+    .btn-cupidon {
+        background-color: #ec4899;
+        color: #fff;
+        border: 1px solid rgba(244,114,182,0.5);
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+        font-family: 'Cinzel', serif;
+        font-weight: 700;
+        font-size: 0.875rem;
+        width: 100%;
+        transition: background-color 0.2s, transform 0.15s;
+        cursor: pointer;
+    }
+    .btn-cupidon:hover:not(:disabled) { background-color: #db2777; transform: translateY(-2px); }
+    .btn-cupidon:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
     .btn-heal {
         background-color: #16a34a;
         color: #fff;
@@ -178,6 +199,59 @@
                     🔇 Le village est silencieux cette nuit...
                 </div>
             </div>
+        </div>
+    </div>
+
+    {{-- ── 0. ÉCRAN CUPIDON (round 1 uniquement) ── --}}
+    <div x-show="nightPhase === 'cupidon_turn' && isCupidon" x-cloak
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-4"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         class="relative min-h-screen flex items-center justify-center px-4 py-10"
+         style="background: linear-gradient(135deg, #2a0a1a 0%, #150510 100%);">
+        @include('partials.game.quit-button')
+        @include('partials.game.quit-modal')
+        <div class="cupidon-panel p-6 w-full max-w-lg">
+            <p class="font-medieval text-xl font-bold mb-1 text-center" style="color:#f472b6;">
+                💘 C'est ton tour, Cupidon...
+            </p>
+            <p class="text-xs italic text-center mb-4" style="color:rgba(232,224,208,0.85);">
+                Choisis deux joueurs à unir pour toujours (toi y compris).
+            </p>
+            <div class="night-timer-bar mb-5">
+                <div id="cupidon-timer-bar" class="timer-fill" style="width:100%;background-color:#ec4899;"></div>
+            </div>
+            <p class="text-xs mb-3" style="color:rgba(232,224,208,0.85);">
+                <span x-text="cupidonSelectedTargets.length"></span>/2 sélectionné(s) :
+            </p>
+            <div class="flex flex-col gap-2 mb-4" style="max-height:220px;overflow-y:auto;">
+                @foreach($players->filter(fn($p) => $p->is_alive)->values() as $cupidonTarget)
+                <button
+                    type="button"
+                    class="target-btn"
+                    :class="cupidonSelectedTargets.includes({{ $cupidonTarget->id }}) ? 'cupidon-sel' : ''"
+                    :disabled="cupidonActionDone"
+                    @click="toggleCupidonTarget({{ $cupidonTarget->id }})"
+                >
+                    <div class="avatar" style="background:#2a0a1a;border:1px solid rgba(244,114,182,0.3);color:#e8e0d0;">
+                        {{ strtoupper(substr($cupidonTarget->pseudo, 0, 1)) }}
+                    </div>
+                    <span class="text-sm" style="color:#e8e0d0;">
+                        {{ $cupidonTarget->pseudo }}{{ $cupidonTarget->id === $player->id ? ' (toi)' : '' }}
+                    </span>
+                    <span x-show="cupidonSelectedTargets.includes({{ $cupidonTarget->id }})" class="ml-auto text-xs" style="color:#f472b6;">✓</span>
+                </button>
+                @endforeach
+            </div>
+            <button
+                @click="cupidonLink()"
+                :disabled="cupidonSelectedTargets.length !== 2 || cupidonSubmitting || cupidonActionDone"
+                class="btn-cupidon"
+            >
+                <span x-show="!cupidonSubmitting && !cupidonActionDone">💘 Unir les cœurs</span>
+                <span x-show="cupidonSubmitting">Union en cours…</span>
+                <span x-show="cupidonActionDone && !cupidonSubmitting">✓ Couple formé</span>
+            </button>
         </div>
     </div>
 
@@ -578,6 +652,38 @@
             </div>
         </div>
     </div>
+
+    {{-- ═══════ MODALE AMOUREUX — notification privée, jamais visible aux autres ═══════ --}}
+    <div
+        x-show="loverRevealed"
+        x-cloak
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 flex items-center justify-center z-50 px-4"
+        style="background-color: rgba(10,15,30,0.82);"
+    >
+        <div class="succession-modal w-full max-w-sm p-6" style="border-color:rgba(236,72,153,0.5);" x-ref="loverModal">
+            <div class="text-center">
+                <p class="font-medieval text-xl font-bold mb-2" style="color:#f472b6;">💞 Cupidon a frappé</p>
+                <p class="text-sm mb-5" style="color:#e8e0d0;">
+                    Tu es amoureux de <span class="font-semibold" style="color:#f472b6;" x-text="loverPartnerPseudo"></span>.
+                </p>
+                <p class="text-xs italic mb-5" style="color:rgba(232,224,208,0.6);">
+                    Si vous êtes les deux derniers survivants, vous gagnez ensemble — quel que soit votre camp.
+                </p>
+                <button
+                    @click="loverRevealed = false"
+                    class="w-full py-3 rounded-xl font-medieval font-semibold text-sm"
+                    style="background-color:rgba(236,72,153,0.2);border:1px solid rgba(236,72,153,0.4);color:#f472b6;">
+                    J'ai compris
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection
 
@@ -604,6 +710,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const WOLVES_TIMER  = {{ $game->timer('werewolves') }};
     const WITCH_TIMER   = {{ $game->timer('witch') }};
     const HUNTER_TIMER  = {{ $game->timer('hunter') }};
+    const CUPIDON_TIMER = {{ $game->timer('cupidon') }};
 
     // Exposer sur window pour game-state.js
     window.GAME_ID      = GAME_ID;
@@ -624,6 +731,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             isSeer:              MY_ROLE === 'seer',
             isWitch:             MY_ROLE === 'witch',
             isHunter:            MY_ROLE === 'hunter',
+            isCupidon:           MY_ROLE === 'cupidon',
             nightPhase:          'village_sleeping',
             pendingSeerEvent:    null,
             seerActionDone:      false,
@@ -662,6 +770,13 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             hunterSubmitting:     false,
             hunterActionDone:     false,
 
+            cupidonSelectedTargets: [],
+            cupidonSubmitting:      false,
+            cupidonActionDone:      false,
+
+            loverRevealed:      false,
+            loverPartnerPseudo: '',
+
             init() {
                 if (this._initialized) return;
                 this._initialized = true;
@@ -679,6 +794,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
 
                 this.$watch('nightPhase', (phase) => {
                     const messages = {
+                        cupidon_turn:    { role: 'cupidon',  text: '🌙 Des forces mystérieuses agissent dans l\'ombre...' },
                         seer_turn:       { role: 'seer',     text: '🌙 Des forces mystérieuses agissent dans l\'ombre...' },
                         werewolves_turn: { role: 'werewolf', text: '🌙 Des forces mystérieuses agissent dans l\'ombre...' },
                         witch_turn:      { role: 'witch',    text: '🌙 Des forces mystérieuses agissent dans l\'ombre...' },
@@ -708,6 +824,13 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                     sessionStorage.removeItem('dead_' + MY_PLAYER_ID);
                 });
 
+                // Amoureux — notification privée, n'importe quel rôle peut être concerné
+                window.addEventListener('lover-revealed', (e) => {
+                    this.loverPartnerPseudo = e.detail?.partner_pseudo ?? '';
+                    this.loverRevealed      = true;
+                    setTimeout(() => { this.loverRevealed = false; }, 8000);
+                });
+
                 // Succession du maire — via window (dispatchée par game-state.js)
                 window.addEventListener('mayor-succession-started', (e) => {
                     this.openSuccessionModal(e.detail);
@@ -716,6 +839,18 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                     this.newMayorPseudo = e.detail?.new_mayor_pseudo ?? '';
                     this.closeSuccessionModal();
                 });
+
+                if (this.isCupidon) {
+                    window.addEventListener('cupidon-turn-started', () => {
+                        this.nightPhase             = 'cupidon_turn';
+                        this.cupidonSelectedTargets = [];
+                        this.cupidonActionDone      = false;
+                        this.$nextTick(() => {
+                            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+                            gsap.to('#cupidon-timer-bar', { width: '0%', duration: CUPIDON_TIMER, ease: 'none' });
+                        });
+                    });
+                }
 
                 if (this.isSeer) {
                     // Voyante : écoute via window (game-state.js abonne le canal privé et dispatch)
@@ -926,6 +1061,46 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                     }
                 } catch { }
                 finally { this.hunterSubmitting = false; }
+            },
+
+            toggleCupidonTarget(id) {
+                if (this.cupidonActionDone) return;
+                const idx = this.cupidonSelectedTargets.indexOf(id);
+                if (idx !== -1) {
+                    this.cupidonSelectedTargets.splice(idx, 1);
+                    return;
+                }
+                if (this.cupidonSelectedTargets.length >= 2) return;
+                this.cupidonSelectedTargets.push(id);
+            },
+
+            async cupidonLink() {
+                if (this.cupidonSelectedTargets.length !== 2 || this.cupidonSubmitting || this.cupidonActionDone) return;
+                this.cupidonSubmitting = true;
+                try {
+                    const res = await fetch(`/game/${GAME_ID}/cupidon/link`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
+                        body: JSON.stringify({
+                            target1_player_id: this.cupidonSelectedTargets[0],
+                            target2_player_id: this.cupidonSelectedTargets[1],
+                        }),
+                    });
+                    const json = await res.json();
+                    if (json.success) {
+                        this.cupidonActionDone = true;
+                        setTimeout(() => {
+                            if (this.nightPhase === 'cupidon_turn') {
+                                this.nightPhase = 'village_sleeping';
+                            }
+                        }, 4000);
+                    }
+                } catch { }
+                finally { this.cupidonSubmitting = false; }
             },
 
             toggleWolfChat() {

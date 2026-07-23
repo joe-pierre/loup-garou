@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-23 — Docblock obsolète dans CupidonTurnStarted.php
+
+- **Symptôme :** le docblock de `app/Events/Game/CupidonTurnStarted.php` affirmait encore "Non branché dans PhaseManager à ce stade", laissant croire que le tour de Cupidon était inatteignable depuis le flux de jeu réel.
+- **Cause :** commentaire écrit à l'Étape 3 (Cupidon isolé, non branché), jamais mis à jour lors de l'Étape 4 qui a effectivement branché `ProcessCupidonTurn` dans `PhaseManager::startNight()` (Phase 40 du TODO).
+- **Fix :** commentaire corrigé pour refléter l'état réel : "Branché dans PhaseManager::startNight() (round === 1, Cupidon distribué)".
+
+---
+
 ### [x] 2026-07-22 — Partie bloquée en night (broadcasts MayorElected/NightStarted non protégés dans ProcessMayorElection)
 
 - **Symptôme :** lors d'un incident réseau/Reverb, une exception sur `broadcast(new MayorElected(...))` ou `broadcast(new NightStarted(...))` dans `ProcessMayorElection::handle()` empêchait `ProcessSeerTurn::dispatch()` de s'exécuter — la partie restait bloquée en `status='night'` sans rien pour piloter la suite.
