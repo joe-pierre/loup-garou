@@ -93,6 +93,21 @@ class ReconnectionTest extends TestCase
             'is_alive' => false,
         ]);
 
+        // Couvre aussi witch/hunter/cupidon, jamais vérifiés jusqu'ici pour revealed_role_label.
+        $expectedLabels = [
+            'witch'   => 'Sorcière',
+            'hunter'  => 'Chasseur',
+            'cupidon' => 'Cupidon',
+        ];
+        $deadByRole = [];
+        foreach ($expectedLabels as $role => $label) {
+            $deadByRole[$role] = GamePlayer::factory()->create([
+                'game_id'  => $game->id,
+                'role'     => $role,
+                'is_alive' => false,
+            ]);
+        }
+
         $response = $this->actingAs($user)->getJson("/game/{$game->code}/state");
 
         $response->assertStatus(200);
@@ -120,6 +135,13 @@ class ReconnectionTest extends TestCase
         $this->assertFalse($dead['is_alive']);
         $this->assertEquals('werewolf', $dead['revealed_role']);
         $this->assertEquals('Loup-Garou', $dead['revealed_role_label']);
+
+        foreach ($expectedLabels as $role => $label) {
+            $deadRolePlayer = collect($players)->firstWhere('id', $deadByRole[$role]->id);
+            $this->assertNotNull($deadRolePlayer);
+            $this->assertEquals($role, $deadRolePlayer['revealed_role']);
+            $this->assertEquals($label, $deadRolePlayer['revealed_role_label']);
+        }
     }
 
     public function test_state_retourne_403_si_joueur_absent(): void

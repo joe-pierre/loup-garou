@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-23 — Witch/Hunter/Cupidon retombaient sur "Villageois" dans le message de victime de nuit (day.blade.php) + Cupidon absent de /state
+
+- **Symptôme :** le message "C'était un [rôle]" affiché sous la bannière de victime de nuit dans `day.blade.php` (~ligne 101) affichait "Villageois" pour une victime Sorcière, Chasseur ou Cupidon — fausse information en jeu. Par ailleurs, `GameController::state()` (`revealed_role_label`, endpoint `/state`) ne couvrait pas `cupidon` (witch/hunter déjà présents).
+- **Cause :** le `match($nightVictim->role)` de `day.blade.php:101` ne couvrait que `werewolf`/`seer` avec `default => 'Villageois'`, introduit dans le commit initial des vues de jeu (`7239050`), avant même l'existence de Sorcière/Chasseur (v1.2) — bug préexistant, pas une régression Cupidon. Les deux autres emplacements de `day.blade.php` (`$playersJson` ligne ~470 et `roleLabels` du listener `player-eliminated` ligne ~662) couvraient déjà les 6 rôles, confirmant l'oubli isolé de cette seule ligne. `GameController::state()` avait été mis à jour pour witch/hunter (v1.2) mais jamais ré-audité lors de l'ajout de Cupidon.
+- **Fix :** ajout de `witch`, `hunter`, `cupidon` au `match()` de `day.blade.php:101`. Ajout de `'cupidon' => 'Cupidon'` au `match()` de `GameController::state()` (label court, cohérent avec les entrées sœurs `werewolf`/`seer`/`witch`/`hunter` du même tableau — pas la phrase longue "Cupidon — Innocent." de `night.blade.php`, qui sert un contexte d'affichage différent). Test `ReconnectionTest::test_state_endpoint_retourne_la_liste_des_joueurs` étendu pour couvrir witch/hunter/cupidon (jusqu'ici seul werewolf était testé).
+
+---
+
 ### [x] 2026-07-23 — Cupidon absent du résultat d'inspection Voyante (night.blade.php)
 
 - **Symptôme :** la Voyante inspectant un joueur Cupidon voyait "❓" et "Rôle inconnu." au lieu de l'icône/label dédiés, dans l'écran `seer_result` de `night.blade.php`.

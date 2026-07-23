@@ -98,7 +98,7 @@
     @if($nightVictim)
     <div class="mb-6 px-4 py-3 rounded-xl text-center" style="background-color:#1a1010;border:1px solid rgba(139,0,0,.5)">
         <p style="color:#e8e0d0;">⚰️ Cette nuit, <span class="font-medieval" style="color:#ff8888">{{ $nightVictim->pseudo }}</span> a été dévoré.</p>
-        <p class="text-sm mt-1" style="color:#e8e0d0;">C'était un <span style="color:#4ade80">{{ match($nightVictim->role) { 'werewolf' => 'Loup-Garou', 'seer' => 'Voyante', default => 'Villageois' } }}</span>.</p>
+        <p class="text-sm mt-1" style="color:#e8e0d0;">C'était un <span style="color:#4ade80">{{ match($nightVictim->role) { 'werewolf' => 'Loup-Garou', 'seer' => 'Voyante', 'witch' => 'Sorcière', 'hunter' => 'Chasseur', 'cupidon' => 'Cupidon', default => 'Villageois' } }}</span>.</p>
     </div>
     @endif
 

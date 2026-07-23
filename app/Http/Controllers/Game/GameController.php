@@ -284,6 +284,7 @@ class GameController extends Controller
                         'seer'     => 'Voyante',
                         'witch'    => 'Sorcière',
                         'hunter'   => 'Chasseur',
+                        'cupidon'  => 'Cupidon',
                         default    => 'Villageois',
                     },
                 ]
