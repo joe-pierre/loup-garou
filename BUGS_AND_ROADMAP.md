@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-23 — Cupidon absent du résultat d'inspection Voyante (night.blade.php)
+
+- **Symptôme :** la Voyante inspectant un joueur Cupidon voyait "❓" et "Rôle inconnu." au lieu de l'icône/label dédiés, dans l'écran `seer_result` de `night.blade.php`.
+- **Cause :** `roleEmoji(role)`/`roleLabel(role)` (introduites par le fix "Voyante affichait Innocent pour Chasseur et Sorcière" du 2026-06-23, avant l'existence de Cupidon) n'avaient jamais été ré-auditées lors de l'ajout de Cupidon aux écrans de rôle (Phase 46).
+- **Fix :** `cupidon: '💘'` et `cupidon: 'Cupidon — Innocent.'` ajoutés aux deux objets. Voir DECISIONS.md "Cupidon absent du résultat d'inspection Voyante" pour le détail complet et l'audit des emplacements similaires.
+
+---
+
 ### [x] 2026-07-23 — Cupidon absent des rôles configurables côté host (GameSettingsService + waiting-room)
 
 - **Symptôme :** malgré RoleDistributor/config/enums déjà en place depuis les Étapes 1→4 de Cupidon, `POST /game/{id}/settings/roles` avec `{cupidon: 1}` était rejeté (422 "n'est pas configurable"), et la modale ⚙️ Paramètres de la waiting-room n'affichait aucune option Cupidon — deux listes codées en dur limitées à `witch`/`hunter`.
@@ -983,6 +991,8 @@
 - [ ] Étendre players[] du store central à night.blade.php et spectator.blade.php
 - [ ] `ProcessWitchAutoAction` ne passe pas par `WitchAction::act()` : la victime ordinaire déférée par `ProcessNightActions` (quand `$witchCanSaveVictim=true`) n'est pas tuée ni broadcastée si le timer sorcière expire sans action manuelle. Ajouter dans `ProcessWitchAutoAction::handle()` le même bloc de résolution de victime ordinaire qu'en fin de `WitchAction::act()` (kill/pass).
 - [ ] `role-reveal.blade.php` (bloc Villageois) et tout autre bloc utilisant une condition en liste blanche d'exclusions (`role !== 'a' && role !== 'b' && ...`) plutôt qu'un `match()`/tableau associatif avec `default` : risque de régression silencieuse à chaque nouveau rôle (v1.4+ Loup Blanc, Petite Fille) — un rôle non exclu explicitement se fait passer pour Villageois sans erreur. Envisager d'inverser en liste blanche positive (`role === 'villager'`) une fois tous les rôles v1.3 stabilisés.
+- [ ] `day.blade.php` ligne ~101 (message "C'était un [rôle]" pour la victime de la nuit) : `match($nightVictim->role)` ne couvre que werewolf/seer, tombe en `default => 'Villageois'` pour witch/hunter/cupidon — distinct de `revealed_role_label` du même fichier (déjà correct). Voir DECISIONS.md "Cupidon absent du résultat d'inspection Voyante".
+- [ ] `GameController::state()` (`revealed_role_label`, endpoint `/state`) : `match($p->role)` couvre werewolf/seer/witch/hunter mais pas `cupidon`, tombe en `default => 'Villageois'`. Voir DECISIONS.md "Cupidon absent du résultat d'inspection Voyante".
 
 ## Refactoring architectural planifié
 

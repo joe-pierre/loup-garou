@@ -693,6 +693,22 @@
 - [x] Aucune icône/couleur/label de rôle existant modifiée. `php artisan test` relancé après chaque
       fichier : 257/257 verts en continu.
 
+## Phase 47 — Icône Cupidon manquante dans le résultat d'inspection Voyante (2026-07-23)
+
+- [x] `night.blade.php` (`roleEmoji(role)`/`roleLabel(role)` dans `nightScreen()`, écran
+      `nightPhase === 'seer_result'`) — pattern objet+fallback (`?? '❓'` / `?? 'Rôle inconnu.'`),
+      distinct du pattern liste blanche déjà corrigé dans `role-reveal.blade.php` (Phase 46), donc
+      non trouvé par le grep `witch`+`hunter` combiné de cette phase-là. `cupidon → 💘` (icône) et
+      `'Cupidon — Innocent.'` (label) ajoutés, couleur `#f472b6` déjà standardisée réutilisée pour
+      la bordure de carte via la logique binaire `isWerewolf` existante (non modifiée).
+- [x] Audit Étape 4 (grep `default:`/`match (`/`switch (` + `role`) — 2 emplacements supplémentaires
+      trouvés avec le même bug (match PHP défaillant sur `default => 'Villageois'` pour Cupidon) :
+      `day.blade.php` ligne ~101 (message "C'était un ..." victime de nuit, ne couvre même pas
+      witch/hunter) et `GameController::state()` (`revealed_role_label`, couvre witch/hunter mais
+      pas cupidon). Non corrigés dans cette tâche (hors périmètre explicite : un seul composant
+      demandé) — voir BUGS_AND_ROADMAP.md.
+- [x] `php artisan test` : 257/257 verts (aucun cassé, aucun test ajouté — bugfix d'affichage pur).
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`

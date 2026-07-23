@@ -1199,6 +1199,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                     seer:     '🔮',
                     witch:    '🧙‍♀️',
                     hunter:   '🏹',
+                    cupidon:  '💘',
                 };
                 return emojis[role] ?? '❓';
             },
@@ -1210,6 +1211,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                     seer:     'Voyante — Innocente.',
                     witch:    'Sorcière — Innocente.',
                     hunter:   'Chasseur — Innocent.',
+                    cupidon:  'Cupidon — Innocent.',
                 };
                 return labels[role] ?? 'Rôle inconnu.';
             },
