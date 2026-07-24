@@ -64,6 +64,8 @@
                             <span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Villageois</span>
                         @elseif ($game->winner_team === 'werewolves')
                             <span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Loups-garous</span>
+                        @elseif ($game->winner_team === 'lovers')
+                            <span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-700">Amoureux</span>
                         @elseif ($game->status === 'finished')
                             <span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">Annulée</span>
                         @else

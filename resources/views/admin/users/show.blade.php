@@ -100,6 +100,7 @@
                                     $winnerColors = [
                                         'villagers'  => 'bg-green-100 text-green-700',
                                         'werewolves' => 'bg-red-100 text-red-700',
+                                        'lovers'     => 'bg-pink-100 text-pink-700',
                                     ];
                                     $winnerColor = $winnerColors[$game->winner_team] ?? 'bg-gray-100 text-gray-500';
 

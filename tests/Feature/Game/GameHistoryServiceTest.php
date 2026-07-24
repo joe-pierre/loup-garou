@@ -26,6 +26,24 @@ class GameHistoryServiceTest extends TestCase
         $this->assertContains('finish', $types);
     }
 
+    public function test_build_timeline_finish_label_victoire_amoureux(): void
+    {
+        // Régression : winner_team === 'lovers' retombait dans le default du match()
+        // et affichait "🏁 Partie annulée" au lieu de la victoire réelle.
+        $game    = Game::factory()->create(['status' => 'finished', 'winner_team' => 'lovers', 'round' => 1]);
+        $players = GamePlayer::factory()->count(2)->create(['game_id' => $game->id])->keyBy('id');
+        $actions = collect();
+
+        $service  = new HistoryService();
+        $timeline = $service->buildTimeline($game, $players, $actions);
+
+        $finishEntry = collect($timeline)->firstWhere('type', 'finish');
+
+        $this->assertNotNull($finishEntry);
+        $this->assertSame('💞 Victoire des Amoureux', $finishEntry['label']);
+        $this->assertSame('lovers', $finishEntry['winner_team']);
+    }
+
     /**
      * Régression : DECISIONS.md "Nuits sans action absentes de la timeline + succession maire
      * sans filtre de phase". Vérifie que :
@@ -460,5 +478,24 @@ class GameHistoryServiceTest extends TestCase
             'Le chasseur',
             'comme successeur',
         ]);
+    }
+
+    /**
+     * Régression : winner_team === 'lovers' retombait dans le default de
+     * $winnerClass/$winnerLabel de history.blade.php (badge "🏁 Annulée",
+     * classe .winner-cancelled) au lieu d'afficher la victoire des amoureux.
+     */
+    public function test_page_history_affiche_victoire_amoureux_pas_annulee(): void
+    {
+        $game   = Game::factory()->create(['status' => 'finished', 'winner_team' => 'lovers', 'round' => 1]);
+        $viewer = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+        GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+
+        $response = $this->actingAs($viewer->user)->get(route('game.history', $game->code));
+
+        $response->assertOk();
+        $response->assertSee('💞 Amoureux', false);
+        $response->assertDontSee('🏁 Annulée', false);
+        $response->assertSee('💞 Victoire des Amoureux', false);
     }
 }

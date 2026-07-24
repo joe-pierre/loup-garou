@@ -51,6 +51,7 @@
 
         .winner-villagers  { background-color: rgba(22,163,74,0.2);   color: #4ade80;  border: 1px solid rgba(22,163,74,0.4); }
         .winner-werewolves { background-color: rgba(139,0,0,0.25);    color: #f87171;  border: 1px solid rgba(139,0,0,0.4); }
+        .winner-lovers     { background-color: rgba(244,114,182,0.2); color: #f472b6;  border: 1px solid rgba(244,114,182,0.4); }
         .winner-cancelled  { background-color: rgba(107,114,128,0.2); color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
 
         /* Timeline */
@@ -92,6 +93,7 @@
         .node-day      { background-color: rgba(201,168,76,0.1);   border-color: rgba(201,168,76,0.5); color: #c9a84c; }
         .node-finish   { background-color: rgba(22,163,74,0.15);   border-color: #16a34a; color: #16a34a; }
         .node-finish-wolves { background-color: rgba(139,0,0,0.2); border-color: #8b0000; color: #ef4444; }
+        .node-finish-lovers { background-color: rgba(244,114,182,0.15); border-color: #f472b6; color: #f472b6; }
 
         /* Player row */
         .player-row {
@@ -123,11 +125,13 @@
     $winnerClass = match($winnerTeam) {
         'villagers'  => 'winner-villagers',
         'werewolves' => 'winner-werewolves',
+        'lovers'     => 'winner-lovers',
         default      => 'winner-cancelled',
     };
     $winnerLabel = match($winnerTeam) {
         'villagers'  => '🏆 Village',
         'werewolves' => '🐺 Loups',
+        'lovers'     => '💞 Amoureux',
         default      => '🏁 Annulée',
     };
     $roleLabel = fn(?string $r) => match($r) {
@@ -270,7 +274,11 @@
                     'election' => 'node-election',
                     'night'    => 'node-night',
                     'day'      => 'node-day',
-                    'finish'   => ($entry['winner_team'] === 'werewolves') ? 'node-finish-wolves' : 'node-finish',
+                    'finish'   => match ($entry['winner_team']) {
+                        'werewolves' => 'node-finish-wolves',
+                        'lovers'     => 'node-finish-lovers',
+                        default      => 'node-finish',
+                    },
                     default    => 'node-day',
                 };
                 $nodeIcon = match($entry['type']) {

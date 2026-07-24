@@ -185,6 +185,7 @@ class HistoryService
             'label'       => match ($game->winner_team) {
                 'villagers'  => '🏆 Victoire du Village',
                 'werewolves' => '🐺 Victoire des Loups',
+                'lovers'     => '💞 Victoire des Amoureux',
                 default      => '🏁 Partie annulée',
             },
             'winner_team' => $game->winner_team,

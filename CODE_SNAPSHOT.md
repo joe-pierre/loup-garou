@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 19h40
+Generated at: 16h31
 
 ## PHP Analysis (Core Logic)
 
@@ -1063,7 +1063,7 @@ RoleAction.php
 // app/Services/RoleActions/WitchAction.php
 WitchAction.php
     functions:
-      - __construct(VoteService $voteService, PlayerEliminationService $eliminationService) {}
+      - __construct(VoteService $voteService, PlayerEliminationService $eliminationService, WinConditionChecker $winConditionChecker) {}
       - act(GamePlayer $witch, string $action, ?int $targetId) → return $result
       - resolveDeferredVictim(Game $game, GamePlayer $witch) → return [$witchDiedFromWolves, $deferredMayorVictim]
       - broadcastDeferredVictim(Game $game, GamePlayer $witch, bool $witchDiedFromWolves, ?GamePlayer $deferredMayorVictim) → void
@@ -1168,11 +1168,13 @@ GameHistoryServiceTest.php
       - RefreshDatabase
     functions:
       - test_build_timeline_retourne_election_plus_finish_pour_partie_sans_rounds() → void
+      - test_build_timeline_finish_label_victoire_amoureux() → void
       - test_history_with_multiple_successions_and_rounds() → void
       - test_election_timeline_contient_le_detail_des_votes_par_candidat() → void
       - test_night_round1_contient_la_paire_cupidon_couple() → void
       - test_night_round1_sans_cupidon_couple_reste_null() → void
       - test_night1_affiche_le_lien_cupidon_avant_les_autres_evenements() → void
+      - test_page_history_affiche_victoire_amoureux_pas_annulee() → void
 
 // tests/Feature/Game/ReconnectionTest.php
 ReconnectionTest.php
@@ -1200,6 +1202,8 @@ CancelGameTest.php
       - test_game_finished_revele_roles_si_victoire_normale() → void
       - test_cancel_game_no_op_si_partie_deja_terminee() → void
       - test_cancel_game_no_op_si_partie_en_attente() → void
+      - test_cancel_game_annule_a_tort_une_partie_en_cours_de_resolution_vote_jour() → void
+      - test_cancel_game_annule_a_tort_une_partie_en_cours_de_resolution_nuit() → void
 
 // tests/Feature/Game/CupidonTest.php
 CupidonTest.php
@@ -1216,7 +1220,10 @@ CupidonTest.php
       - test_amoureux_empoisonne_par_la_sorciere_cascade_immediate() → void
       - test_amoureux_elimine_par_vote_jour_cascade_immediate() → void
       - test_amoureux_tue_par_le_tir_du_chasseur_cascade_immediate() → void
+      - test_victoire_amoureux_declenchee_par_vote_de_jour_qui_fait_tomber_effectif_a_deux() → void
       - test_victoire_amoureux_loup_et_villageois_derniers_survivants() → void
+      - test_victoire_amoureux_declenchee_apres_resolution_sorciere_qui_fait_tomber_effectif_a_deux() → void
+      - test_victoire_amoureux_deja_correcte_quand_chasseur_seul_autre_survivant_sans_sorciere() → void
       - test_partie_sans_cupidon_comportement_v1_2_inchange() → void
 
 // tests/Feature/Game/HunterTest.php
@@ -1628,6 +1635,7 @@ WinConditionCheckerTest.php
       - test_deux_derniers_survivants_non_amoureux_comportement_loups_village_inchange() → void
       - test_deux_derniers_survivants_non_amoureux_loup_contre_villageois_les_loups_gagnent() → void
       - test_plus_de_deux_survivants_amoureux_ne_declenche_pas_victoire_amoureux() → void
+      - test_ne_reecrit_pas_une_partie_deja_annulee() → void
 
 // tests/Unit/Services/PlayerEliminationServiceTest.php
 PlayerEliminationServiceTest.php

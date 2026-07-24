@@ -811,6 +811,76 @@
 - [!] Branche `fix/witch-timeout-victim-not-eliminated`, non mergée, non committée — en
       attente de revue.
 
+## Phase 53 — Bugfix victoire des Amoureux non déclenchée + durcissement WinConditionChecker (2026-07-24)
+
+- [x] Confirmé (test qui échoue avant fix) : `WitchAction` n'appelait jamais
+      `WinConditionChecker::check()` après une élimination différée (sorcière elle-même,
+      maire en sursis, ou victime ordinaire) — seul point d'élimination de toute la
+      codebase sans ce check, contrairement à `ProcessNightActions`, `PhaseManager::endNight()`,
+      `ProcessHunterTurn`/`AutoAction`, `VoteService`.
+- [x] `WitchAction` — `WinConditionChecker` injecté, `check()` appelé en fin de `act()`
+      et de `finalizeTimedOutVictim()` (couvre les 2 chemins manuel + timeout).
+- [x] `ProcessHunterTurn::handle()` — `check()` déplacé en tout début de méthode (priorité
+      victoire amoureux > tir du Chasseur en attente, SPEC_CUPIDON.md §6), plus seulement
+      dans la branche de repli "chasseur déjà résolu/invalide".
+- [x] `WinConditionChecker::check()` réécrit — atomique (`lockForUpdate()`) + idempotent
+      (no-op si `status === 'finished'`), même pattern que `cancelGame()`/`resolveMayorElection()`.
+      Durcissement de l'anomalie #2 (incohérence "Annulée" vs "Les Loups ont gagné") — cause
+      exacte de la partie SFICZ8 non confirmée avec certitude (race non reproductible en test
+      synchrone), mais gap structurel réel corrigé.
+- [x] Tests : 3 tests ajoutés (2 `CupidonTest`, 1 `WinConditionCheckerTest`), 1 test existant
+      (`NightResyncTest`) enrichi d'un effectif vivant réaliste. 291/291 tests verts (288 avant
+      + 3 nouveaux, aucun cassé). Suite complète exécutée avec Reverb démarré localement.
+- [!] Branche `fix/lovers-victory-witch-deferred-resolution`, non mergée, non committée — en
+      attente de revue.
+
+## Phase 54 — Cause racine confirmée : victoire des Amoureux annulée à tort par une course cancelGame() (2026-07-24)
+
+- [x] Reproduction directe et déterministe du chemin vote de jour seul (partie RIQPAZ) —
+      `test_victoire_amoureux_declenchee_par_vote_de_jour_qui_fait_tomber_effectif_a_deux`
+      passe déjà avec le code existant, excluant un bug de logique dans `VoteService`.
+- [x] Cause racine trouvée dans `GameService::cancelGame()` : garde `whereNotIn('status',
+      ['finished', 'waiting'])` bien plus permissif que le pré-check de `CheckReconnectionTimeout`
+      (`in_array($game->status, ['night', 'day', 'electing_mayor'])`) — TOCTOU classique,
+      `cancelGame()` pouvait annuler une partie en statut `'processing_day'`/`'processing_night'`
+      (résolution de vote/nuit déjà en cours, `WinConditionChecker::check()` pas encore appelé).
+- [x] `GameService::cancelGame()` — garde resserré à `whereIn('status', ['night', 'day',
+      'electing_mayor'])`, symétrique au pré-check de `CheckReconnectionTimeout`, revalidé
+      atomiquement sous le même `lockForUpdate()` que l'écriture.
+- [x] Tests : 2 tests ajoutés dans `CancelGameTest.php` reproduisant directement la fenêtre
+      de course (rouge sur le code d'origine, vert après fix) + 1 test `CupidonTest`
+      (non-régression vote de jour isolé). 294/294 tests verts (291 avant + 3 nouveaux,
+      aucun cassé).
+- [x] `DECISIONS.md` — entrée "Victoire des Amoureux annulée à tort par une course avec
+      cancelGame()..." remplace la mention "non confirmé" de la Phase 53.
+- [!] Toujours sur la branche `fix/lovers-victory-witch-deferred-resolution`, non mergée,
+      non committée — en attente de revue.
+
+## Phase 55 — Affichage victoire des Amoureux : finished.blade.php et history.blade.php généralisés (2026-07-24)
+
+- [x] Confirmé (audit demandé en complément des Phases 53-54) : `finished.blade.php` pilotait
+      tout son thème via un booléen `$isVillage` — toute valeur de `winner_team` autre que
+      `'villagers'` (donc `'werewolves'` ET `'lovers'`) retombait sur le thème "Loups". Une
+      victoire amoureux correctement persistée aurait donc quand même affiché "Les Loups ont
+      gagné !".
+- [x] `finished.blade.php` — `$isVillage` remplacé par `$theme` (3 branches via `match()`,
+      `villagers`/`lovers`/`default` werewolves), thème amoureux rose `#f472b6` (déjà
+      standardisé pour Cupidon), emoji 💞, "Les Amoureux ont gagné !", confettis or+rose.
+- [x] `history.blade.php` + `HistoryService::buildTimeline()` — même défaut trouvé
+      indépendamment : `winner_team = 'lovers'` retombait dans le `default` affichant
+      "🏁 Annulée"/"🏁 Partie annulée" — exactement le symptôme "Annulée" des Phases 53-54,
+      mais de cause purement affichage. Branches `lovers` ajoutées (badge, classe CSS
+      `.winner-lovers`, nœud timeline `.node-finish-lovers`, libellé `HistoryService`).
+- [x] `admin/games/show.blade.php` + `admin/users/show.blade.php` — même binaire trouvé et
+      corrigé pour cohérence (écrans admin, priorité moindre).
+- [x] `summary.blade.php` (écran intermédiaire avant `/finished`) vérifié neutre, aucune
+      modification nécessaire.
+- [x] Tests : 2 tests ajoutés dans `GameHistoryServiceTest.php` (rouge avant fix, vert après).
+      `finished.blade.php` vérifié par rendu direct pour les 3 valeurs de `winner_team`.
+      `npm run build` sans erreur. 296/296 tests verts (294 avant + 2 nouveaux, aucun cassé).
+- [!] Toujours sur la branche `fix/lovers-victory-witch-deferred-resolution`, non mergée,
+      non committée — en attente de revue.
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
@@ -830,4 +900,11 @@
 - Phase 52 ✅ Terminée — Fix victime des loups jamais éliminée au timeout Sorcière, sur
   branche `fix/witch-timeout-victim-not-eliminated`, non mergée, non committée — en attente
   de revue
+- Phase 53 ✅ Terminée — Fix victoire des Amoureux non déclenchée (gap WitchAction/ProcessHunterTurn)
+  + durcissement atomicité/idempotence WinConditionChecker, sur branche
+  `fix/lovers-victory-witch-deferred-resolution`, non mergée, non committée — en attente de revue
+- Phase 54 ✅ Terminée — Cause racine confirmée de l'anomalie "Annulée vs Loups ont gagné" (course
+  `cancelGame()`/résolution en cours), même branche, non mergée, non committée — en attente de revue
+- Phase 55 ✅ Terminée — Affichage victoire des Amoureux généralisé (finished.blade.php,
+  history.blade.php, écrans admin), même branche, non mergée, non committée — en attente de revue
 - v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md

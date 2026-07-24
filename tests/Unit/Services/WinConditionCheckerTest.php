@@ -122,4 +122,29 @@ class WinConditionCheckerTest extends TestCase
         $this->assertFalse($result);
         $this->assertSame('night', $game->fresh()->status);
     }
+
+    // ------------------------------------------------------------------
+    // Idempotence : ne jamais écraser une partie déjà terminée (ex. annulée
+    // entre-temps par GameService::cancelGame() — voir DECISIONS.md, anomalie
+    // "Annulée" vs "Les Loups ont gagné" de la partie SFICZ8).
+    // ------------------------------------------------------------------
+
+    public function test_ne_reecrit_pas_une_partie_deja_annulee(): void
+    {
+        $game = $this->makeGame('night');
+
+        GamePlayer::factory()->werewolf()->create(['game_id' => $game->id, 'is_alive' => true]);
+        GamePlayer::factory()->villager()->create(['game_id' => $game->id, 'is_alive' => true]);
+
+        // La partie a déjà été annulée pour inactivité entre-temps (GameService::cancelGame()).
+        $game->update(['status' => 'finished', 'winner_team' => null, 'finished_at' => now()]);
+
+        // 1 loup vs 1 autre vivant : sans le guard d'idempotence, ceci déclarerait les loups
+        // vainqueurs et écraserait l'annulation déjà persistée.
+        $result = app(WinConditionChecker::class)->check($game);
+
+        $this->assertFalse($result);
+        $this->assertSame('finished', $game->fresh()->status);
+        $this->assertNull($game->fresh()->winner_team, 'Le résultat de cancelGame() (partie annulée) ne doit jamais être écrasé par un check() tardif.');
+    }
 }
