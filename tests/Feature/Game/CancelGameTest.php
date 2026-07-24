@@ -192,4 +192,77 @@ class CancelGameTest extends TestCase
         Event::assertNotDispatched(GameFinished::class);
         $this->assertSame('waiting', $game->fresh()->status);
     }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Reproduction bug prod RIQPAZ (2026-07-24) : course entre cancelGame() et
+    // une résolution de vote/nuit déjà en cours (statut intermédiaire
+    // 'processing_day'/'processing_night'), voir DECISIONS.md.
+    //
+    // CheckReconnectionTimeout::handle() ne se déclenche QUE si le statut lu
+    // (hors verrou) est dans ['night', 'day', 'electing_mayor'] — 'processing_day'
+    // et 'processing_night' en sont explicitement exclus, signe que l'intention est
+    // bien de ne jamais annuler une partie en cours de résolution. Mais ce guard est
+    // lu AVANT le verrou, et cancelGame() lui-même ne le revalide pas dans sa propre
+    // transaction lockForUpdate() — son guard n'exclut que ['finished', 'waiting'].
+    // Un CheckReconnectionTimeout dont la lecture initiale a eu lieu pendant que le
+    // statut était encore 'day'/'night' peut donc atteindre cancelGame() APRÈS que
+    // la résolution en cours soit passée à 'processing_day'/'processing_night' (ex.
+    // VoteService::resolveDayVoteWinner() a déjà éliminé la victime et posé ce
+    // statut, mais WinConditionChecker::check() n'a pas encore tourné) — et
+    // cancelGame() l'annule quand même, avant même que la victoire (ici : des
+    // amoureux) n'ait eu la moindre chance d'être détectée.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public function test_cancel_game_annule_a_tort_une_partie_en_cours_de_resolution_vote_jour(): void
+    {
+        Event::fake();
+
+        // Simule l'état exact juste après que VoteService::resolveDayVoteWinner()
+        // a éliminé la victime et posé 'processing_day' — mais avant que
+        // dispatchDayVoteConsequences() n'ait eu la moindre chance d'appeler
+        // WinConditionChecker::check() (partie RIQPAZ : il ne reste alors plus
+        // que les deux amoureux, restés vivants et actifs).
+        $game = Game::factory()->create([
+            'status'      => 'processing_day',
+            'max_players' => 6,
+            'round'       => 1,
+        ]);
+
+        GamePlayer::factory()->werewolf()->create(['game_id' => $game->id, 'is_alive' => true, 'is_inactive' => false]);
+        GamePlayer::factory()->villager()->create(['game_id' => $game->id, 'is_alive' => true, 'is_inactive' => false]);
+
+        // cancelGame() ne devrait jamais pouvoir agir ici : la résolution est en
+        // cours (le statut intermédiaire l'atteste), exactement le cas que
+        // CheckReconnectionTimeout::handle() exclut lui-même explicitement via
+        // in_array($game->status, ['night', 'day', 'electing_mayor']).
+        app(GameService::class)->cancelGame($game);
+
+        $fresh = $game->fresh();
+        $this->assertSame('processing_day', $fresh->status, "cancelGame() ne doit jamais pouvoir annuler une partie dont la résolution est déjà en cours ('processing_day'/'processing_night') — c'est exactement la course qui a produit l'annulation à tort de la partie RIQPAZ (victoire des amoureux jamais détectée).");
+        $this->assertNull($fresh->winner_team);
+        Event::assertNotDispatched(GameFinished::class);
+    }
+
+    public function test_cancel_game_annule_a_tort_une_partie_en_cours_de_resolution_nuit(): void
+    {
+        Event::fake();
+
+        // Même course, côté nuit : ProcessNightActions a déjà posé 'processing_night'
+        // avant que WinConditionChecker::check() n'ait tourné.
+        $game = Game::factory()->create([
+            'status'      => 'processing_night',
+            'max_players' => 6,
+            'round'       => 1,
+        ]);
+
+        GamePlayer::factory()->werewolf()->create(['game_id' => $game->id, 'is_alive' => true, 'is_inactive' => false]);
+        GamePlayer::factory()->villager()->create(['game_id' => $game->id, 'is_alive' => true, 'is_inactive' => false]);
+
+        app(GameService::class)->cancelGame($game);
+
+        $fresh = $game->fresh();
+        $this->assertSame('processing_night', $fresh->status);
+        $this->assertNull($fresh->winner_team);
+        Event::assertNotDispatched(GameFinished::class);
+    }
 }

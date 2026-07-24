@@ -43,11 +43,14 @@ class ProcessHunterTurn implements ShouldQueue
     ) {}
 
     /**
-     * Calcule fromNight, vérifie les guards et broadcast HunterTurnStarted.
+     * Vérifie la victoire, calcule fromNight, vérifie les guards et broadcast HunterTurnStarted.
      *
      * Guards d'entrée :
      *   - La partie existe.
      *   - round === $this->round.
+     *   - Victoire amoureux non déjà acquise (SPEC_CUPIDON.md §6, priorité sur le tir
+     *     du Chasseur en attente) — vérifiée AVANT toute autre logique, y compris pour
+     *     un Chasseur valide sur le point de recevoir son tour.
      *
      * Si le chasseur est invalide (mort, mauvais rôle) ou a déjà tiré :
      *   - Appelle endNight() ou startNight() selon fromNight (Guard #2 RISK_GUARDS).
@@ -61,6 +64,14 @@ class ProcessHunterTurn implements ShouldQueue
         $game = Game::find($this->gameId);
 
         if (! $game || $game->round !== $this->round) {
+            return;
+        }
+
+        // Priorité victoire amoureux > tir du Chasseur en attente (SPEC_CUPIDON.md §6) :
+        // vérifier AVANT de donner la main au Chasseur, pas seulement dans le fallback
+        // ci-dessous — sinon un Chasseur mort déclenche son tour même si la mort qui a
+        // créé son hunter_pending a déjà fait tomber l'effectif à 2 amoureux mutuels.
+        if ($winChecker->check($game)) {
             return;
         }
 
@@ -78,9 +89,7 @@ class ProcessHunterTurn implements ShouldQueue
             ->exists();
 
         if (! $hunter || $hunter->is_alive || ! $hunter->isHunter() || $alreadyShot) {
-            if (! $winChecker->check($game)) {
-                $fromNight ? $phaseManager->endNight($game) : $phaseManager->startNight($game);
-            }
+            $fromNight ? $phaseManager->endNight($game) : $phaseManager->startNight($game);
             return;
         }
 

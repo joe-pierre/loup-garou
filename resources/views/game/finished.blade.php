@@ -3,7 +3,49 @@
 @section('title', 'Loup-Garou Undu — Fin de partie')
 
 @php
-$isVillage = $game->winner_team === 'villagers';
+// Thème à 3 branches dérivé de winner_team (villagers/werewolves/lovers) — 'lovers'
+// (SPEC_CUPIDON.md §6) retombait auparavant sur le thème "Loups" par défaut d'un
+// simple booléen $isVillage. Couleur amoureux : rose #f472b6, déjà standardisée
+// pour Cupidon dans tout le projet (DECISIONS.md "Cupidon absent de toutes les
+// tables rôle→icône/couleur/label"), jamais réinventée ici.
+$theme = match ($game->winner_team) {
+    'villagers' => [
+        'bg_gradient'  => '#0a2e16',
+        'banner_bg'    => '#0f1a0a',
+        'border'       => '#16a34a',
+        'title_color'  => '#4ade80',
+        'emoji'        => '🏆',
+        'title'        => 'Le Village a gagné !',
+        'subtitle'     => 'Tous les loups ont été démasqués.',
+        'header_label' => '🏆 VICTOIRE DU VILLAGE',
+        'confetti1'    => '#c9a84c',
+        'confetti2'    => '#4ade80',
+    ],
+    'lovers' => [
+        'bg_gradient'  => '#2e0a1e',
+        'banner_bg'    => '#1a0012',
+        'border'       => '#f472b6',
+        'title_color'  => '#f472b6',
+        'emoji'        => '💞',
+        'title'        => 'Les Amoureux ont gagné !',
+        'subtitle'     => 'Envers et contre tout, leur amour a triomphé.',
+        'header_label' => '💞 VICTOIRE DES AMOUREUX',
+        'confetti1'    => '#c9a84c',
+        'confetti2'    => '#f472b6',
+    ],
+    default => [ // 'werewolves'
+        'bg_gradient'  => '#2e0a0a',
+        'banner_bg'    => '#1a0000',
+        'border'       => '#8b0000',
+        'title_color'  => '#ff4444',
+        'emoji'        => '🐺',
+        'title'        => 'Les Loups ont gagné !',
+        'subtitle'     => 'La meute règne sur le village.',
+        'header_label' => '🐺 VICTOIRE DES LOUPS',
+        'confetti1'    => '#8b0000',
+        'confetti2'    => '#ff4444',
+    ],
+};
 $roleLabel = fn(?string $r) => match($r) {
     'villager' => '🧑‍🌾 Villageois',
     'werewolf' => '🐺 Loup-Garou',
@@ -27,19 +69,19 @@ $roleClass = fn(?string $r) => match($r) {
 <style>
     body {
         font-family: 'EB Garamond', serif;
-        background: radial-gradient(ellipse at 50% 20%, {{ $isVillage ? '#0a2e16' : '#2e0a0a' }} 0%, #030712 75%);
+        background: radial-gradient(ellipse at 50% 20%, {{ $theme['bg_gradient'] }} 0%, #030712 75%);
         color: #e8e0d0; min-height: 100vh;
     }
     .victory-banner {
-        background-color: {{ $isVillage ? '#0f1a0a' : '#1a0000' }};
-        border: 2px solid {{ $isVillage ? '#16a34a' : '#8b0000' }};
+        background-color: {{ $theme['banner_bg'] }};
+        border: 2px solid {{ $theme['border'] }};
         border-radius: 1.25rem; text-align: center; padding: 2rem 1.5rem;
         opacity: 0; transform: scale(0.7);
     }
     .victory-title {
         font-family: 'Cinzel', serif;
         font-size: clamp(1.5rem, 5vw, 2.5rem); font-weight: 700;
-        color: {{ $isVillage ? '#4ade80' : '#ff4444' }};
+        color: {{ $theme['title_color'] }};
         letter-spacing: 0.05em;
     }
     .player-card {
@@ -81,7 +123,7 @@ $roleClass = fn(?string $r) => match($r) {
 
 @section('header-phase')
     <span class="text-xs font-medieval tracking-widest" style="color: rgba(201,168,76,0.7);">
-        {{ $isVillage ? '🏆 VICTOIRE DU VILLAGE' : '🐺 VICTOIRE DES LOUPS' }}
+        {{ $theme['header_label'] }}
     </span>
 @endsection
 
@@ -91,15 +133,15 @@ $roleClass = fn(?string $r) => match($r) {
     {{-- ══════════ BANNIÈRE VICTOIRE ══════════ --}}
     <div class="entrance text-center mb-8">
         <div class="text-7xl mb-4">
-            {{ $isVillage ? '🏆' : '🐺' }}
+            {{ $theme['emoji'] }}
         </div>
         <h1 class="font-title text-4xl sm:text-6xl mb-4"
-            style="color:{{ $isVillage ? '#4ade80' : '#ff4444' }};">
-            {{ $isVillage ? 'Le Village a gagné !' : 'Les Loups ont gagné !' }}
+            style="color:{{ $theme['title_color'] }};">
+            {{ $theme['title'] }}
         </h1>
         <p class="text-lg italic"
            style="color:rgba(232,224,208,0.7); font-family:'EB Garamond',serif;">
-            {{ $isVillage ? 'Tous les loups ont été démasqués.' : 'La meute règne sur le village.' }}
+            {{ $theme['subtitle'] }}
         </p>
         <p class="text-sm mt-3" style="color:rgba(232,224,208,0.4);">
             Partie {{ $game->code }}
@@ -193,7 +235,8 @@ $roleClass = fn(?string $r) => match($r) {
 
 @push('scripts')
 <script>
-    const IS_VILLAGE = {{ $isVillage ? 'true' : 'false' }};
+    const CONFETTI_COLOR_1 = '{{ $theme['confetti1'] }}';
+    const CONFETTI_COLOR_2 = '{{ $theme['confetti2'] }}';
 
     document.addEventListener('DOMContentLoaded', () => {
         gsap.fromTo('.entrance',
@@ -204,8 +247,8 @@ $roleClass = fn(?string $r) => match($r) {
     });
 
     function spawnParticles() {
-        const color  = IS_VILLAGE ? '#c9a84c' : '#8b0000';
-        const color2 = IS_VILLAGE ? '#4ade80' : '#ff4444';
+        const color  = CONFETTI_COLOR_1;
+        const color2 = CONFETTI_COLOR_2;
         for (let i = 0; i < 40; i++) {
             const el   = document.createElement('div');
             const use  = Math.random() > 0.5 ? color : color2;

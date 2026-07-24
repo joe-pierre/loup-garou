@@ -1,5 +1,29 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-24 — Écran de fin de partie et historique affichaient "Loups"/"Annulée" pour une victoire des Amoureux
+
+- **Symptôme :** même après correction des deux bugs backend (SFICZ8, RIQPAZ), une victoire des amoureux correctement persistée (`winner_team = 'lovers'`) aurait quand même affiché "Les Loups ont gagné !" sur l'écran de fin et "🏁 Annulée" dans l'historique.
+- **Cause :** `finished.blade.php` pilotait tout son thème via un booléen `$isVillage = winner_team === 'villagers'` (tout le reste retombait sur le thème Loups) ; `history.blade.php` et `HistoryService::buildTimeline()` avaient un `match()` à 2 branches (`villagers`/`werewolves`) avec un `default` affichant "Annulée" — `'lovers'` y tombait, alors que ce `default` n'est censé s'appliquer qu'à une vraie annulation (`winner_team === null`).
+- **Fix :** `finished.blade.php` généralisé en thème à 3 branches (rose `#f472b6`, déjà standardisé pour Cupidon, pour les amoureux) ; branches `lovers` ajoutées dans `history.blade.php` et `HistoryService`. Écrans admin (`admin/games/show.blade.php`, `admin/users/show.blade.php`) corrigés par cohérence. Voir DECISIONS.md "Écran de fin de partie et historique affichaient 'Loups'/'Annulée'..." pour le détail complet.
+
+---
+
+### [x] 2026-07-24 — Victoire des Amoureux annulée à tort par une course entre `cancelGame()` et une résolution de vote/nuit en cours
+
+- **Symptôme :** partie RIQPAZ — couple Cupidon formé au round 1, un vote de jour élimine le dernier autre joueur (les deux amoureux restent seuls, vivants et actifs), la partie aurait dû se terminer immédiatement en "Victoire des Amoureux" mais affiche "Partie annulée".
+- **Cause :** `GameService::cancelGame()` avait un garde (`whereNotIn('status', ['finished', 'waiting'])`) bien plus permissif que le pré-check de `CheckReconnectionTimeout::handle()` qui le déclenche (`in_array($game->status, ['night', 'day', 'electing_mayor'])`, excluant les statuts intermédiaires `'processing_day'`/`'processing_night'`) — TOCTOU classique, jamais revalidé atomiquement au moment de l'écriture. `cancelGame()` pouvait donc annuler une partie dont une résolution de vote/nuit était encore en cours, avant que `WinConditionChecker::check()` n'ait la moindre chance de détecter la victoire.
+- **Fix :** garde de `cancelGame()` resserré à `whereIn('status', ['night', 'day', 'electing_mayor'])`, symétrique au pré-check du Job, revalidé sous le même `lockForUpdate()`. Voir DECISIONS.md "Victoire des Amoureux annulée à tort par une course avec cancelGame()..." pour le détail complet (cause racine confirmée, remplace la mention "non confirmé" de l'entrée précédente).
+
+---
+
+### [x] 2026-07-24 — Victoire des Amoureux non déclenchée après une résolution différée de la Sorcière
+
+- **Symptôme :** partie SFICZ8 — couple Cupidon formé au round 1, dernier autre joueur (Chasseur) tué en Nuit 3, la partie aurait dû se terminer immédiatement en "Victoire des Amoureux" mais a continué jusqu'à un "Jour 3" incohérent, avec `/history` affichant "Annulée" et l'écran de fin affichant "Les Loups ont gagné !".
+- **Cause :** `WitchAction.php` n'appelait jamais `WinConditionChecker::check()` après une élimination différée (sorcière elle-même, maire en sursis, victime ordinaire) ; `ProcessHunterTurn` ne vérifiait la victoire qu'en repli, jamais avant de donner la main au Chasseur. Voir aussi le bug ci-dessus (cause racine de l'anomalie "Annulée vs Loups ont gagné").
+- **Fix :** `check()` ajouté dans `WitchAction::act()`/`finalizeTimedOutVictim()` et déplacé en tête de `ProcessHunterTurn::handle()`. Voir DECISIONS.md "Victoire des Amoureux non déclenchée quand une résolution différée de la Sorcière fait tomber l'effectif à 2 (partie SFICZ8)" pour le détail complet.
+
+---
+
 ### [x] 2026-07-23 — Vote loup perdu si refresh/reconnexion pendant une sous-phase de nuit
 
 - **Symptôme :** un loup choisissait sa cible, la page restait figée, et après rechargement il se retrouvait sur l'écran générique d'attente au lieu de l'écran loups — vote jamais enregistré, personne tué cette nuit-là. Le même défaut touchait voyante, sorcière, chasseur et cupidon.
@@ -1036,6 +1060,17 @@
 - [ ] `role-reveal.blade.php` (bloc Villageois) et tout autre bloc utilisant une condition en liste blanche d'exclusions (`role !== 'a' && role !== 'b' && ...`) plutôt qu'un `match()`/tableau associatif avec `default` : risque de régression silencieuse à chaque nouveau rôle (v1.4+ Loup Blanc, Petite Fille) — un rôle non exclu explicitement se fait passer pour Villageois sans erreur. Envisager d'inverser en liste blanche positive (`role === 'villager'`) une fois tous les rôles v1.3 stabilisés.
 - [ ] `day.blade.php` ligne ~101 (message "C'était un [rôle]" pour la victime de la nuit) : `match($nightVictim->role)` ne couvre que werewolf/seer, tombe en `default => 'Villageois'` pour witch/hunter/cupidon — distinct de `revealed_role_label` du même fichier (déjà correct). Voir DECISIONS.md "Cupidon absent du résultat d'inspection Voyante".
 - [ ] `GameController::state()` (`revealed_role_label`, endpoint `/state`) : `match($p->role)` couvre werewolf/seer/witch/hunter mais pas `cupidon`, tombe en `default => 'Villageois'`. Voir DECISIONS.md "Cupidon absent du résultat d'inspection Voyante".
+- [x] ~~Rejouer en conditions réelles... course entre WinConditionChecker::check() et cancelGame()~~ —
+      cause racine confirmée par test déterministe (garde `cancelGame()` trop permissif face au
+      statut `processing_day`/`processing_night`), voir DECISIONS.md "Victoire des Amoureux annulée
+      à tort par une course avec cancelGame()..." (partie RIQPAZ, 2026-07-24).
+- [ ] `CheckReconnectionTimeout::handle()` (et désormais `GameService::cancelGame()` symétriquement)
+      excluent le statut `'wolves_turn'` de leur ensemble de statuts "annulables" — une déconnexion
+      massive pendant spécifiquement la phase de vote des loups ne peut jamais déclencher l'annulation
+      pour inactivité, contrairement à `'night'`/`'day'`/`'electing_mayor'`. Gap préexistant, non
+      introduit par le fix RIQPAZ (qui a resserré `cancelGame()` sur l'ensemble déjà utilisé par le
+      Job, sans l'étendre) — à traiter séparément si jugé pertinent (probablement mineur : `wolves_turn`
+      est une fenêtre courte).
 
 ## Refactoring architectural planifié
 

@@ -11,6 +11,7 @@ use App\Models\GamePlayer;
 use App\Services\PhaseGuard;
 use App\Services\PlayerEliminationService;
 use App\Services\VoteService;
+use App\Services\WinConditionChecker;
 use Illuminate\Support\Facades\DB;
 
 class WitchAction extends RoleAction
@@ -18,6 +19,7 @@ class WitchAction extends RoleAction
     public function __construct(
         private VoteService $voteService,
         private PlayerEliminationService $eliminationService,
+        private WinConditionChecker $winConditionChecker,
     ) {}
 
     /**
@@ -207,6 +209,15 @@ class WitchAction extends RoleAction
             $this->finalizeOrdinaryVictim($game);
         }
 
+        // Toute résolution de sorcière peut faire tomber l'effectif à 2 amoureux mutuels
+        // (sorcière elle-même, maire en sursis, ou victime ordinaire — ex. Chasseur) :
+        // vérifier la victoire ici, comme tous les autres points d'entrée d'élimination
+        // (ProcessNightActions, PhaseManager::endNight, ProcessHunterTurn/AutoAction,
+        // VoteService). Sans ce check, la victoire amoureux ne se déclenche qu'au prochain
+        // passage par endNight() — ou jamais si un hunter_pending laisse le Chasseur tirer
+        // avant. Voir DECISIONS.md.
+        $this->winConditionChecker->check($game);
+
         return $result;
     }
 
@@ -357,5 +368,10 @@ class WitchAction extends RoleAction
         $this->broadcastDeferredVictim($game, $witch, $witchDiedFromWolves, $deferredMayorVictim);
 
         $this->finalizeOrdinaryVictim($game);
+
+        // Même check qu'à la fin de act() — le timeout sorcière (ProcessWitchAutoAction)
+        // finalise la même victime différée que l'action manuelle 'pass' et doit donc
+        // vérifier la victoire à l'identique.
+        $this->winConditionChecker->check($game);
     }
 }

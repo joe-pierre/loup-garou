@@ -6,6 +6,7 @@ use App\Events\Game\GameFinished;
 use App\Events\Game\PhaseAnnouncement;
 use App\Models\Game;
 use App\Notifications\GameFinishedNotification;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 
@@ -29,85 +30,92 @@ class WinConditionChecker
      * Guard Symfony Workflow : transition 'finish' vérifiée pour les statuts canoniques 'night'/'day'.
      * Les statuts intermédiaires ('processing_night', 'processing_day') bypassent le guard.
      *
-     * @param  Game $game La partie à vérifier (rafraîchie en début de méthode via refresh())
+     * Lecture + décision + persistance atomiques (lockForUpdate), comme tous les autres
+     * points de mutation d'état terminal du jeu (GameService::cancelGame(),
+     * VoteService::resolveMayorElection()/resolveDayVoteWinner()) — cette méthode était
+     * jusque-là la seule exception, sans lock ni garde contre un statut déjà 'finished',
+     * ce qui pouvait la faire courir en concurrence avec cancelGame() (voir DECISIONS.md).
+     * Broadcasts et notifications restent HORS transaction (RISK_GUARDS Guard #5).
+     *
+     * @param  Game $game La partie à vérifier
      * @return bool        true si une victoire a été détectée et la partie terminée, false sinon
      */
     public function check(Game $game): bool
     {
-        $game->refresh();
+        $decision = DB::transaction(function () use ($game) {
+            $locked = Game::where('id', $game->id)->lockForUpdate()->first();
 
-        if ($game->aliveCount() === 2) {
-            $aliveTwo = $game->alivePlayers()->get();
-            $first    = $aliveTwo->get(0);
-            $second   = $aliveTwo->get(1);
-
-            if ($first && $second
-                && $first->lover_player_id === $second->id
-                && $second->lover_player_id === $first->id
-            ) {
-                if (in_array($game->status, ['night', 'day']) && ! $game->canTransition('finish')) {
-                    Log::warning("Transition 'finish' refusée depuis status={$game->status}");
-                    return false;
-                }
-
-                $lastAction = $this->buildLastAction($game);
-
-                $game->update([
-                    'status'      => 'finished',
-                    'winner_team' => 'lovers',
-                    'finished_at' => now(),
-                ]);
-
-                $allPlayers = $game->players()->with('user')->get();
-
-                broadcast(new PhaseAnnouncement($game->id, 'game_finished', 'Les amoureux ont triomphé du destin !', 5000));
-                broadcast(new GameFinished($game, $allPlayers, 'lovers', $lastAction));
-
-                try {
-                    Notification::send(
-                        $allPlayers->map->user->filter(),
-                        new GameFinishedNotification('lovers')
-                    );
-                } catch (\Throwable) {}
-
-                return true;
+            // Idempotent : partie déjà terminée (victoire déjà persistée par un appel
+            // concurrent, ou annulée entre-temps par GameService::cancelGame()) — ne
+            // jamais écraser un résultat déjà acquis.
+            if (! $locked || $locked->status === 'finished') {
+                return null;
             }
-        }
 
-        $aliveWerewolves = $game->aliveWerewolvesCount();
-        $aliveOthers     = $game->aliveVillagersCount();
+            $winnerTeam = null;
 
-        if ($aliveWerewolves > 0 && $aliveWerewolves >= $aliveOthers) {
-            $winnerTeam = 'werewolves';
-        } elseif ($aliveWerewolves === 0) {
-            $winnerTeam = 'villagers';
-        } else {
+            if ($locked->aliveCount() === 2) {
+                $aliveTwo = $locked->alivePlayers()->get();
+                $first    = $aliveTwo->get(0);
+                $second   = $aliveTwo->get(1);
+
+                if ($first && $second
+                    && $first->lover_player_id === $second->id
+                    && $second->lover_player_id === $first->id
+                ) {
+                    $winnerTeam = 'lovers';
+                }
+            }
+
+            if (! $winnerTeam) {
+                $aliveWerewolves = $locked->aliveWerewolvesCount();
+                $aliveOthers     = $locked->aliveVillagersCount();
+
+                if ($aliveWerewolves > 0 && $aliveWerewolves >= $aliveOthers) {
+                    $winnerTeam = 'werewolves';
+                } elseif ($aliveWerewolves === 0) {
+                    $winnerTeam = 'villagers';
+                } else {
+                    return null;
+                }
+            }
+
+            // canTransition() ne connaît que les statuts canoniques du Workflow :
+            // 'processing_night'/'processing_day' (Tâches E-H) restent hors de son périmètre et bypassent le guard.
+            // PhaseGuard ne couvre pas ce cas : canTransition('finish') n'existe que pour les statuts canoniques Workflow (hors processing)
+            if (in_array($locked->status, ['night', 'day']) && ! $locked->canTransition('finish')) {
+                Log::warning("Transition 'finish' refusée depuis status={$locked->status}");
+                return null;
+            }
+
+            $lastAction = $this->buildLastAction($locked);
+
+            $locked->update([
+                'status'      => 'finished',
+                'winner_team' => $winnerTeam,
+                'finished_at' => now(),
+            ]);
+
+            return ['game' => $locked, 'winner_team' => $winnerTeam, 'last_action' => $lastAction];
+        });
+
+        if (! $decision) {
             return false;
         }
 
-        // canTransition() ne connaît que les statuts canoniques du Workflow :
-        // 'processing_night'/'processing_day' (Tâches E-H) restent hors de son périmètre et bypassent le guard.
-        // PhaseGuard ne couvre pas ce cas : canTransition('finish') n'existe que pour les statuts canoniques Workflow (hors processing)
-        if (in_array($game->status, ['night', 'day']) && ! $game->canTransition('finish')) {
-            Log::warning("Transition 'finish' refusée depuis status={$game->status}");
-            return false;
-        }
+        $finishedGame = $decision['game'];
+        $winnerTeam   = $decision['winner_team'];
+        $lastAction   = $decision['last_action'];
 
-        $lastAction = $this->buildLastAction($game);
+        $allPlayers = $finishedGame->players()->with('user')->get();
 
-        $game->update([
-            'status'      => 'finished',
-            'winner_team' => $winnerTeam,
-            'finished_at' => now(),
-        ]);
-
-        $allPlayers = $game->players()->with('user')->get();
-
-        $announcementMessage = $winnerTeam === 'villagers'
-            ? 'Le village a triomphé !'
-            : 'Les loups ont dévoré le village !';
-        broadcast(new PhaseAnnouncement($game->id, 'game_finished', $announcementMessage, 5000));
-        broadcast(new GameFinished($game, $allPlayers, $winnerTeam, $lastAction));
+        $announcementMessage = match ($winnerTeam) {
+            'lovers'    => 'Les amoureux ont triomphé du destin !',
+            'villagers' => 'Le village a triomphé !',
+            default     => 'Les loups ont dévoré le village !',
+        };
+        broadcast(new PhaseAnnouncement($finishedGame->id, 'game_finished', $announcementMessage, 5000));
+        broadcast(new GameFinished($finishedGame, $allPlayers, $winnerTeam, $lastAction));
 
         try {
             Notification::send(

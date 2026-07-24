@@ -577,7 +577,18 @@ class GameService
 
     /**
      * Annule une partie en cours : passe le statut à 'finished' avec winner_team = null.
-     * Guard atomique : no-op si la partie est déjà terminée ou encore en 'waiting'.
+     * Guard atomique : no-op si la partie n'est pas dans un statut canonique actif
+     * ('night', 'day', 'electing_mayor') — inclut donc 'finished'/'waiting' (déjà
+     * terminée ou pas démarrée) MAIS AUSSI les statuts intermédiaires de résolution
+     * ('processing_night', 'processing_day', 'wolves_turn') : annuler pendant qu'une
+     * résolution de vote/nuit est en cours court-circuiterait le
+     * WinConditionChecker::check() qui n'a pas encore eu la chance de tourner sur
+     * cette résolution (ex. partie RIQPAZ — victoire des amoureux jamais détectée
+     * car cancelGame() a tranché en premier pendant 'processing_day'). Ce guard
+     * reprend exactement l'ensemble déjà utilisé par CheckReconnectionTimeout::handle()
+     * pour décider s'il doit même tenter d'appeler cancelGame() — le revalider ici,
+     * atomiquement sous lockForUpdate(), ferme la fenêtre de course TOCTOU entre la
+     * lecture (hors verrou, dans le Job) et l'exécution (ici). Voir DECISIONS.md.
      * Déclenché quand plus de 50% des joueurs sont inactifs (winner_team = null → rôles non révélés).
      *
      * @param  Game $game La partie à annuler
@@ -587,7 +598,7 @@ class GameService
     {
         $data = DB::transaction(function () use ($game) {
             $locked = Game::where('id', $game->id)
-                ->whereNotIn('status', ['finished', 'waiting'])
+                ->whereIn('status', ['night', 'day', 'electing_mayor'])
                 ->lockForUpdate()
                 ->first();
 

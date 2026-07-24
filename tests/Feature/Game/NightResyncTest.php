@@ -342,6 +342,13 @@ class NightResyncTest extends TestCase
 
         $game   = $this->makeGame(null);
         $hunter = GamePlayer::factory()->hunter()->dead()->create(['game_id' => $game->id]);
+        // Effectif vivant équilibré (1 loup, 2 villageois) : sans lui, WinConditionChecker::check()
+        // (désormais appelé en tout premier par ProcessHunterTurn, voir DECISIONS.md) lirait un
+        // effectif vivant dégénéré (0 loup, ou loups >= autres) et déclarerait une victoire à
+        // tort — un état de partie irréaliste (une partie réelle a toujours plus de villageois
+        // que de loups vivants pendant un tour de Chasseur), pas un cas que ce test cible.
+        GamePlayer::factory()->werewolf()->create(['game_id' => $game->id]);
+        GamePlayer::factory()->count(2)->villager()->create(['game_id' => $game->id]);
 
         (new ProcessHunterTurn($game->id, $game->round, $hunter->id))
             ->handle(app(\App\Services\PhaseManager::class), app(\App\Services\WinConditionChecker::class));
