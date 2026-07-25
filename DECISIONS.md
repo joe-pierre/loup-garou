@@ -1,3 +1,19 @@
+## [CHOIX] Halo pulsé du bouton "Entrer dans la partie" — cadre doré statique volontairement écrasé par le style `readyDone`
+
+**Contexte :** `feat/role-reveal-cta-visibility` — `resources/views/game/role-reveal.blade.php`.
+
+**Symptôme / Problème :** demande d'accroche visuelle sur le bouton principal de `role-reveal` (cadre doré permanent `.cta-frame` + halo `box-shadow` et grossissement `scale` synchronisés dans une seule `@keyframes pulse-cta`, tant que `!readyDone`). Question ouverte de la spec : une fois `readyDone === true`, le cadre doit-il explicitement rester affiché ("le cadre peut rester") ?
+
+**Cause / Alternatives :** le bouton avait déjà un `:style` conditionnel sur `readyDone` qui pose une bordure verte inline (`border: 1px solid rgba(22,163,74,0.4)`) pour signaler visuellement l'état "prêt". Une déclaration `style=` inline a toujours priorité sur une règle de classe CSS (`class=`), donc la bordure dorée statique de `.cta-frame` est automatiquement masquée dès que `readyDone` passe à `true`, sans code supplémentaire nécessaire.
+
+**Fix / Décision :** ne pas dupliquer de logique Alpine pour forcer artificiellement le cadre doré à rester visible après `readyDone` — laisser le `:style` existant de l'état "prêt" écraser `.cta-frame` naturellement (transition cohérente : cadre doré → cadre vert "prêt"). Le halo (`box-shadow`) et le `scale` restent pilotés uniquement par `.pulse-cta`, retirée via `:class="{ 'pulse-cta': !readyDone && !submitting }"` — l'animation s'arrête net, le cadre change de couleur au lieu de disparaître.
+
+**Leçon :** avant d'ajouter une classe CSS statique sur un élément qui a déjà un `:style` conditionnel, vérifier si ce `:style` écrase la propriété visée (spécificité inline > classe) — évite d'ajouter du code redondant pour un comportement déjà obtenu gratuitement, et explique pourquoi `.cta-frame` n'apparaît jamais en même temps que le style "Tu es prêt !".
+
+**Statut :** 🔵 Choix assumé
+
+---
+
 ## [RÉSOLU] Mort par chagrin des amoureux ne broadcastait jamais `PlayerEliminated` (aucune mise à jour live, aucune notification)
 
 **Contexte :** `feat/heartbreak-death-notification` — `app/Services/PlayerEliminationService.php`, `resources/js/game-state.js`, `tests/Unit/Services/PlayerEliminationServiceTest.php`. Suite directe de "Chasseur mort de chagrin (cascade amoureux) ne tirait jamais" ci-dessous : ce fix avait corrigé le tir manqué du Chasseur, mais avait laissé intact le problème plus général qui l'avait révélé — la cascade de mort par chagrin ne broadcaste jamais `PlayerEliminated`, quel que soit le rôle de l'amoureux cascadé.

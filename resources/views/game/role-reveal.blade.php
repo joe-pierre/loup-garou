@@ -12,7 +12,15 @@
     .reveal-timer-track { background-color: rgba(124,58,237,0.15); border-radius: 9999px; height: 4px; overflow: hidden; }
     @media (prefers-reduced-motion: reduce) {
         #reveal-timer-bar, #game-timer-fill { transition: none !important; }
+        .pulse-cta { animation: none !important; }
     }
+
+    .cta-frame { border: 2px solid #c9a84c; }
+    @keyframes pulse-cta {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0.45); transform: scale(1); }
+        50%      { box-shadow: 0 0 22px 8px rgba(201,168,76,0.55); transform: scale(1.035); }
+    }
+    .pulse-cta { animation: pulse-cta 1.8s ease-in-out infinite; }
 
     #role-card {
         width: 240px; height: 340px;
@@ -123,6 +131,18 @@
         Cliquez sur la carte pour la révéler.
     </p>
 
+    {{-- Bouton-ancre : scrolle vers le bouton "Entrer dans la partie", n'agit jamais lui-même --}}
+    <button
+        x-show="revealed"
+        x-transition
+        @click="scrollToReady()"
+        type="button"
+        class="mb-4 px-4 py-1.5 rounded-full text-xs font-medieval tracking-wide transition-colors"
+        style="background-color: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.4); color: #c9a84c;"
+    >
+        Entrer dans la partie ↓
+    </button>
+
     {{-- Carte --}}
     <div id="card-wrap" class="mb-8 flex flex-col items-center">
         <div id="role-card" @click="flipCard()">
@@ -179,9 +199,11 @@
     {{-- Bouton "Entrer" (visible après reveal) --}}
     <div x-show="revealed" x-transition class="flex flex-col items-center w-full max-w-xs">
         <button
+            id="enter-ready-btn"
             @click="markReady()"
             :disabled="readyDone || submitting"
-            class="w-full py-3 rounded-xl font-medieval font-semibold text-base transition-all disabled:opacity-50"
+            :class="{ 'pulse-cta': !readyDone && !submitting }"
+            class="cta-frame w-full py-3 rounded-xl font-medieval font-semibold text-base transition-all disabled:opacity-50"
             style="background-color: #c9a84c; color: #0a0f1e;"
             :style="readyDone ? 'background-color: rgba(22,163,74,0.3); color: #86efac; border: 1px solid rgba(22,163,74,0.4);' : ''"
         >
@@ -292,6 +314,10 @@
                     const target = targets[data.phase];
                     if (target && window.location.pathname !== target) { sessionStorage.setItem('__internalNavigation', '1'); window.location.href = target; }
                 } catch { }
+            },
+
+            scrollToReady() {
+                document.getElementById('enter-ready-btn')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             },
 
             flipCard() {
