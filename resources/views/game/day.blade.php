@@ -785,14 +785,14 @@
                 this.voteWeights     = {};
                 this.totalVoteWeight = 0;
                 votes.forEach(v => {
-                    const w = v.vote_weight ?? v.vote_count ?? 0;
-                    this.voteWeights[v.player_id] = w;
+                    const w = v.total_weight ?? 0;
+                    this.voteWeights[v.target_player_id] = w;
                     this.totalVoteWeight += w;
                 });
                 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                     votes.forEach(v => {
-                        const el = document.getElementById(`vbar-${v.player_id}`);
-                        if (el) gsap.to(el, { width: this.getVotePercent(v.player_id) + '%', duration: 0.5, ease: 'power2.out' });
+                        const el = document.getElementById(`vbar-${v.target_player_id}`);
+                        if (el) gsap.to(el, { width: this.getVotePercent(v.target_player_id) + '%', duration: 0.5, ease: 'power2.out' });
                     });
                 }
             },
