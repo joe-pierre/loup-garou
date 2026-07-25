@@ -192,7 +192,7 @@
                         x-show="p.id === currentPlayerId"
                         class="text-xs px-2 py-0.5 rounded"
                         style="background-color: rgba(124,58,237,0.15); color: #c4b5fd; border: 1px solid rgba(124,58,237,0.3);"
-                    >Toi</span>
+                    >Moi</span>
                 </div>
             </template>
 

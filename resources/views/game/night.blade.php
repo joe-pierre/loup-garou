@@ -242,7 +242,7 @@
                         {{ strtoupper(substr($cupidonTarget->pseudo, 0, 1)) }}
                     </div>
                     <span class="text-sm" style="color:#e8e0d0;">
-                        {{ $cupidonTarget->pseudo }}{{ $cupidonTarget->id === $player->id ? ' (toi)' : '' }}
+                        {{ $cupidonTarget->pseudo }}{{ $cupidonTarget->id === $player->id ? ' (moi)' : '' }}
                     </span>
                     <span x-show="cupidonSelectedTargets.includes({{ $cupidonTarget->id }})" class="ml-auto text-xs" style="color:#f472b6;">✓</span>
                 </button>
