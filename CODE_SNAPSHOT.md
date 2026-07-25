@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 20h14
+Generated at: 23h52
 
 ## PHP Analysis (Core Logic)
 
@@ -854,7 +854,7 @@ LobbyController.php
       - updateTimers(UpdateTimersRequest $request, int $id) → return response()->json(['success' => true, 'data' => ['timers' => $game->settings['timers'] ?? []]])
       - updateRoles(UpdateRolesRequest $request, int $id) → return response()->json(['success' => true, 'data' => ['roles' => $game->settings['roles'] ?? []]])
       - lobbyState(int $id) → return response()->json(['success' => true, 'data' => ['status' => $game->status, 'players_count' => count($players), 'max_players' => $game->max_players, 'slots_remaining' => $game->max_players - count($players), 'players' => $players]])
-      - waitingRoom(string $code) → return view('game.waiting-room', compact('game', 'player', 'players'))
+      - waitingRoom(string $code) → return view('game.waiting-room', compact('game', 'player', 'players', 'timerDefaults'))
 
 // app/Http/Controllers/Game/GameController.php
 GameController.php
@@ -1267,6 +1267,14 @@ CupidonNightIntegrationTest.php
       - test_seer_turn_started_immediat_si_pas_de_cupidon() → void
       - test_pas_de_cupidon_turn_started_au_round_2_meme_avec_cupidon_distribue() → void
 
+// tests/Feature/Game/SeerResultScreenTest.php
+SeerResultScreenTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_lecran_voyante_ne_contient_plus_de_minuterie_automatique_vers_village_sleeping() → void
+      - test_lecran_voyante_garde_le_bouton_de_dismiss_volontaire() → void
+
 // tests/Feature/Game/ChatTest.php
 ChatTest.php
     attributes:
@@ -1371,6 +1379,19 @@ RoleSettingsTest.php
       - test_role_distributor_remplit_villageois_automatiquement() → void
       - test_deux_sorcieres_impossibles() → void
       - test_villageois_residuels_toujours_positifs() → void
+
+// tests/Feature/Game/WaitingRoomTimerDefaultsTest.php
+WaitingRoomTimerDefaultsTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - makeWaitingGame(int $maxPlayers, ?array $settings) → return [$game, $host]
+      - test_salle_6_joueurs_sans_settings_affiche_les_defauts_calcules() → void
+      - test_salle_8_joueurs_sans_settings_affiche_les_defauts_calcules() → void
+      - test_salle_10_joueurs_sans_settings_affiche_les_defauts_calcules() → void
+      - test_salle_12_joueurs_sans_settings_affiche_les_defauts_calcules() → void
+      - test_settings_deja_sauvegardes_restent_prioritaires_sur_les_nouveaux_defauts() → void
+      - test_mayor_election_et_mayor_succession_restent_fixes_quel_que_soit_leffectif() → void
 
 // tests/Feature/Game/QuitGameTest.php
 QuitGameTest.php

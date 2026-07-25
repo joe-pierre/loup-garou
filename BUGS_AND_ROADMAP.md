@@ -5,6 +5,11 @@
 - **Symptôme :** entre la fin du tour de la Voyante et le début réel du tour des Loups, un délai anormal de ~10-14s était observé (audit dédié, partie réelle à 6 joueurs) — l'écran `seer_result` de la Voyante repassait à `village_sleeping` bien avant que les Loups ne démarrent réellement côté serveur.
 - **Cause :** `night.blade.php` (listener `seer-result`) utilisait un `setTimeout(5000)` fixe, indexé sur le mauvais repère (déclenché dès réception de `SeerResult`, qui peut arriver à mi-timer via l'inspection de consolation), au lieu du vrai passage aux Loups (`seerTimer + 2s` côté serveur).
 - **Fix :** suppression du `setTimeout(5000)` — la Voyante reste sur `seer_result` jusqu'au dismiss volontaire (bouton "J'ai compris" déjà existant) ou jusqu'à `DayStarted`. Commentaire stale de `ProcessSeerTurn.php` ("+5s") corrigé en "+2s" (valeur réelle du code). Voir DECISIONS.md "Écran Voyante (seer_result) se referme sur un mauvais repère temporel" pour le détail complet (pourquoi `NightResyncService` et `WerewolvesTurnStarted` n'étaient pas des options viables).
+### [x] 2026-07-25 — Défauts de timers désynchronisés entre TimerCalculator et la modale host
+
+- **Symptôme :** la modale ⚙️ Paramètres de la waiting-room affichait 30/30/90 pour Voyante/Loups/Vote jour tant que l'hôte n'avait rien sauvegardé, quel que soit l'effectif de la salle — des constantes hardcodées jamais reliées à `TimerCalculator::TIMERS`.
+- **Cause :** `timerSettings()` (`waiting-room.blade.php`) utilisait des fallbacks `?? 30 / ?? 15 / ?? 90` écrits en dur à l'implémentation de la modale, jamais mis à jour pour lire `TimerCalculator::forPlayerCount()`.
+- **Fix :** `TimerCalculator::TIMERS` mis à jour (nouvelle table de défauts par effectif) ; `LobbyController::waitingRoom()` calcule `TimerCalculator::forPlayerCount($game->max_players)` et l'injecte à la vue ; `timerSettings()` lit ces défauts calculés au lieu des constantes. Voir DECISIONS.md "Défauts de timers désynchronisés entre TimerCalculator et la modale host" pour le détail complet.
 
 ---
 

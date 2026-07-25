@@ -972,6 +972,19 @@
       fautif dans la vue rendue, présence du bouton de dismiss volontaire).
       301 tests (299 + 2 nouveaux, aucun cassé — 6 échecs `BroadcastException`
       pré-existants liés à Reverb non démarré localement, confirmés identiques avant fix).
+## Phase 56 — Bugfix défauts de timers désynchronisés modale host (2026-07-25)
+
+- [x] `TimerCalculator::TIMERS` mis à jour — nouvelle table de défauts par effectif
+      (`day_vote` uniformisé à 115s, `werewolves` à 45s dès 8 joueurs).
+- [x] `LobbyController::waitingRoom()` — calcule `TimerCalculator::forPlayerCount($game->max_players)`
+      (même pattern que `GameService::startGame()`) et l'injecte à la vue (`$timerDefaults`).
+- [x] `waiting-room.blade.php` (`timerSettings()`) — les 5 fallbacks lisent `$timerDefaults[$clé]`
+      au lieu de constantes hardcodées (30/30/15/90) ; priorité `settings['timers'] > défaut`
+      inchangée ; `limits` (min/max) non touché.
+- [x] `tests/Feature/Game/WaitingRoomTimerDefaultsTest.php` créé (6 tests : 4 effectifs sans
+      settings, priorité settings sauvegardés, `mayor_election`/`mayor_succession` fixes).
+      311 tests (305 + 6 nouveaux, aucun cassé — 6 échecs `BroadcastException` pré-existants
+      liés à Reverb non démarré localement, confirmés identiques sur `dev` avant ce fix).
 
 ## État global
 

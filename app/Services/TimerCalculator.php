@@ -21,10 +21,10 @@ use App\Models\Game;
 class TimerCalculator
 {
     private const TIMERS = [
-        6  => ['seer' => 20, 'werewolves' => 25, 'day_vote' => 60],
-        8  => ['seer' => 25, 'werewolves' => 30, 'day_vote' => 75],
-        10 => ['seer' => 30, 'werewolves' => 35, 'day_vote' => 90],
-        12 => ['seer' => 35, 'werewolves' => 40, 'day_vote' => 105],
+        6  => ['seer' => 20, 'werewolves' => 25, 'day_vote' => 115],
+        8  => ['seer' => 25, 'werewolves' => 45, 'day_vote' => 115],
+        10 => ['seer' => 30, 'werewolves' => 45, 'day_vote' => 115],
+        12 => ['seer' => 35, 'werewolves' => 45, 'day_vote' => 115],
     ];
 
     private const FIXED = [
