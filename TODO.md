@@ -940,6 +940,21 @@
       `BroadcastException` préexistants, environnement local sans Reverb démarré, fichiers
       non touchés par cette tâche). `npm run build` sans erreur.
 
+## Phase 58 — Bugfix nombre de voix non affiché en temps réel (vote de jour) (2026-07-25)
+
+- [x] `day.blade.php` (`_updateVoteBars()`) — lecture corrigée `v.player_id`/`v.vote_weight`/`v.vote_count`
+      → `v.target_player_id`/`v.total_weight`, seuls noms de champs réels du payload `DayVoteCast`.
+      `_handleMayorVoteCast` (`game-state.js`) non touchée, déjà correcte pour `MayorVoteCast`
+      (`target_player_id`/`vote_count` — nom de champ de poids différent, les deux events ne sont
+      pas interchangeables).
+- [x] Grep `player_id`/`vote_weight`/`vote_count` sur `day.blade.php` — aucun autre endroit du fichier
+      ne fait la même lecture erronée.
+- [x] Trouvé hors périmètre (voir BUGS_AND_ROADMAP.md ROADMAP) : `game-state.js::_buildVoteMap()`
+      a le même défaut de nommage, non corrigé — sans impact visible, aucune vue Blade ne consomme
+      son résultat actuellement.
+- [x] `npm run build` sans erreur. Aucun test PHP affecté (fix Blade/Alpine pur, aucun changement
+      backend).
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`

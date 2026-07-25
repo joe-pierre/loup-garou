@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-25 — Nombre de voix non affiché en temps réel pendant le vote de jour
+
+- **Symptôme :** contrairement à l'élection du Maire, `day.blade.php` n'affichait jamais le nombre de voix ni la barre de progression à côté du pseudo d'un joueur pendant le vote de jour, bien que le mécanisme d'affichage (`#vbar-{id}`, libellé "X votes") soit déjà en place dans le template — aucune erreur JS visible, l'affichage restait juste silencieusement vide.
+- **Cause :** `_updateVoteBars()` lisait `v.player_id`/`v.vote_weight`/`v.vote_count`, des noms de champs qui n'existent pas dans le payload réel de `DayVoteCast::broadcastWith()` (`target_player_id`/`total_weight`) — défaut de nommage introduit lors du passage du vote de jour en public, jamais corrigé côté consommation JS. `MayorVoteCast` (qui fonctionne) utilise `target_player_id`/`vote_count` — un nom de champ de poids différent pour un concept équivalent, les deux events ne sont pas interchangeables.
+- **Fix :** `_updateVoteBars()` (`day.blade.php`) corrigée pour lire `v.target_player_id`/`v.total_weight`. `_handleMayorVoteCast` (`game-state.js`) non touchée, déjà correcte. Trouvé au passage : `game-state.js::_buildVoteMap()` (partagée par `.werewolves.vote.cast` et `.day.vote.cast`) a le même défaut de nommage (et lit même `e.votes` pour l'event loups, qui broadcaste en réalité sous `e.wolves`) — non corrigé ici car son résultat (`this.votes`/`this.wolvesVotes`) n'est lu par aucune vue Blade actuellement (day.blade.php et night.blade.php consomment directement le détail brut de l'event), donc sans impact visible ; voir ROADMAP.
+
+---
+
 ### [x] 2026-07-25 — Chasseur mort de chagrin (cascade amoureux) ne tirait jamais
 
 - **Symptôme :** quand l'amoureux (lien Cupidon) d'une victime meurt par cascade de chagrin, s'il s'agit du Chasseur, il ne tire jamais avant de mourir — contrairement à tous les autres chemins de mort du Chasseur (loups, poison Sorcière, vote village).
@@ -1052,6 +1060,12 @@
 
 # ROADMAP (idées / améliorations futures)
  
+- [ ] `game-state.js::_buildVoteMap()` (partagée `.werewolves.vote.cast`/`.day.vote.cast`) lit les mêmes noms
+      de champs erronés que le bug `_updateVoteBars()` corrigé le 2026-07-25 (`vote_weight`/`vote_count`/
+      `player_id` au lieu de `total_weight`/`vote_count`/`target_player_id` selon l'event) et lit `e.votes`
+      pour l'event loups qui broadcaste en réalité sous `e.wolves` — sans impact visible aujourd'hui car
+      `this.votes`/`this.wolvesVotes` n'est consommé par aucune vue Blade (day.blade.php et night.blade.php
+      lisent le détail brut de l'event), mais à corriger si ce store est un jour câblé à un template.
 - [ ] Nettoyer les appels `$victim->load('user')` devenus inutiles avant `broadcast(new PlayerEliminated(...))`
       (`ProcessNightActions`, `ActionController`, `WitchAction` ×4) — `google_name` a été retiré de
       `PlayerEliminated::broadcastWith()` par le fix vie privée du 2026-06-24, ces `load('user')` ne
