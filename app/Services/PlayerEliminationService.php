@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\Game\PlayerEliminated;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
 
@@ -13,12 +14,16 @@ use App\Models\GamePlayer;
  * éliminé à son tour. `lover_player_id` reste toujours null tant que Cupidon
  * n'existe pas comme rôle jouable — no-op garanti sur les parties actuelles.
  *
- * Si l'amoureux qui meurt par cascade est le Chasseur, un `hunter_pending`
- * est créé ici même — sur le modèle exact des 4 call sites existants
- * (ProcessNightActions, WitchAction, VoteService, cible directe du Chasseur)
- * — puisque cette mort n'a pas d'appelant qui puisse faire cette vérification
- * à sa place. Uniquement dans la branche cascade : le `$player` passé en
- * paramètre initial reste sous la responsabilité de l'appelant.
+ * La mort par cascade n'ayant aucun appelant en dehors de ce service, elle
+ * broadcaste elle-même son propre `PlayerEliminated` (reason 'heartbreak')
+ * — `$lover->load('user')` avant broadcast, même geste que les call sites
+ * existants (`google_name` n'est plus dans `PlayerEliminated::broadcastWith()`
+ * depuis le fix vie privée du 2026-06-24, mais le `load('user')` reste fait
+ * partout par cohérence de pattern). Si l'amoureux cascadé est le Chasseur,
+ * un `hunter_pending` est créé ici même, au même titre que le broadcast.
+ * Uniquement dans la branche cascade : le `$player` passé en paramètre
+ * initial reste sous la responsabilité de l'appelant (broadcast + éventuel
+ * hunter_pending gérés par lui, non dupliqués ici).
  */
 class PlayerEliminationService
 {
@@ -31,9 +36,12 @@ class PlayerEliminationService
             if ($lover && $lover->is_alive && $lover->id !== $player->id) {
                 $this->eliminate($lover);
 
-                if ($lover->isHunter()) {
-                    $game = $lover->game;
+                $game = $lover->game;
 
+                $lover->load('user');
+                broadcast(new PlayerEliminated($game, $lover, 'heartbreak'));
+
+                if ($lover->isHunter()) {
                     GameAction::create([
                         'game_id'   => $game->id,
                         'player_id' => $lover->id,

@@ -1052,6 +1052,12 @@
 
 # ROADMAP (idées / améliorations futures)
  
+- [ ] Nettoyer les appels `$victim->load('user')` devenus inutiles avant `broadcast(new PlayerEliminated(...))`
+      (`ProcessNightActions`, `ActionController`, `WitchAction` ×4) — `google_name` a été retiré de
+      `PlayerEliminated::broadcastWith()` par le fix vie privée du 2026-06-24, ces `load('user')` ne
+      servent plus qu'à `$victim->user->notify(...)` juste après (relation lazy-loadable de toute façon).
+      Trouvé en ajoutant le même `load('user')` par cohérence de pattern dans la cascade amoureux
+      (Phase 57, `feat/heartbreak-death-notification`) sans vérifier que le champ existait encore.
 - [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3) —
       statut ambigu (audit documentaire du 2026-07-24) : la configurabilité elle-même est bien livrée
       (Étape 3 terminée, le host peut fixer n'importe quelle valeur), mais la valeur PAR DÉFAUT n'a pas

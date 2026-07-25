@@ -2,11 +2,13 @@
 
 namespace Tests\Unit\Services;
 
+use App\Events\Game\PlayerEliminated;
 use App\Models\Game;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
 use App\Services\PlayerEliminationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 class PlayerEliminationServiceTest extends TestCase
@@ -30,6 +32,8 @@ class PlayerEliminationServiceTest extends TestCase
 
     public function test_eliminer_un_amoureux_cascade_sur_lautre_amoureux(): void
     {
+        Event::fake();
+
         $playerA = GamePlayer::factory()->create(['is_alive' => true]);
         $playerB = GamePlayer::factory()->create(['is_alive' => true]);
 
@@ -42,8 +46,29 @@ class PlayerEliminationServiceTest extends TestCase
         $this->assertFalse($playerB->fresh()->is_alive);
     }
 
+    public function test_cascade_broadcast_player_eliminated_reason_heartbreak_uniquement_pour_lamoureux(): void
+    {
+        Event::fake();
+
+        $playerA = GamePlayer::factory()->create(['is_alive' => true]);
+        $playerB = GamePlayer::factory()->create(['is_alive' => true]);
+
+        $this->linkLovers($playerA, $playerB);
+
+        app(PlayerEliminationService::class)->eliminate($playerA);
+
+        Event::assertDispatched(PlayerEliminated::class, function (PlayerEliminated $event) use ($playerB) {
+            return $event->player->id === $playerB->id && $event->reason === 'heartbreak';
+        });
+        Event::assertNotDispatched(PlayerEliminated::class, function (PlayerEliminated $event) use ($playerA) {
+            return $event->player->id === $playerA->id;
+        });
+    }
+
     public function test_cascade_ne_re_elimine_pas_un_amoureux_deja_mort(): void
     {
+        Event::fake();
+
         $playerA = GamePlayer::factory()->create(['is_alive' => true]);
         $playerB = GamePlayer::factory()->create(['is_alive' => false]);
 
@@ -54,6 +79,7 @@ class PlayerEliminationServiceTest extends TestCase
 
         $this->assertFalse($playerA->fresh()->is_alive);
         $this->assertFalse($playerB->fresh()->is_alive);
+        Event::assertNotDispatched(PlayerEliminated::class);
     }
 
     // ------------------------------------------------------------------
@@ -63,6 +89,8 @@ class PlayerEliminationServiceTest extends TestCase
 
     public function test_cascade_amoureux_chasseur_cree_hunter_pending_en_phase_nuit(): void
     {
+        Event::fake();
+
         $game    = Game::factory()->create(['status' => 'processing_night', 'round' => 3]);
         $villager = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
         $hunter   = GamePlayer::factory()->hunter()->create(['game_id' => $game->id]);
@@ -81,6 +109,8 @@ class PlayerEliminationServiceTest extends TestCase
 
     public function test_cascade_amoureux_chasseur_cree_hunter_pending_en_phase_jour(): void
     {
+        Event::fake();
+
         $game     = Game::factory()->create(['status' => 'processing_day', 'round' => 2]);
         $villager = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
         $hunter   = GamePlayer::factory()->hunter()->create(['game_id' => $game->id]);
@@ -98,6 +128,8 @@ class PlayerEliminationServiceTest extends TestCase
 
     public function test_cascade_amoureux_chasseur_maire_cree_hunter_pending_une_seule_fois(): void
     {
+        Event::fake();
+
         $game     = Game::factory()->create(['status' => 'night', 'round' => 1]);
         $villager = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
         $hunter   = GamePlayer::factory()->hunter()->create(['game_id' => $game->id, 'is_mayor' => true]);
@@ -119,6 +151,8 @@ class PlayerEliminationServiceTest extends TestCase
 
     public function test_cascade_amoureux_non_chasseur_ne_cree_aucun_hunter_pending(): void
     {
+        Event::fake();
+
         $game    = Game::factory()->create(['status' => 'night', 'round' => 1]);
         $playerA = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
         $playerB = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);

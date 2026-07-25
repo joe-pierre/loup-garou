@@ -505,7 +505,9 @@ export function gameState(gameId, userId) {
                 hunter: 'Chasseur', cupidon: 'Cupidon', villager: 'Villageois',
             };
             const roleLabel = roleLabels[e.role] ?? e.role ?? '';
-            const msg = `💀 ${e.pseudo} était le ${roleLabel || e.role}`;
+            const msg = e.reason === 'heartbreak'
+                ? `💔 ${e.pseudo} meurt de chagrin après la mort de son amoureux — c'était le ${roleLabel || e.role}.`
+                : `💀 ${e.pseudo} était le ${roleLabel || e.role}`;
             this._dispatchToast(msg, e.role === 'werewolf' ? 'success' : 'info');
 
             // Propager à toutes les vues pour mise à jour de leurs listes locales
