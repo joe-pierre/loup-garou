@@ -780,11 +780,24 @@
 - [x] `tests/Feature/Game/NightResyncTest.php` — 23 tests (5 rôles × refresh sans
       action / avec action déjà soumise / reconnexion, cas négatifs, persistance
       des Jobs). 283/283 tests verts (260 avant + 23 nouveaux, aucun cassé).
-- [!] Scénario manuel non rejoué en conditions réelles (OAuth Google requis, pas de
-      contournement de login local) — voir DECISIONS.md pour les vérifications de
-      substitution effectuées. Rejeu interactif recommandé avant merge/déploiement.
-- [ ] Gap connu, hors périmètre : tir du Chasseur pendant la phase JOUR non couvert
-      par la resynchro (voir ROADMAP dans BUGS_AND_ROADMAP.md).
+- [x] Scénario manuel rejoué depuis, à plusieurs reprises, en local et en prod (audit
+      documentaire du 2026-07-24) : le bug original (loup/refresh → écran générique au
+      lieu de l'écran loups) n'a pas réapparu, y compris lors des sessions de test du
+      fix victoire des Amoureux (Phases 53-55) qui ont fait tourner des nuits complètes
+      avec plusieurs rôles actifs (Cupidon, Voyante, Loups, Sorcière). Nuance : il ne
+      s'agit pas d'un rejeu scripté ciblant spécifiquement le scénario de reproduction
+      d'origine, mais d'une réutilisation organique de la fonctionnalité pendant des
+      sessions de test ultérieures — la réserve initiale (absence de test E2E dédié,
+      OAuth Google requis) reste donc valable en tant que limite méthodologique, mais
+      le risque pratique qu'elle signalait est levé par l'usage répété sans régression.
+- [x] Gap connu, hors périmètre : tir du Chasseur pendant la phase JOUR non couvert
+      par la resynchro (voir ROADMAP dans BUGS_AND_ROADMAP.md) — **toujours réel**
+      (vérifié 2026-07-24) : `NightResyncService::currentSubPhase()` retourne `null`
+      dès l'entrée si `! $game->isNightPhase()`, donc ne couvre jamais un tir de
+      Chasseur déclenché en phase JOUR (maire-chasseur éliminé par le vote du jour).
+      Aucun chantier ultérieur (Phase 52, fix victoire des Amoureux) n'a touché à ce
+      périmètre. Marqueur `[x]` car la vérification elle-même est terminée — le gap
+      reste ouvert en tant que tel, voir ROADMAP.
 
 ## Phase 52 — Bugfix victime des loups jamais éliminée au timeout Sorcière (2026-07-23)
 
@@ -808,8 +821,10 @@
 - [x] `php artisan test` : 288/288 verts (283 avant + 5 nouveaux, aucun cassé).
 - [x] Vérification manuelle via `php artisan tinker` (scénario reproduisant le bug de prod) :
       `is_alive` passe bien de `true` à `false` après timeout.
-- [!] Branche `fix/witch-timeout-victim-not-eliminated`, non mergée, non committée — en
-      attente de revue.
+- [x] Branche `fix/witch-timeout-victim-not-eliminated` — committée (`8e3d821`) et
+      mergée dans `dev` (`b38716d`, audit documentaire du 2026-07-24). Statut mis à
+      jour : cette entrée indiquait à tort "non mergée, non committée" alors que les
+      deux commits sont bien présents dans l'historique `dev`.
 
 ## Phase 53 — Bugfix victoire des Amoureux non déclenchée + durcissement WinConditionChecker (2026-07-24)
 
@@ -831,8 +846,8 @@
 - [x] Tests : 3 tests ajoutés (2 `CupidonTest`, 1 `WinConditionCheckerTest`), 1 test existant
       (`NightResyncTest`) enrichi d'un effectif vivant réaliste. 291/291 tests verts (288 avant
       + 3 nouveaux, aucun cassé). Suite complète exécutée avec Reverb démarré localement.
-- [!] Branche `fix/lovers-victory-witch-deferred-resolution`, non mergée, non committée — en
-      attente de revue.
+- [x] Branche `fix/lovers-victory-witch-deferred-resolution` — committée (`8bb28cd`) et
+      mergée dans `dev` (`05c0695`, constaté en cours d'audit documentaire du 2026-07-24).
 
 ## Phase 54 — Cause racine confirmée : victoire des Amoureux annulée à tort par une course cancelGame() (2026-07-24)
 
@@ -853,8 +868,8 @@
       aucun cassé).
 - [x] `DECISIONS.md` — entrée "Victoire des Amoureux annulée à tort par une course avec
       cancelGame()..." remplace la mention "non confirmé" de la Phase 53.
-- [!] Toujours sur la branche `fix/lovers-victory-witch-deferred-resolution`, non mergée,
-      non committée — en attente de revue.
+- [x] Branche `fix/lovers-victory-witch-deferred-resolution` — mergée dans `dev` (`05c0695`),
+      même constat que ci-dessus.
 
 ## Phase 55 — Affichage victoire des Amoureux : finished.blade.php et history.blade.php généralisés (2026-07-24)
 
@@ -878,8 +893,8 @@
 - [x] Tests : 2 tests ajoutés dans `GameHistoryServiceTest.php` (rouge avant fix, vert après).
       `finished.blade.php` vérifié par rendu direct pour les 3 valeurs de `winner_team`.
       `npm run build` sans erreur. 296/296 tests verts (294 avant + 2 nouveaux, aucun cassé).
-- [!] Toujours sur la branche `fix/lovers-victory-witch-deferred-resolution`, non mergée,
-      non committée — en attente de revue.
+- [x] Branche `fix/lovers-victory-witch-deferred-resolution` — mergée dans `dev` (`05c0695`),
+      même constat que ci-dessus.
 
 ## État global
 
@@ -895,16 +910,18 @@
   252/252 tests verts. Prêt pour le tag v1.3.0 (créé par le développeur après
   merge sur `dev`).
 - Phase 27 ✅ Terminée — P1 succession sorcière, P2 persistance random_elimination, P3 couronne maire jour
-- Phase 51 ✅ Terminée — Resynchro sous-phases de nuit (refresh/reconnexion), sur branche
-  `fix/night-phase-resync`, non mergée, non committée — en attente de revue et de rejeu manuel
-- Phase 52 ✅ Terminée — Fix victime des loups jamais éliminée au timeout Sorcière, sur
-  branche `fix/witch-timeout-victim-not-eliminated`, non mergée, non committée — en attente
-  de revue
+- Phase 51 ✅ Terminée — Resynchro sous-phases de nuit (refresh/reconnexion) — mergée dans
+  `dev` (`d4c2d18`). Rejeu manuel effectué depuis à plusieurs reprises sans régression
+  (audit documentaire du 2026-07-24) ; gap Chasseur/phase JOUR toujours ouvert, voir ROADMAP.
+- Phase 52 ✅ Terminée — Fix victime des loups jamais éliminée au timeout Sorcière — mergée
+  dans `dev` (`b38716d`, audit documentaire du 2026-07-24 : statut "non mergée" corrigé)
 - Phase 53 ✅ Terminée — Fix victoire des Amoureux non déclenchée (gap WitchAction/ProcessHunterTurn)
-  + durcissement atomicité/idempotence WinConditionChecker, sur branche
-  `fix/lovers-victory-witch-deferred-resolution`, non mergée, non committée — en attente de revue
+  + durcissement atomicité/idempotence WinConditionChecker — mergée dans `dev` (`05c0695`,
+  branche `fix/lovers-victory-witch-deferred-resolution`, constaté en cours d'audit
+  documentaire du 2026-07-24)
 - Phase 54 ✅ Terminée — Cause racine confirmée de l'anomalie "Annulée vs Loups ont gagné" (course
-  `cancelGame()`/résolution en cours), même branche, non mergée, non committée — en attente de revue
+  `cancelGame()`/résolution en cours) — mergée dans `dev`, même commit `05c0695`
 - Phase 55 ✅ Terminée — Affichage victoire des Amoureux généralisé (finished.blade.php,
-  history.blade.php, écrans admin), même branche, non mergée, non committée — en attente de revue
-- v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md
+  history.blade.php, écrans admin) — mergée dans `dev`, même commit `05c0695`
+- v1.3+ En attente — voir ROADMAP dans BUGS_AND_ROADMAP.md (Cupidon désormais livré en v1.3 ;
+  restent Loup Blanc et Petite Fille)

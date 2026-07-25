@@ -1044,22 +1044,47 @@
 
 # ROADMAP (idées / améliorations futures)
  
-- [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3)
-- [ ] Harmoniser les appels `config('game.timers.mayor_succession', 15)` restants avec `$game->timer()` (Étape 3)
-- [ ] Rôles v1.3+ : Loup Blanc, Cupidon, Petite Fille
+- [ ] Délai voyante : réduire de ~8s à ~5s via `$game->timer('seer')` configurable (couvert par Étape 3) —
+      statut ambigu (audit documentaire du 2026-07-24) : la configurabilité elle-même est bien livrée
+      (Étape 3 terminée, le host peut fixer n'importe quelle valeur), mais la valeur PAR DÉFAUT n'a pas
+      été changée (`config/game.php` : `seer` toujours à 30s). Laissé ouvert, pas assez de contexte pour
+      trancher si l'idée reste pertinente telle quelle.
+- [x] ~~Harmoniser les appels `config('game.timers.mayor_succession', 15)` restants avec `$game->timer()`~~ —
+      déjà résolu (Phase 22, Étape 10.2 du TODO.md) : grep `config('game.timers` sur `app/` (2026-07-24)
+      ne trouve plus aucun appel hors `TimerCalculator` et `GameSettingsService::validateTimerSettings()`
+      (sous-clé `limits`, légitime — validation, pas lecture de valeur). Rien à faire.
+- [ ] Rôles v1.4+ : Loup Blanc, Petite Fille — Cupidon retiré de cette liste (audit documentaire du
+      2026-07-24) : livré et terminé depuis v1.3 (voir État global, TODO.md), n'a plus sa place parmi
+      les rôles "pas encore implémentés".
 - [ ] State machine : étendre Symfony Workflow aux statuts intermédiaires (processing_night, wolves_turn) — post-Étape 4 si nécessaire
 - [ ] Audit performance post-v1.2 : N+1 queries, temps réponse < 200ms (Laravel Telescope)
-- [ ] `phase-header.blade.php` : `$roleLabel`/`$roleBg`/`$roleColor` ne couvrent pas encore witch/hunter et utilisent toujours 🏘 pour villageois (même pattern que `player-list.blade.php`)
+- [ ] `phase-header.blade.php` : `$roleLabel`/`$roleBg`/`$roleColor` ne couvrent pas encore witch/hunter et utilisent toujours 🏘 pour villageois (même pattern que `player-list.blade.php`) —
+      vérifié toujours réel dans le code (2026-07-24), mais le composant `<x-phase-header>` ne semble
+      utilisé nulle part dans `resources/views/` (`grep x-phase-header` ne trouve aucun appelant) : le
+      gap n'a donc aucun impact pratique actuellement, à réévaluer si le composant est un jour câblé.
 - [ ] Révision timers par défaut config/game.php (day_vote, seer, werewolves)
       et valeurs minimales — prompt séparé après validation prod
-- [ ] `NightResyncService` ne couvre que le tir du Chasseur en phase NUIT — un maire-chasseur
+- [x] `NightResyncService` ne couvre que le tir du Chasseur en phase NUIT — un maire-chasseur
       éliminé par le vote du JOUR puis un refresh pendant son tir de riposte n'est pas rattrapé
-      (gap préexistant, hors périmètre de fix/night-phase-resync, voir DECISIONS.md)
+      (gap préexistant, hors périmètre de fix/night-phase-resync, voir DECISIONS.md) —
+      **toujours réel** (revérifié 2026-07-24) : `NightResyncService::currentSubPhase()` retourne
+      `null` dès l'entrée si `! $game->isNightPhase()`. Marqueur `[x]` car la revérification est
+      terminée, le gap lui-même reste ouvert.
 - [ ] Étendre players[] du store central à night.blade.php et spectator.blade.php
-- [ ] `ProcessWitchAutoAction` ne passe pas par `WitchAction::act()` : la victime ordinaire déférée par `ProcessNightActions` (quand `$witchCanSaveVictim=true`) n'est pas tuée ni broadcastée si le timer sorcière expire sans action manuelle. Ajouter dans `ProcessWitchAutoAction::handle()` le même bloc de résolution de victime ordinaire qu'en fin de `WitchAction::act()` (kill/pass).
+- [x] ~~`ProcessWitchAutoAction` ne passe pas par `WitchAction::act()` : la victime ordinaire déférée...~~
+      — **résolu par la Phase 52** (2026-07-23, voir "BUGS CORRIGÉS" ci-dessus et DECISIONS.md "Victime
+      des loups jamais éliminée quand la Sorcière ne clique pas") : `ProcessWitchAutoAction::handle()`
+      appelle désormais `WitchAction::finalizeTimedOutVictim()`, qui reproduit exactement la logique de
+      finalisation de la branche `pass` (victime ordinaire, sorcière elle-même, maire en sursis).
+      Vérifié dans le code actuel (2026-07-24) : le call site est bien en place.
 - [ ] `role-reveal.blade.php` (bloc Villageois) et tout autre bloc utilisant une condition en liste blanche d'exclusions (`role !== 'a' && role !== 'b' && ...`) plutôt qu'un `match()`/tableau associatif avec `default` : risque de régression silencieuse à chaque nouveau rôle (v1.4+ Loup Blanc, Petite Fille) — un rôle non exclu explicitement se fait passer pour Villageois sans erreur. Envisager d'inverser en liste blanche positive (`role === 'villager'`) une fois tous les rôles v1.3 stabilisés.
-- [ ] `day.blade.php` ligne ~101 (message "C'était un [rôle]" pour la victime de la nuit) : `match($nightVictim->role)` ne couvre que werewolf/seer, tombe en `default => 'Villageois'` pour witch/hunter/cupidon — distinct de `revealed_role_label` du même fichier (déjà correct). Voir DECISIONS.md "Cupidon absent du résultat d'inspection Voyante".
-- [ ] `GameController::state()` (`revealed_role_label`, endpoint `/state`) : `match($p->role)` couvre werewolf/seer/witch/hunter mais pas `cupidon`, tombe en `default => 'Villageois'`. Voir DECISIONS.md "Cupidon absent du résultat d'inspection Voyante".
+- [x] ~~`day.blade.php` ligne ~101 (message "C'était un [rôle]" pour la victime de la nuit) : ne couvre
+      que werewolf/seer, tombe en `default => 'Villageois'` pour witch/hunter/cupidon~~ — **résolu par
+      la Phase 48** (2026-07-23, voir "BUGS CORRIGÉS" ci-dessus) : le `match()` couvre désormais les 6
+      rôles (`witch`, `hunter`, `cupidon` ajoutés). Vérifié dans le code actuel (2026-07-24).
+- [x] ~~`GameController::state()` (`revealed_role_label`, endpoint `/state`) : couvre werewolf/seer/witch/hunter
+      mais pas `cupidon`~~ — **résolu par la Phase 48** (2026-07-23) : `'cupidon' => 'Cupidon'` déjà
+      présent dans le `match()`. Vérifié dans le code actuel (2026-07-24).
 - [x] ~~Rejouer en conditions réelles... course entre WinConditionChecker::check() et cancelGame()~~ —
       cause racine confirmée par test déterministe (garde `cancelGame()` trop permissif face au
       statut `processing_day`/`processing_night`), voir DECISIONS.md "Victoire des Amoureux annulée
@@ -1148,4 +1173,12 @@ Implémentation envisagée :
   tous les rôles stables.
 
 - [ ] `WinConditionCheckerTest` broadcaste réellement (`GameFinished`/`PhaseAnnouncement` non protégés par `try/catch`, aucun `Event::fake()`) et échoue si Reverb n'est pas démarré localement — l'aligner sur le reste de la suite (`Event::fake()`) pour ne plus dépendre d'un service externe pendant `php artisan test` (découvert lors de Cupidon Étape 7, voir DECISIONS.md).
-- [ ] `config/game_ui.php` (`role_labels`, `role_labels_emoji`) et le `ROLE_NAMES` JS de `role-reveal.blade.php` ne couvrent pas `cupidon` (ni `white_wolf` pour `role_labels_emoji`) — un joueur Cupidon verrait un label de rôle manquant/incorrect à l'écran de révélation. Distinct de la configurabilité host (déjà corrigée), simple gap d'affichage découvert lors de l'audit grep `witch.*hunter`/`hunter.*witch` du 2026-07-23.
+- [ ] `config/game_ui.php` (`role_labels`, `role_labels_emoji`) ne couvre pas `cupidon` (ni `white_wolf`
+      pour `role_labels_emoji`). Révérifié 2026-07-24 : la partie "`ROLE_NAMES` JS de `role-reveal.blade.php`"
+      de cet item est **obsolète** — `ROLE_NAMES` inclut déjà `cupidon: 'Cupidon'`, corrigé entre-temps.
+      En revanche `config('game_ui.role_labels_emoji')` a un impact réel confirmé : consommé par
+      `RoleAssignedNotification` et `PlayerEliminatedDayNotification` (notifications push), qui
+      retombent sur le nom brut du rôle (`'cupidon'` sans emoji) faute d'entrée dans le tableau — pas
+      un simple gap d'affichage Blade, un vrai contenu de notification push incorrect pour Cupidon.
+      Les deux composants Blade `role-label.blade.php`/`<x-role-label>` qui lisaient `role_labels`
+      semblent inutilisés (aucun appelant trouvé).
