@@ -74,8 +74,8 @@ class ProcessSeerTurn implements ShouldQueue
         ProcessSeerAutoAction::dispatch($this->gameId, $seer->id, $game->round)
             ->delay(now()->addSeconds($halfTimer));
 
-        // Après timer complet + 5s (pour laisser la voyante voir le résultat)
-        // → loups démarrent
+        // Après timer complet + 2s (marge technique) → loups démarrent, systématiquement,
+        // que la voyante ait agi ou non (voir SPEC_TIMERS.md §3.3).
         ProcessWerewolvesTurn::dispatch($this->gameId, $this->round)
             ->delay(now()->addSeconds($seerTimer + 2));
     }
