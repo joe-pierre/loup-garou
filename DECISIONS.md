@@ -1789,3 +1789,17 @@ une const locale d'une vue Blade.
 **Leçon :** dans `history.blade.php`, l'ordre d'affichage des sous-lignes d'une carte (`night`, `day`, etc.) se règle exclusivement en réordonnant les blocs `@if` de la vue — jamais en réordonnant les clés du tableau construit par `HistoryService::buildTimeline()`. Un test de régression sur l'ordre doit donc rendre la vue réelle (route `game.history` + `assertSeeTextInOrder()`), pas seulement inspecter le tableau PHP retourné par le service.
 
 **Statut :** ✅ Résolu
+
+## [CHOIX] Icône cœur privée sur le pseudo des amoureux — double source (GET /state + rendu Blade direct)
+
+**Contexte :** `feat/lover-heart-icon` — `GameController::state()`, `day.blade.php`, `night.blade.php`.
+
+**Symptôme / Problème :** le prompt initial demandait d'exposer l'identité de l'amoureux via `GET /game/{code}/state` (`my_lover_player_id`), sur le modèle `NightResyncService`. Mais `day.blade.php` et `night.blade.php` ne consomment pas `players` depuis `/state` pour leurs propres listes de pseudos : `dayScreen()` a son propre state local `players: PLAYERS_DATA` initialisé depuis un `@json()` côté serveur (jamais réhydraté depuis `/state`, seul le store `gameState()` du layout appelle `/state`), et `night.blade.php` construit ses listes de cibles (voyante, loups, sorcière, chasseur, village endormi) directement en Blade `@foreach($players ...)`, sans passer par Alpine `players[]` du tout.
+
+**Cause / Alternatives :** deux options : (1) n'exposer `my_lover_player_id` que via `/state` et faire consommer ce champ par `dayScreen()`/`nightScreen()` en plus de leur state existant — plus proche de la lettre du prompt mais duplique encore un peu plus l'état déjà éclaté entre `gameState()` et les composants locaux (anomalie préexistante, hors périmètre de cette tâche) ; (2) exposer aussi `$player->lover_player_id` directement dans le rendu serveur de `day()`/`night()` (le modèle `$player` chargé par ces deux méthodes contient déjà cette colonne, non filtrée) — même pattern déjà utilisé pour `MY_PLAYER_ID`/`MY_PSEUDO`/`MY_ROLE`.
+
+**Fix / Décision :** les deux à la fois. `GET /state` expose `my_lover_player_id` (respecte la lettre du prompt, réutilisable par tout futur consommateur de `/state`, cohérent avec le pattern `NightResyncService`). En complément, `day.blade.php`/`night.blade.php` reçoivent `MY_LOVER_ID` (JS, pour les listes réactives Alpine : vote du jour, cibles loups, votes loups) et utilisent `$player->lover_player_id` directement en Blade (pour les listes rendues côté serveur : village endormi, cibles voyante/sorcière/chasseur). Aucune nouvelle route, aucune requête SQL supplémentaire — la colonne est déjà chargée sur le `$player` de chaque contrôleur.
+
+**Leçon :** avant d'implémenter "exposer X via l'endpoint Y", vérifier si les vues cibles consomment réellement Y pour construire leurs listes de joueurs, ou si elles ont leur propre state local initialisé au rendu serveur (cas de `dayScreen()`/`nightScreen()` dans ce projet, contrairement au store central `gameState()`). Le "seul store source de vérité" (`game-state.js`, règle CLAUDE.md) ne couvre pas encore ces deux vues pour `players[]` — dette préexistante à garder en tête pour toute future donnée par-joueur à afficher dans une liste.
+
+**Statut :** 🔵 Choix assumé

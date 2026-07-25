@@ -326,6 +326,10 @@ class GameController extends Controller
                 'werewolves_turn_active'  => $werewolvesTurnActive,
                 'night_action'            => $nightAction,
                 'allies'                  => $allies,
+                // Strictement privé au joueur courant — jamais dans `players` ci-dessous
+                // (voir SPEC_CUPIDON.md §1 "Confidentialité totale"). null si pas de Cupidon
+                // ou pas de couple formé.
+                'my_lover_player_id'      => $player->lover_player_id,
                 'players'                 => $players,
             ],
         ]);
