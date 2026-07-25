@@ -190,7 +190,12 @@
                              style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;">
                             {{ strtoupper(substr($p->pseudo, 0, 2)) }}
                         </div>
-                        <span class="text-xs" style="color:#e8e0d0;">{{ $p->pseudo }}</span>
+                        <span class="text-xs" style="color:#e8e0d0;">
+                            {{ $p->pseudo }}
+                            @if($player->lover_player_id !== null && ($p->id === $player->id || $p->id === $player->lover_player_id))
+                                <span style="color:#f472b6;">💘</span>
+                            @endif
+                        </span>
                     </div>
                     @endforeach
                 </div>
@@ -288,6 +293,9 @@
                         {{ strtoupper(substr($seerTarget->pseudo, 0, 1)) }}
                     </div>
                     <span class="text-sm" style="color:#e8e0d0;">{{ $seerTarget->pseudo }}</span>
+                    @if($player->lover_player_id !== null && $seerTarget->id === $player->lover_player_id)
+                        <span class="text-xs" style="color:#f472b6;">💘</span>
+                    @endif
                     <span x-show="seerSelectedTarget === {{ $seerTarget->id }}" class="ml-auto text-xs" style="color:#a78bfa;">✓</span>
                 </button>
                 @endforeach
@@ -368,6 +376,7 @@
                             <span x-text="target.pseudo.charAt(0).toUpperCase()"></span>
                         </div>
                         <span class="text-sm" style="color:#e8e0d0;" x-text="target.pseudo"></span>
+                        <span x-show="MY_LOVER_ID !== null && target.id === MY_LOVER_ID" class="text-xs" style="color:#f472b6;">💘</span>
                         <span x-show="wolfSelectedTarget === target.id" class="ml-auto text-xs" style="color:#4ade80;">✓ Sélectionné</span>
                     </button>
                 </template>
@@ -395,6 +404,8 @@
                             <span class="font-semibold"
                                   style="color:#ff8888;"
                                   x-text="wolf.pseudo"></span>
+                            <span x-show="MY_LOVER_ID !== null && (wolf.player_id === MY_PLAYER_ID || wolf.player_id === MY_LOVER_ID)"
+                                  style="color:#f472b6;">💘</span>
                             <span style="color:rgba(232,224,208,0.25);">→</span>
                             <span x-show="wolf.has_voted && wolf.target_pseudo"
                                   style="color:#ff4444;font-weight:600;"
@@ -543,6 +554,9 @@
                                 {{ strtoupper(substr($witchTarget->pseudo, 0, 1)) }}
                             </div>
                             <span class="text-sm" style="color:#e8e0d0;">{{ $witchTarget->pseudo }}</span>
+                            @if($player->lover_player_id !== null && $witchTarget->id === $player->lover_player_id)
+                                <span class="text-xs" style="color:#f472b6;">💘</span>
+                            @endif
                             <span x-show="witchSelectedTarget === {{ $witchTarget->id }}" class="ml-auto text-xs" style="color:#4ade80;">✓</span>
                         </button>
                         @endforeach
@@ -605,6 +619,9 @@
                         {{ strtoupper(substr($hunterTarget->pseudo, 0, 1)) }}
                     </div>
                     <span class="text-sm" style="color:#e8e0d0;">{{ $hunterTarget->pseudo }}</span>
+                    @if($player->lover_player_id !== null && $hunterTarget->id === $player->lover_player_id)
+                        <span class="text-xs" style="color:#f472b6;">💘</span>
+                    @endif
                     <span x-show="hunterSelectedTarget === {{ $hunterTarget->id }}" class="ml-auto text-xs" style="color:#c9a84c;">✓</span>
                 </button>
                 @endforeach
@@ -711,6 +728,9 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const WITCH_TIMER   = {{ $game->timer('witch') }};
     const HUNTER_TIMER  = {{ $game->timer('hunter') }};
     const CUPIDON_TIMER = {{ $game->timer('cupidon') }};
+    // Amoureux du joueur courant (Cupidon) — strictement privé, jamais exposé
+    // aux listes de joueurs génériques. null si pas de Cupidon ou pas de couple formé.
+    const MY_LOVER_ID   = {{ $player->lover_player_id ?? 'null' }};
 
     // Exposer sur window pour game-state.js
     window.GAME_ID      = GAME_ID;

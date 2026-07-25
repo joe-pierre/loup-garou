@@ -162,6 +162,8 @@
                             <span x-show="p.is_mayor" class="text-xs flex-shrink-0">👑</span>
                             <span x-show="p.id === MY_PLAYER_ID" class="text-xs flex-shrink-0" style="color:rgba(232,224,208,0.3);">(toi)</span>
                             <span x-show="!p.is_alive" class="text-xs flex-shrink-0">💀</span>
+                            <span x-show="MY_LOVER_ID !== null && (p.id === MY_PLAYER_ID || p.id === MY_LOVER_ID)"
+                                  class="text-xs flex-shrink-0" style="color:#f472b6;">💘</span>
                         </div>
                         <span
                             x-show="!p.is_alive && p.revealed_role_label"
@@ -370,6 +372,7 @@
                         <div style="width:2rem;height:2rem;border-radius:50%;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:600;font-size:0.75rem;color:#c9a84c;flex-shrink:0;"
                              x-text="p.pseudo.charAt(0).toUpperCase()"></div>
                         <span class="text-sm" style="color:#e8e0d0;" x-text="p.pseudo"></span>
+                        <span x-show="MY_LOVER_ID !== null && p.id === MY_LOVER_ID" class="text-xs" style="color:#f472b6;">💘</span>
                         <span x-show="hunterSelectedTarget === p.id" class="ml-auto text-xs" style="color:#c9a84c;">✓</span>
                     </button>
                 </template>
@@ -487,6 +490,9 @@
     const MY_IS_ALIVE   = {{ $player->is_alive ? 'true' : 'false' }};
     const PHASE_SECONDS = {{ max(0, $game->phaseRemainingSeconds()) }};
     const PLAYERS_DATA  = @json($playersJson);
+    // Amoureux du joueur courant (Cupidon) — strictement privé, jamais dans PLAYERS_DATA.
+    // null si pas de Cupidon dans la partie ou pas de couple formé.
+    const MY_LOVER_ID   = {{ $player->lover_player_id ?? 'null' }};
 
     // Exposer sur window pour game-state.js
     window.GAME_ID      = GAME_ID;
