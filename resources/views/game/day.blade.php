@@ -160,7 +160,7 @@
                                   :style="!p.is_alive ? 'text-decoration:line-through;color:rgba(232,224,208,0.6)' : ''"
                                   x-text="p.pseudo"></span>
                             <span x-show="p.is_mayor" class="text-xs flex-shrink-0">👑</span>
-                            <span x-show="p.id === MY_PLAYER_ID" class="text-xs flex-shrink-0" style="color:rgba(232,224,208,0.3);">(toi)</span>
+                            <span x-show="p.id === MY_PLAYER_ID" class="text-xs flex-shrink-0" style="color:rgba(232,224,208,0.3);">(moi)</span>
                             <span x-show="!p.is_alive" class="text-xs flex-shrink-0">💀</span>
                             <span x-show="MY_LOVER_ID !== null && (p.id === MY_PLAYER_ID || p.id === MY_LOVER_ID)"
                                   class="text-xs flex-shrink-0" style="color:#f472b6;">💘</span>

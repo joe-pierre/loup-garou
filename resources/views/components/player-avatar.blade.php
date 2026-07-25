@@ -42,12 +42,12 @@
         <span class="absolute -top-1.5 -right-1.5 text-xs leading-none" aria-label="Éliminé">💀</span>
     @endif
 
-    {{-- Badge "Toi" --}}
+    {{-- Badge "Moi" --}}
     @if($isMe)
         <span
             class="text-[0.6rem] px-1 rounded leading-tight font-medieval"
             style="background-color:rgba(201,168,76,0.2); color:#c9a84c;"
             aria-label="C'est vous"
-        >Toi</span>
+        >Moi</span>
     @endif
 </div>
