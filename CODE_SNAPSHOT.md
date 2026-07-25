@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 13h53
+Generated at: 14h25
 
 ## PHP Analysis (Core Logic)
 
@@ -1220,6 +1220,9 @@ CupidonTest.php
       - test_amoureux_empoisonne_par_la_sorciere_cascade_immediate() → void
       - test_amoureux_elimine_par_vote_jour_cascade_immediate() → void
       - test_amoureux_tue_par_le_tir_du_chasseur_cascade_immediate() → void
+      - test_amoureux_chasseur_mort_de_chagrin_nuit_peut_tirer_avant_fin_de_nuit() → void
+      - test_amoureux_chasseur_mort_de_chagrin_jour_peut_tirer_avant_nuit_suivante() → void
+      - test_amoureux_chasseur_maire_mort_de_chagrin_tir_avant_succession() → void
       - test_victoire_amoureux_declenchee_par_vote_de_jour_qui_fait_tomber_effectif_a_deux() → void
       - test_victoire_amoureux_loup_et_villageois_derniers_survivants() → void
       - test_victoire_amoureux_declenchee_apres_resolution_sorciere_qui_fait_tomber_effectif_a_deux() → void
@@ -1642,9 +1645,15 @@ PlayerEliminationServiceTest.php
     attributes:
       - RefreshDatabase
     functions:
+      - linkLovers(GamePlayer $a, GamePlayer $b) → void
       - test_eliminer_un_joueur_pose_is_alive_false() → void
       - test_eliminer_un_amoureux_cascade_sur_lautre_amoureux() → void
       - test_cascade_ne_re_elimine_pas_un_amoureux_deja_mort() → void
+      - test_cascade_amoureux_chasseur_cree_hunter_pending_en_phase_nuit() → void
+      - test_cascade_amoureux_chasseur_cree_hunter_pending_en_phase_jour() → void
+      - test_cascade_amoureux_chasseur_maire_cree_hunter_pending_une_seule_fois() → void
+      - test_cascade_amoureux_non_chasseur_ne_cree_aucun_hunter_pending() → void
+      - test_victime_directe_chasseur_sans_cascade_ne_cree_pas_de_hunter_pending_depuis_le_service() → void
 
 // tests/Unit/Services/PhaseGuardTest.php
 PhaseGuardTest.php
