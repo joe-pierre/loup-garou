@@ -919,6 +919,27 @@
       préexistants, environnement local sans Reverb démarré, fichiers non touchés par
       cette tâche). `npm run build` sans erreur.
 
+## Phase 57 — Notification de mort par chagrin des amoureux (2026-07-25)
+
+- [x] `PlayerEliminationService::eliminate()` — branche cascade amoureux : après l'appel
+      récursif, `$lover->load('user')` + `broadcast(new PlayerEliminated($game, $lover,
+      'heartbreak'))` (même pattern que les 4 call sites existants, avant le bloc
+      `hunter_pending` déjà en place). Le `$player` du paramètre initial reste sous la
+      responsabilité de l'appelant, aucune duplication du broadcast normal.
+- [x] `game-state.js::handlePlayerEliminated()` — branche `reason === 'heartbreak'` :
+      toast public dédié "💔 {pseudo} meurt de chagrin après la mort de son amoureux —
+      c'était le {rôle}.", distinct du toast générique "💀 {pseudo} était le {rôle}".
+      Aucun toast personnel séparé ajouté (voir DECISIONS.md — contrairement au poison
+      Sorcière, pas de problème de timing lié à une redirection de page ici).
+- [x] `PlayerEliminationServiceTest` — `Event::fake()` ajouté aux tests de cascade
+      (jusqu'ici absents car `eliminate()` ne broadcastait jamais rien), nouveau test
+      `test_cascade_broadcast_player_eliminated_reason_heartbreak_uniquement_pour_lamoureux`
+      (broadcast `heartbreak` pour l'amoureux cascadé, jamais pour le `$player` initial),
+      assertion `Event::assertNotDispatched` ajoutée au test amoureux-déjà-mort.
+- [x] `php artisan test` : 299/299 tests pertinents verts (298 avant + 1 nouveau, 6 échecs
+      `BroadcastException` préexistants, environnement local sans Reverb démarré, fichiers
+      non touchés par cette tâche). `npm run build` sans erreur.
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
