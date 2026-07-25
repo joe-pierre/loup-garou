@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-25 — Écran Voyante (seer_result) se referme sur un mauvais repère temporel
+
+- **Symptôme :** entre la fin du tour de la Voyante et le début réel du tour des Loups, un délai anormal de ~10-14s était observé (audit dédié, partie réelle à 6 joueurs) — l'écran `seer_result` de la Voyante repassait à `village_sleeping` bien avant que les Loups ne démarrent réellement côté serveur.
+- **Cause :** `night.blade.php` (listener `seer-result`) utilisait un `setTimeout(5000)` fixe, indexé sur le mauvais repère (déclenché dès réception de `SeerResult`, qui peut arriver à mi-timer via l'inspection de consolation), au lieu du vrai passage aux Loups (`seerTimer + 2s` côté serveur).
+- **Fix :** suppression du `setTimeout(5000)` — la Voyante reste sur `seer_result` jusqu'au dismiss volontaire (bouton "J'ai compris" déjà existant) ou jusqu'à `DayStarted`. Commentaire stale de `ProcessSeerTurn.php` ("+5s") corrigé en "+2s" (valeur réelle du code). Voir DECISIONS.md "Écran Voyante (seer_result) se referme sur un mauvais repère temporel" pour le détail complet (pourquoi `NightResyncService` et `WerewolvesTurnStarted` n'étaient pas des options viables).
+
+---
+
 ### [x] 2026-07-25 — Nombre de voix non affiché en temps réel pendant le vote de jour
 
 - **Symptôme :** contrairement à l'élection du Maire, `day.blade.php` n'affichait jamais le nombre de voix ni la barre de progression à côté du pseudo d'un joueur pendant le vote de jour, bien que le mécanisme d'affichage (`#vbar-{id}`, libellé "X votes") soit déjà en place dans le template — aucune erreur JS visible, l'affichage restait juste silencieusement vide.

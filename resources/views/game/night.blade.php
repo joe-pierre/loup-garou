@@ -905,12 +905,11 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                             const color = this.seerResult.isWerewolf ? '#8b0000' : '#16a34a';
                             gsap.to('#seer-result-card', { boxShadow: `0 0 30px ${color}`, duration: 0.5 });
                         });
-                        // Après 5s sans action → basculer automatiquement vers village_sleeping
-                        setTimeout(() => {
-                            if (this.nightPhase === 'seer_result') {
-                                this.nightPhase = 'village_sleeping';
-                            }
-                        }, 5000);
+                        // Pas de minuterie client : le bouton "J'ai compris" (dismiss volontaire,
+                        // voir le bloc x-show="nightPhase === 'seer_result'") laisse la Voyante
+                        // quitter l'écran quand elle le souhaite. Aucune transition automatique
+                        // ici — un setTimeout fixe recréerait le bug (repère mi-timer + 5s au lieu
+                        // du vrai seerTimer + 2s serveur, voir DECISIONS.md).
                     });
                 }
 

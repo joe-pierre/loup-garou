@@ -955,6 +955,24 @@
 - [x] `npm run build` sans erreur. Aucun test PHP affecté (fix Blade/Alpine pur, aucun changement
       backend).
 
+## Phase 56 — Bugfix écran Voyante (seer_result) minuterie client déconnectée du serveur (2026-07-25)
+
+- [x] Audit préalable de `NightResyncService`/`night_sub_phase` (demandé explicitement) —
+      confirmé réservé au chargement de page / reconnexion Echo (`GameController::state()`),
+      jamais un flux live pour un client déjà connecté. Écarté comme solution (Option B).
+- [x] Confirmé que `WerewolvesTurnStarted` est structurellement inaccessible à la Voyante
+      (canal privé `game.{id}.werewolves`, abonnement Echo conditionné à `isWolfEffective`
+      dans `game-state.js`) — écarte aussi la piste "écouter le même event que les loups".
+- [x] `night.blade.php` (`nightScreen()`, listener `seer-result`) — suppression du
+      `setTimeout(5000)` qui ramenait prématurément `nightPhase` à `village_sleeping`.
+      Le bouton "J'ai compris" (dismiss volontaire déjà existant) et `DayStarted`
+      (redirection globale déjà gérée) suffisent, sans nouvelle minuterie ni nouvel event.
+- [x] `ProcessSeerTurn.php` — commentaire stale ("+5s") corrigé en "+2s" (valeur réelle).
+- [x] `tests/Feature/Game/SeerResultScreenTest.php` créé (2 tests : absence du pattern
+      fautif dans la vue rendue, présence du bouton de dismiss volontaire).
+      301 tests (299 + 2 nouveaux, aucun cassé — 6 échecs `BroadcastException`
+      pré-existants liés à Reverb non démarré localement, confirmés identiques avant fix).
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
