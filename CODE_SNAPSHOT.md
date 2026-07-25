@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 14h25
+Generated at: 15h16
 
 ## PHP Analysis (Core Logic)
 
@@ -869,7 +869,7 @@ GameController.php
       - night(Request $request, string $code) → return view('game.night', compact('game', 'player', 'players'))
       - redirectToCurrentPhase(Game $game, string $code) → return match (true) { PhaseGuard::isDay($game) => redirect()->route('game.day', ['code' => $code]), PhaseGuard::isNight($game) => redirect()->route('game.night', ['code' => $code]), $game->status === 'electing_mayor' => redirect()->route('game.mayor-election', ['code' => $code]), $game->status === 'finished' && $game->winner_team !== null => redirect()->route('game.finished', ['code' => $code]), $game->status === 'finished' => redirect()->route('game.cancelled', ['code' => $code]), default => redirect()->route('game.role-reveal', ['code' => $code]), }
       - history(Request $request, string $code) → return view('game.history', compact('game', 'players', 'timeline', 'duration', 'myPlayer'))
-      - state(Request $request, string $code) → return response()->json(['success' => true, 'data' => ['phase' => $game->status, 'round' => $game->round, 'my_role' => $player->role, 'is_alive' => (bool) $player->is_alive, 'is_mayor' => (bool) $player->is_mayor, 'phase_remaining_seconds' => $game->phaseRemainingSeconds(), 'seer_turn_active' => $seerTurnActive, 'werewolves_turn_active' => $werewolvesTurnActive, 'night_action' => $nightAction, 'allies' => $allies, 'players' => $players]])
+      - state(Request $request, string $code) → return response()->json(['success' => true, 'data' => [ 'phase' => $game->status, 'round' => $game->round, 'my_role' => $player->role, 'is_alive' => (bool) $player->is_alive, 'is_mayor' => (bool) $player->is_mayor, 'phase_remaining_seconds' => $game->phaseRemainingSeconds(), 'seer_turn_active' => $seerTurnActive, 'werewolves_turn_active' => $werewolvesTurnActive, 'night_action' => $nightAction, 'allies' => $allies, // Strictement privé au joueur courant — jamais dans `players` ci-dessous // (voir SPEC_CUPIDON.md §1 "Confidentialité totale"). null si pas de Cupidon // ou pas de couple formé. 'my_lover_player_id' => $player->lover_player_id, 'players' => $players ]])
       - quit(Request $request, int $id) → return response()->json(['success' => true])
       - disconnect(Request $request, int $id) → return response()->json(['success' => true])
       - reconnect(Request $request, string $code) → return response()->json(['success' => true])

@@ -896,6 +896,29 @@
 - [x] Branche `fix/lovers-victory-witch-deferred-resolution` — mergée dans `dev` (`05c0695`),
       même constat que ci-dessus.
 
+## Phase 56 — Icône cœur privée sur le pseudo des amoureux (2026-07-25)
+
+- [x] `GameController::state()` — `my_lover_player_id` ajouté (strictement privé au joueur
+      courant, `$player->lover_player_id` déjà chargé, jamais dans la liste `players`
+      générique). Vérifié : aucune fuite préexistante de `lover_player_id` nulle part
+      (aucun `@json($players)`/sérialisation brute de `GamePlayer`, tous les payloads —
+      `GameFinished` inclus — whitelistent déjà explicitement leurs champs).
+- [x] `day.blade.php` — const JS `MY_LOVER_ID` ajoutée ; cœur 💘 (`#f472b6`) sur sa propre
+      ligne + celle du partenaire dans la liste de vote du jour et la liste de cibles
+      du Chasseur.
+- [x] `night.blade.php` — même const `MY_LOVER_ID` (listes réactives loups) + comparaison
+      directe `$player->lover_player_id` en Blade (listes rendues serveur) : village
+      endormi, cibles Voyante, cibles Sorcière, cibles Chasseur, votes de la meute.
+      Écran de sélection de Cupidon lui-même exclu (aucun couple n'existe encore pendant
+      son propre tour) ; `mayor-election.blade.php` exclu (se déroule avant la nuit 1,
+      donc avant que Cupidon n'agisse).
+- [x] Voir `DECISIONS.md` — choix assumé d'exposer l'info à la fois via `/state` (lettre
+      du prompt) et directement en rendu serveur Blade (`day()`/`night()` ne consomment
+      pas `players` depuis `/state` pour leurs listes locales).
+- [x] `php artisan test` : 298/298 tests pertinents verts (6 échecs `BroadcastException`
+      préexistants, environnement local sans Reverb démarré, fichiers non touchés par
+      cette tâche). `npm run build` sans erreur.
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
