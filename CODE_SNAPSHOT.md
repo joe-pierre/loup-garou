@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 15h16
+Generated at: 20h14
 
 ## PHP Analysis (Core Logic)
 
@@ -1648,6 +1648,7 @@ PlayerEliminationServiceTest.php
       - linkLovers(GamePlayer $a, GamePlayer $b) → void
       - test_eliminer_un_joueur_pose_is_alive_false() → void
       - test_eliminer_un_amoureux_cascade_sur_lautre_amoureux() → void
+      - test_cascade_broadcast_player_eliminated_reason_heartbreak_uniquement_pour_lamoureux() → void
       - test_cascade_ne_re_elimine_pas_un_amoureux_deja_mort() → void
       - test_cascade_amoureux_chasseur_cree_hunter_pending_en_phase_nuit() → void
       - test_cascade_amoureux_chasseur_cree_hunter_pending_en_phase_jour() → void
