@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-25 — Chasseur mort de chagrin (cascade amoureux) ne tirait jamais
+
+- **Symptôme :** quand l'amoureux (lien Cupidon) d'une victime meurt par cascade de chagrin, s'il s'agit du Chasseur, il ne tire jamais avant de mourir — contrairement à tous les autres chemins de mort du Chasseur (loups, poison Sorcière, vote village).
+- **Cause :** `PlayerEliminationService::eliminate()` ne vérifiait `isHunter()` que via les 4 call sites existants sur leur propre victime directe ; l'amoureux cascadé meurt entièrement à l'intérieur du service, hors de leur portée — aucun d'eux ne le voit jamais.
+- **Fix :** vérification `isHunter()` + création du `GameAction hunter_pending` ajoutée directement dans la branche cascade de `PlayerEliminationService::eliminate()`, avec round/phase déterminés via `$lover->game->isNightPhase()`. Voir DECISIONS.md "Chasseur mort de chagrin (cascade amoureux) ne tirait jamais" pour le détail complet.
+
+---
+
 ### [x] 2026-07-24 — Écran de fin de partie et historique affichaient "Loups"/"Annulée" pour une victoire des Amoureux
 
 - **Symptôme :** même après correction des deux bugs backend (SFICZ8, RIQPAZ), une victoire des amoureux correctement persistée (`winner_team = 'lovers'`) aurait quand même affiché "Les Loups ont gagné !" sur l'écran de fin et "🏁 Annulée" dans l'historique.

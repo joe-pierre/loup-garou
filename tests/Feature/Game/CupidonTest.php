@@ -3,11 +3,16 @@
 namespace Tests\Feature\Game;
 
 use App\Events\Game\CupidonTurnStarted;
+use App\Events\Game\DayStarted;
 use App\Events\Game\GameFinished;
+use App\Events\Game\HunterShot;
 use App\Events\Game\LoverRevealed;
+use App\Events\Game\MayorSuccessionStarted;
 use App\Events\Game\SeerTurnStarted;
 use App\Jobs\ProcessCupidonAutoAction;
 use App\Jobs\ProcessCupidonTurn;
+use App\Jobs\ProcessHunterTurn;
+use App\Jobs\ProcessMayorSuccession;
 use App\Jobs\ProcessNightActions;
 use App\Jobs\ProcessNightEnd;
 use App\Jobs\ProcessSeerTurn;
@@ -361,6 +366,181 @@ class CupidonTest extends TestCase
             'game_id' => $game->id, 'player_id' => $hunter->id, 'type' => 'hunter_shot',
             'target_player_id' => $loverA->id, 'round' => 1,
         ]);
+    }
+
+    // ------------------------------------------------------------------
+    // 4ter. Chasseur mort de chagrin (cascade amoureux) : doit pouvoir tirer
+    //    avant la fin de la nuit / avant la nuit suivante, comme n'importe
+    //    quel autre chemin de mort du Chasseur. Fix PlayerEliminationService.
+    // ------------------------------------------------------------------
+
+    public function test_amoureux_chasseur_mort_de_chagrin_nuit_peut_tirer_avant_fin_de_nuit(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game        = $this->makeNightGame();
+        $wolfUser    = User::factory()->create();
+        $wolf        = GamePlayer::factory()->werewolf()->create(['game_id' => $game->id, 'user_id' => $wolfUser->id]);
+        $loverA      = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+        $hunterUser  = User::factory()->create();
+        $loverB      = GamePlayer::factory()->hunter()->create(['game_id' => $game->id, 'user_id' => $hunterUser->id]);
+        $shootTarget = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+        $filler      = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+
+        $this->linkLovers($loverA, $loverB);
+
+        $this->actingAs($wolfUser)->postJson("/game/{$game->id}/vote/night", [
+            'target_player_id' => $loverA->id,
+        ])->assertStatus(200);
+
+        (new ProcessNightActions($game->id, 1))->handle(app(VoteService::class), app(WinConditionChecker::class));
+
+        // Le Chasseur (amoureux de la victime des loups) meurt en cascade, mais son
+        // hunter_pending doit avoir été créé par PlayerEliminationService lui-même.
+        $this->assertFalse($loverA->fresh()->is_alive);
+        $this->assertFalse($loverB->fresh()->is_alive);
+        $this->assertDatabaseHas('game_actions', [
+            'game_id' => $game->id, 'player_id' => $loverB->id, 'type' => 'hunter_pending',
+            'round' => 1, 'phase' => 'night',
+        ]);
+
+        (new ProcessNightEnd($game->id, 1))->handle(app(PhaseManager::class));
+
+        // La nuit ne se termine pas tant que le Chasseur n'a pas tiré (ou renoncé).
+        Event::assertNotDispatched(DayStarted::class);
+        $this->assertSame('processing_night', $game->fresh()->status);
+        Queue::assertPushed(ProcessHunterTurn::class, fn ($job) => $job->gameId === $game->id
+            && $job->round === 1
+            && $job->hunterId === $loverB->id);
+
+        (new ProcessHunterTurn($game->id, 1, $loverB->id))
+            ->handle(app(PhaseManager::class), app(WinConditionChecker::class));
+
+        $response = $this->actingAs($hunterUser)->postJson("/game/{$game->id}/hunter/shoot", [
+            'target_player_id' => $shootTarget->id,
+        ]);
+        $response->assertStatus(200);
+
+        $this->assertFalse($shootTarget->fresh()->is_alive);
+        $this->assertDatabaseHas('game_actions', [
+            'game_id' => $game->id, 'player_id' => $loverB->id, 'type' => 'hunter_shot',
+            'target_player_id' => $shootTarget->id, 'round' => 1,
+        ]);
+        Event::assertDispatched(HunterShot::class, fn ($e) => $e->hunter->id === $loverB->id && $e->target->id === $shootTarget->id);
+    }
+
+    public function test_amoureux_chasseur_mort_de_chagrin_jour_peut_tirer_avant_nuit_suivante(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game        = Game::factory()->create(['status' => 'day', 'max_players' => 6, 'round' => 1]);
+        $wolf        = GamePlayer::factory()->werewolf()->create(['game_id' => $game->id]);
+        $loverA      = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+        $hunterUser  = User::factory()->create();
+        $loverB      = GamePlayer::factory()->hunter()->create(['game_id' => $game->id, 'user_id' => $hunterUser->id]);
+        $v2          = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+        $v3          = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+        $shootTarget = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+
+        $this->linkLovers($loverA, $loverB);
+
+        GameAction::create([
+            'game_id' => $game->id, 'player_id' => $v2->id, 'type' => 'day_vote',
+            'weight' => 1, 'target_player_id' => $loverA->id, 'round' => 1, 'phase' => 'day',
+        ]);
+        GameAction::create([
+            'game_id' => $game->id, 'player_id' => $v3->id, 'type' => 'day_vote',
+            'weight' => 1, 'target_player_id' => $loverA->id, 'round' => 1, 'phase' => 'day',
+        ]);
+
+        app(VoteService::class)->resolveDayVote($game);
+
+        $this->assertFalse($loverA->fresh()->is_alive);
+        $this->assertFalse($loverB->fresh()->is_alive);
+        // dispatchDayVoteConsequences() consomme (delete) le hunter_pending créé par la
+        // cascade dans la même transaction que la résolution du vote — contrairement au
+        // chemin nuit (ProcessNightEnd consomme plus tard), il n'y a donc plus de ligne en
+        // base une fois resolveDayVote() retourné. La preuve que le fix a fonctionné est le
+        // dispatch de ProcessHunterTurn ciblant bien le Chasseur cascadé (loverB), pas v2/v3.
+        $this->assertDatabaseMissing('game_actions', ['game_id' => $game->id, 'type' => 'hunter_pending']);
+        Queue::assertPushed(ProcessHunterTurn::class, fn ($job) => $job->gameId === $game->id
+            && $job->round === 1
+            && $job->hunterId === $loverB->id);
+
+        (new ProcessHunterTurn($game->id, 1, $loverB->id, false))
+            ->handle(app(PhaseManager::class), app(WinConditionChecker::class));
+
+        $response = $this->actingAs($hunterUser)->postJson("/game/{$game->id}/hunter/shoot", [
+            'target_player_id' => $shootTarget->id,
+        ]);
+        $response->assertStatus(200);
+
+        $this->assertFalse($shootTarget->fresh()->is_alive);
+        $this->assertDatabaseHas('game_actions', [
+            'game_id' => $game->id, 'player_id' => $loverB->id, 'type' => 'hunter_shot',
+            'target_player_id' => $shootTarget->id, 'round' => 1,
+        ]);
+        Event::assertDispatched(HunterShot::class, fn ($e) => $e->hunter->id === $loverB->id && $e->target->id === $shootTarget->id);
+    }
+
+    /**
+     * Priorité Chasseur > Maire (RISK_GUARDS Guard #2) appliquée à la cascade amoureux :
+     * l'amoureux mort de chagrin est à la fois Chasseur et Maire — le tir doit avoir lieu
+     * AVANT toute succession, sans double-déclenchement ni inversion d'ordre.
+     */
+    public function test_amoureux_chasseur_maire_mort_de_chagrin_tir_avant_succession(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game        = $this->makeNightGame();
+        $wolfUser    = User::factory()->create();
+        $wolf        = GamePlayer::factory()->werewolf()->create(['game_id' => $game->id, 'user_id' => $wolfUser->id]);
+        $loverA      = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+        $hunterUser  = User::factory()->create();
+        $loverB      = GamePlayer::factory()->hunter()->create([
+            'game_id' => $game->id, 'user_id' => $hunterUser->id, 'is_mayor' => true,
+        ]);
+        $shootTarget = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+        $filler      = GamePlayer::factory()->villager()->create(['game_id' => $game->id]);
+
+        $this->linkLovers($loverA, $loverB);
+
+        $this->actingAs($wolfUser)->postJson("/game/{$game->id}/vote/night", [
+            'target_player_id' => $loverA->id,
+        ])->assertStatus(200);
+
+        (new ProcessNightActions($game->id, 1))->handle(app(VoteService::class), app(WinConditionChecker::class));
+
+        $this->assertFalse($loverB->fresh()->is_alive);
+        // is_mayor doit rester true : aucune succession n'a dû s'exécuter à ce stade.
+        $this->assertTrue($loverB->fresh()->is_mayor);
+        Event::assertNotDispatched(MayorSuccessionStarted::class);
+        Queue::assertNotPushed(ProcessMayorSuccession::class);
+
+        (new ProcessNightEnd($game->id, 1))->handle(app(PhaseManager::class));
+
+        Queue::assertPushed(ProcessHunterTurn::class, fn ($job) => $job->hunterId === $loverB->id && $job->isMayor === true);
+
+        (new ProcessHunterTurn($game->id, 1, $loverB->id, isMayor: true))
+            ->handle(app(PhaseManager::class), app(WinConditionChecker::class));
+
+        // Toujours aucune succession déclenchée avant le tir volontaire.
+        Event::assertNotDispatched(MayorSuccessionStarted::class);
+        Queue::assertNotPushed(ProcessMayorSuccession::class);
+
+        $response = $this->actingAs($hunterUser)->postJson("/game/{$game->id}/hunter/shoot", [
+            'target_player_id' => $shootTarget->id,
+        ]);
+        $response->assertStatus(200);
+
+        $this->assertFalse($shootTarget->fresh()->is_alive);
+
+        // La succession est déclenchée APRÈS le tir, une seule fois.
+        Event::assertDispatched(MayorSuccessionStarted::class);
+        Queue::assertPushed(ProcessMayorSuccession::class, 1);
     }
 
     // ------------------------------------------------------------------
