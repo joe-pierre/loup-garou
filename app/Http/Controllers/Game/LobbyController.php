@@ -11,6 +11,7 @@ use App\Http\Requests\UpdateTimersRequest;
 use App\Models\Game;
 use App\Models\GamePlayer;
 use App\Services\GameService;
+use App\Services\TimerCalculator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 
@@ -145,6 +146,8 @@ class LobbyController extends Controller
             ->select(['id', 'pseudo', 'is_host', 'is_ready'])
             ->get();
 
-        return view('game.waiting-room', compact('game', 'player', 'players'));
+        $timerDefaults = TimerCalculator::forPlayerCount($game->max_players);
+
+        return view('game.waiting-room', compact('game', 'player', 'players', 'timerDefaults'));
     }
 }

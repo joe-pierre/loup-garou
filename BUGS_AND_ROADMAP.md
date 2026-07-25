@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-25 — Défauts de timers désynchronisés entre TimerCalculator et la modale host
+
+- **Symptôme :** la modale ⚙️ Paramètres de la waiting-room affichait 30/30/90 pour Voyante/Loups/Vote jour tant que l'hôte n'avait rien sauvegardé, quel que soit l'effectif de la salle — des constantes hardcodées jamais reliées à `TimerCalculator::TIMERS`.
+- **Cause :** `timerSettings()` (`waiting-room.blade.php`) utilisait des fallbacks `?? 30 / ?? 15 / ?? 90` écrits en dur à l'implémentation de la modale, jamais mis à jour pour lire `TimerCalculator::forPlayerCount()`.
+- **Fix :** `TimerCalculator::TIMERS` mis à jour (nouvelle table de défauts par effectif) ; `LobbyController::waitingRoom()` calcule `TimerCalculator::forPlayerCount($game->max_players)` et l'injecte à la vue ; `timerSettings()` lit ces défauts calculés au lieu des constantes. Voir DECISIONS.md "Défauts de timers désynchronisés entre TimerCalculator et la modale host" pour le détail complet.
+
+---
+
 ### [x] 2026-07-25 — Nombre de voix non affiché en temps réel pendant le vote de jour
 
 - **Symptôme :** contrairement à l'élection du Maire, `day.blade.php` n'affichait jamais le nombre de voix ni la barre de progression à côté du pseudo d'un joueur pendant le vote de jour, bien que le mécanisme d'affichage (`#vbar-{id}`, libellé "X votes") soit déjà en place dans le template — aucune erreur JS visible, l'affichage restait juste silencieusement vide.

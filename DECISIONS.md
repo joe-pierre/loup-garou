@@ -1835,3 +1835,21 @@ une const locale d'une vue Blade.
 **Leçon :** avant d'implémenter "exposer X via l'endpoint Y", vérifier si les vues cibles consomment réellement Y pour construire leurs listes de joueurs, ou si elles ont leur propre state local initialisé au rendu serveur (cas de `dayScreen()`/`nightScreen()` dans ce projet, contrairement au store central `gameState()`). Le "seul store source de vérité" (`game-state.js`, règle CLAUDE.md) ne couvre pas encore ces deux vues pour `players[]` — dette préexistante à garder en tête pour toute future donnée par-joueur à afficher dans une liste.
 
 **Statut :** 🔵 Choix assumé
+
+## [RÉSOLU] Défauts de timers désynchronisés entre TimerCalculator et la modale host
+
+**Contexte :** `fix/timer-defaults-sync` — `app/Services/TimerCalculator.php`, `app/Http/Controllers/Game/LobbyController.php`, `resources/views/game/waiting-room.blade.php`.
+
+**Symptôme / Problème :** la modale ⚙️ Paramètres de la waiting-room (`timerSettings()` dans `waiting-room.blade.php`) affichait des fallbacks codés en dur (`seer ?? 30`, `werewolves ?? 30`, `day_vote ?? 90`) tant que l'hôte n'avait rien sauvegardé, totalement déconnectés de `TimerCalculator::TIMERS` (qui donne par exemple 20/25/60 pour 6 joueurs en v1.2). Confirmé sur une salle réelle à 6 joueurs max.
+
+**Cause / Alternatives :** deux fichiers évoluent indépendamment sans jamais avoir été reliés : `TimerCalculator::TIMERS` (constante par effectif, déjà utilisée par `GameService::startGame()` via `forPlayerCount()` pour initialiser `games.timers`) et le fallback Blade de la modale, écrit en dur au moment de l'implémentation de la modale (Prompt E, Phase 17) et jamais mis à jour pour consommer `TimerCalculator::forPlayerCount()`. `mayor_election`/`mayor_succession` (dans `TimerCalculator::FIXED`) n'étaient pas concernés — seuls `seer`/`werewolves`/`day_vote` varient par effectif.
+
+**Fix / Décision :**
+1. `TimerCalculator::TIMERS` mis à jour avec la nouvelle table de défauts (`day_vote` uniformisé à 115s sur les 4 effectifs, `werewolves` à 45s dès 8 joueurs) — seuls les défauts changent, `config('game.timers.limits')` (min/max) non touché.
+2. `LobbyController::waitingRoom()` calcule `TimerCalculator::forPlayerCount($game->max_players)` (même pattern que `GameService::startGame()`, `max_players` déjà garanti dans `[6, 8, 10, 12]` par `CreateGameRequest`, aucun mapping nécessaire) et l'injecte à la vue sous `$timerDefaults`.
+3. `timerSettings()` (`waiting-room.blade.php`) : les 5 fallbacks (`mayor_election`, `seer`, `werewolves`, `mayor_succession`, `day_vote`) lisent désormais `$timerDefaults[$clé]` au lieu de constantes hardcodées — la priorité `settings['timers'][$clé] ?? $timerDefaults[$clé]` reste le même pattern Guard #1 (RISK_GUARDS.md) qu'avant, seule la valeur de repli change de source. `mayor_election`/`mayor_succession` passent aussi par `$timerDefaults` (retourné par `forPlayerCount()`, qui fusionne déjà `TIMERS` et `FIXED`) plutôt que par une constante dupliquée dans la vue — une seule source de vérité au lieu de deux.
+4. Tests `WaitingRoomTimerDefaultsTest` (6 tests) : salle 6/8/10/12 joueurs sans settings → défauts calculés affichés ; settings déjà sauvegardés → priorité conservée ; `mayor_election`/`mayor_succession` fixes quel que soit l'effectif.
+
+**Leçon :** une constante de configuration par défaut (`TimerCalculator::TIMERS`) n'est une source de vérité unique que si tous ses points de consommation passent par la même méthode d'accès (`forPlayerCount()`/`get()`) — un fallback Blade écrit en dur au moment de l'implémentation d'une UI reste invisible aux futures modifications de cette constante tant que personne ne grep les deux ensemble. Réflexe à généraliser : après toute modification d'une constante de défaut consommée par plusieurs couches (Service + vue), `grep` la vue pour vérifier qu'aucun fallback hardcodé équivalent n'existe encore.
+
+**Statut :** ✅ Résolu

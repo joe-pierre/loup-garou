@@ -430,11 +430,11 @@
     function timerSettings() {
         return {
             timers: {
-                mayor_election:   @json($game->settings['timers']['mayor_election'] ?? 30),
-                seer:             @json($game->settings['timers']['seer'] ?? 30),
-                werewolves:       @json($game->settings['timers']['werewolves'] ?? 30),
-                mayor_succession: @json($game->settings['timers']['mayor_succession'] ?? 15),
-                day_vote:         @json($game->settings['timers']['day_vote'] ?? 90),
+                mayor_election:   @json($game->settings['timers']['mayor_election'] ?? $timerDefaults['mayor_election']),
+                seer:             @json($game->settings['timers']['seer'] ?? $timerDefaults['seer']),
+                werewolves:       @json($game->settings['timers']['werewolves'] ?? $timerDefaults['werewolves']),
+                mayor_succession: @json($game->settings['timers']['mayor_succession'] ?? $timerDefaults['mayor_succession']),
+                day_vote:         @json($game->settings['timers']['day_vote'] ?? $timerDefaults['day_vote']),
             },
             limits: {
                 mayor_election:   { min: 20, max: 60 },
