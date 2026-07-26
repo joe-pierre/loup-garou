@@ -15,6 +15,9 @@
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
+  {{-- AudioManager seul (pas app.js — cette page utilise Alpine via CDN, pas le bundle) --}}
+  @vite(['resources/js/audio-manager.js'])
+
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -170,6 +173,24 @@
       border-radius: 50%;
       opacity: 0.6;
       pointer-events: none;
+    }
+
+    /* ===== TOGGLE MUTE AUDIO ===== */
+    .mute-halo {
+      position: absolute;
+      inset: 0;
+      border-radius: 9999px;
+      background-color: #c9a84c;
+      pointer-events: none;
+      animation: mute-halo-pulse 2s ease-out infinite;
+    }
+    @keyframes mute-halo-pulse {
+      0%   { transform: scale(1);   opacity: 0.6; }
+      70%  { transform: scale(1.7); opacity: 0; }
+      100% { transform: scale(1.7); opacity: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .mute-halo { animation: none; }
     }
   </style>
 </head>
@@ -507,6 +528,84 @@
       duration: 0.8,
       ease: "power2.out",
       stagger: 0.15,
+    });
+  </script>
+
+  {{-- ═══════════════ TOGGLE MUTE AUDIO D'AMBIANCE ═══════════════ --}}
+  {{-- Page hors bundle Alpine (CDN autonome) : bouton vanilla JS, pas de x-data.
+       Bas-droite : cette page n'a ni footer nav ni toast à éviter (contrairement
+       à layouts/game.blade.php), donc pas de décalage nécessaire ici. --}}
+  <div id="mute-toggle-wrap" class="fixed bottom-4 right-4 z-40">
+    <span class="mute-halo" aria-hidden="true"></span>
+    <button
+      type="button"
+      id="mute-toggle-btn"
+      class="relative w-12 h-12 rounded-full flex items-center justify-center shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2"
+      style="background-color:#c9a84c; color:#1a1206; --tw-ring-color:#c9a84c; --tw-ring-offset-color:#0a0f1e;"
+      aria-label="Activer ou couper le son"
+    >
+      <svg id="icon-volume-on" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+      </svg>
+      <svg id="icon-volume-off" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none;">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <line x1="23" y1="9" x2="17" y2="15"></line>
+        <line x1="17" y1="9" x2="23" y2="15"></line>
+      </svg>
+    </button>
+    <div
+      id="mute-toggle-tooltip"
+      class="absolute bottom-full right-0 mb-2 px-2 py-1 rounded text-xs whitespace-nowrap transition-opacity duration-200"
+      style="background-color:#111827; color:#e8e0d0; border:1px solid rgba(201,168,76,0.4); opacity:0; pointer-events:none;"
+    >Son coupé</div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Premier son du site : ne se déclenche jamais sur window.onload, uniquement
+      // sur la toute première interaction utilisateur valide n'importe où sur la
+      // page — clic, tap ou touche clavier (jamais mousemove, non reconnu comme
+      // geste d'activation par les navigateurs) — voir resources/js/audio-manager.js.
+      // Chaque écouteur se détache après un seul déclenchement ({ once: true }).
+      const playSiteMusicOnce = () => {
+        window.AudioManager?.crossfadeTo('site_music');
+      };
+      document.addEventListener('click',      playSiteMusicOnce, { capture: true, once: true });
+      document.addEventListener('touchstart', playSiteMusicOnce, { capture: true, once: true });
+      document.addEventListener('keydown',    playSiteMusicOnce, { capture: true, once: true });
+
+      const btn      = document.getElementById('mute-toggle-btn');
+      const iconOn   = document.getElementById('icon-volume-on');
+      const iconOff  = document.getElementById('icon-volume-off');
+      const tooltip  = document.getElementById('mute-toggle-tooltip');
+      let hideTimer  = null;
+
+      const syncIcon = () => {
+        const muted = window.AudioManager?.isMuted() ?? true;
+        iconOn.style.display  = muted ? 'none' : '';
+        iconOff.style.display = muted ? '' : 'none';
+        tooltip.textContent   = muted ? 'Son coupé' : 'Son actif';
+      };
+      const flashTooltip = (durationMs) => {
+        tooltip.style.opacity = '1';
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(() => { tooltip.style.opacity = '0'; }, durationMs);
+      };
+
+      syncIcon();
+      // Affiché quelques secondes au chargement pour rendre le statut explicite
+      // sans avoir à cliquer, puis se comporte comme un tooltip normal (survol).
+      flashTooltip(3000);
+
+      btn.addEventListener('click', () => {
+        window.AudioManager?.toggleMute();
+        syncIcon();
+        flashTooltip(1500);
+      });
+      btn.addEventListener('mouseenter', () => { tooltip.style.opacity = '1'; clearTimeout(hideTimer); });
+      btn.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
     });
   </script>
 </body>

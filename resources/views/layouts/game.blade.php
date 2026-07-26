@@ -81,6 +81,23 @@
     );
     pointer-events: none;
 }
+[x-cloak] { display: none !important; }
+.mute-halo {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background-color: #c9a84c;
+    pointer-events: none;
+    animation: mute-halo-pulse 2s ease-out infinite;
+}
+@keyframes mute-halo-pulse {
+    0%   { transform: scale(1);   opacity: 0.6; }
+    70%  { transform: scale(1.7); opacity: 0; }
+    100% { transform: scale(1.7); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mute-halo { animation: none; }
+}
     </style>
     @stack('styles')
 </head>
@@ -138,6 +155,44 @@
 
     {{-- Overlay d'annonce de phase — au-dessus de tout (SPEC_TRANSITIONS.md §5.5) --}}
     <x-announcement-overlay />
+
+    {{-- ═══════════════ TOGGLE MUTE AUDIO D'AMBIANCE ═══════════════ --}}
+    {{-- Bas-droite, loin du bouton Quitter (top-16 right-4) — décalé au-dessus
+         du footer nav mobile (h-14) et le toast (voir <x-toast>, repoussé en
+         conséquence) pour ne jamais se superposer. Hors de tout <main> pour ne
+         jamais être piégé par un stacking context local (voir DECISIONS.md
+         "Modale paramètres waiting-room masquée..."). --}}
+    <div x-data="muteToggle()" class="fixed bottom-20 md:bottom-4 right-4 z-50">
+        <span class="mute-halo" aria-hidden="true"></span>
+        <button
+            type="button"
+            @click="toggle()"
+            @mouseenter="showTooltip = true"
+            @mouseleave="showTooltip = false"
+            class="relative w-12 h-12 rounded-full flex items-center justify-center shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2"
+            style="background-color:#c9a84c; color:#1a1206; --tw-ring-color:#c9a84c; --tw-ring-offset-color:#0a0f1e;"
+            :aria-label="muted ? 'Activer le son' : 'Couper le son'"
+        >
+            <svg x-show="!muted" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+            </svg>
+            <svg x-show="muted" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <line x1="23" y1="9" x2="17" y2="15"></line>
+                <line x1="17" y1="9" x2="23" y2="15"></line>
+            </svg>
+        </button>
+        <div
+            x-show="showTooltip"
+            x-transition.opacity
+            x-cloak
+            class="absolute bottom-full right-0 mb-2 px-2 py-1 rounded text-xs whitespace-nowrap"
+            style="background-color:#111827; color:#e8e0d0; border:1px solid rgba(201,168,76,0.4);"
+            x-text="muted ? 'Son coupé' : 'Son actif'"
+        ></div>
+    </div>
 
     <main class="pt-14 min-h-screen pb-16 md:pb-0" role="main" id="main-content">
         @yield('content')

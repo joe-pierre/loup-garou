@@ -206,6 +206,8 @@
                 if (this._initialized) return;
                 this._initialized = true;
 
+                window.AudioManager?.crossfadeTo('day_music');
+
                 gsap.fromTo('#me-header', { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' });
                 gsap.fromTo('#me-timer', { opacity: 0 }, { opacity: 1, duration: 0.5, delay: 0.05, ease: 'power2.out' });
                 gsap.fromTo('#me-candidates', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, delay: 0.15, ease: 'power2.out' });
@@ -237,7 +239,11 @@
                     this.electedMayor = ev.detail.pseudo;
                     this.wasRandom    = ev.detail.was_random;
                     this.showResult   = true;
-                    setTimeout(() => { sessionStorage.setItem('__internalNavigation', '1'); window.location.href = `/game/${this.gameCode}/night`; }, 6000);
+                    setTimeout(() => {
+                        sessionStorage.setItem('__internalNavigation', '1');
+                        window.AudioManager?.fadeOutCurrent();
+                        window.location.href = `/game/${this.gameCode}/night`;
+                    }, 6000);
                 });
             },
 

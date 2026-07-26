@@ -51,7 +51,9 @@
             return map[type] ?? map.info;
         },
     }"
-    class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-72 pointer-events-none"
+    {{-- bottom-36/md:bottom-20 (au lieu de bottom-4) : laisse la place au bouton
+         toggle mute audio, positionné bottom-20/md:bottom-4 right-4 (layouts/game.blade.php) --}}
+    class="fixed bottom-36 md:bottom-20 right-4 z-50 flex flex-col gap-2 w-72 pointer-events-none"
     aria-live="polite"
     aria-atomic="false"
     role="status"
