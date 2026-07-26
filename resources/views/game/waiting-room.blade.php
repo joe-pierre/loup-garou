@@ -104,7 +104,7 @@
         </div>
     </div>
 
-    <main class="relative z-10 w-full max-w-2xl mx-auto px-4 min-h-screen flex flex-col justify-center py-10">
+    <main class="relative w-full max-w-2xl mx-auto px-4 min-h-screen flex flex-col justify-center py-10">
 
         {{-- Code de partie --}}
         <div id="wr-header" class="text-center mb-8">
@@ -288,11 +288,11 @@
         {{-- Modale paramètres de la partie (host uniquement) --}}
         <div x-show="showSettingsModal"
              x-cloak
-             class="fixed inset-0 z-50 flex items-center justify-center"
+             class="fixed inset-0 z-[60] flex items-center justify-center"
              style="background:rgba(0,0,0,0.75);"
              @click.self="showSettingsModal = false">
 
-            <div class="relative w-full max-w-lg mx-4 rounded-xl p-6"
+            <div class="relative w-full max-w-lg mx-4 rounded-xl p-6 max-h-[85vh] overflow-y-auto"
                  style="background:#111827;
                         border:1px solid rgba(201,168,76,0.35);">
 
