@@ -555,6 +555,8 @@
             },
 
             init() {
+                window.AudioManager?.crossfadeTo('waiting_room');
+
                 gsap.fromTo('#wr-header', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' });
                 gsap.fromTo('#wr-progress', { opacity: 0, y: 15 }, { opacity: 1, y: 0, duration: 0.6, delay: 0.1, ease: 'power2.out' });
                 gsap.fromTo('#wr-players', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, delay: 0.2, ease: 'power2.out' });

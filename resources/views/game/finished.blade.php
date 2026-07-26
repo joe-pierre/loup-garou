@@ -239,6 +239,10 @@ $roleClass = fn(?string $r) => match($r) {
     const CONFETTI_COLOR_2 = '{{ $theme['confetti2'] }}';
 
     document.addEventListener('DOMContentLoaded', () => {
+        // "winner.ogg" joue pour tous les joueurs quelle que soit l'issue
+        // (village, loups ou amoureux) — jamais de logique différenciée par camp.
+        window.AudioManager?.crossfadeTo('winner');
+
         gsap.fromTo('.entrance',
             { opacity: 0, y: 50, scale: .95 },
             { opacity: 1, y: 0, scale: 1, duration: .9, ease: 'back.out(1.4)', stagger: .2, delay: .2,

@@ -712,6 +712,10 @@ export function gameState(gameId, userId) {
         // ════════════════════════════════════════════════════════════════════
         _navigateTo(url) {
             sessionStorage.setItem('__internalNavigation', '1');
+            // Fondu sortant de la musique d'ambiance avant de quitter la page — la
+            // page suivante décide elle-même de sa propre piste au chargement
+            // (voir resources/js/audio-manager.js).
+            window.AudioManager?.fadeOutCurrent();
             // setTimeout(0) garantit que le sessionStorage est flushé avant que
             // beforeunload soit déclenché — évite le faux /disconnect sur mobile.
             setTimeout(() => { window.location.href = url; }, 0);

@@ -1223,3 +1223,9 @@ Implémentation envisagée :
       un simple gap d'affichage Blade, un vrai contenu de notification push incorrect pour Cupidon.
       Les deux composants Blade `role-label.blade.php`/`<x-role-label>` qui lisaient `role_labels`
       semblent inutilisés (aucun appelant trouvé).
+- [ ] Musiques d'ambiance (`feat/ambient-music`) : `spectator.blade.php`, `summary.blade.php`,
+      `cancelled.blade.php` et `history.blade.php` n'ont aucune piste déclenchée (hors mapping explicite
+      de la spec) alors qu'ils héritent déjà du bouton toggle mute via `layouts/game.blade.php` — un
+      spectateur ne réentend donc jamais rien après sa mort. Étendre `AudioManager.crossfadeTo()` à ces
+      vues si demandé (`night_music`/`day_music` selon la phase réelle pour `spectator.blade.php`, silence
+      probablement correct pour les écrans de résumé/historique).

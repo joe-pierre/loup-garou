@@ -801,6 +801,8 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 if (this._initialized) return;
                 this._initialized = true;
 
+                window.AudioManager?.crossfadeTo('night_music');
+
                 // Afficher immédiatement le bandeau si mort au rechargement (sessionStorage vidé)
                 if (!MY_IS_ALIVE) {
                     this.showDeathBanner = true;

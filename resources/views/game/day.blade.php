@@ -546,6 +546,8 @@
                 if (this._initialized) return;
                 this._initialized = true;
 
+                window.AudioManager?.crossfadeTo('day_music');
+
                 // Afficher immédiatement le bandeau si mort au rechargement (sessionStorage vidé)
                 if (!MY_IS_ALIVE) {
                     this.showDeathBanner = true;

@@ -240,6 +240,9 @@
                 if (this._initialized) return;
                 this._initialized = true;
 
+                // Même son que la salle d'attente (SPEC "Musiques d'ambiance par phase de jeu")
+                window.AudioManager?.crossfadeTo('waiting_room');
+
                 const noMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
                 gsap.fromTo('#rr-title', { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' });
@@ -289,6 +292,7 @@
                 gsap.killTweensOf('#game-timer-fill');
                 gsap.killTweensOf('#reveal-timer-bar');
                 sessionStorage.setItem('__internalNavigation', '1');
+                window.AudioManager?.fadeOutCurrent();
                 window.location.href = '/game/{{ $game->code }}/mayor-election';
             },
 
@@ -312,7 +316,11 @@
                         'finished': '/game/{{ $game->code }}/finished',
                     };
                     const target = targets[data.phase];
-                    if (target && window.location.pathname !== target) { sessionStorage.setItem('__internalNavigation', '1'); window.location.href = target; }
+                    if (target && window.location.pathname !== target) {
+                        sessionStorage.setItem('__internalNavigation', '1');
+                        window.AudioManager?.fadeOutCurrent();
+                        window.location.href = target;
+                    }
                 } catch { }
             },
 
