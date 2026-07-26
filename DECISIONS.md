@@ -1,3 +1,19 @@
+## [RÉSOLU] Modale paramètres waiting-room masquée par le bouton Quitter — bump z-index seul insuffisant (piège de stacking context)
+
+**Contexte :** `fix/waiting-room-modal-zindex-scroll` — `resources/views/game/waiting-room.blade.php`. Bug signalé : sur mobile, le bouton "Quitter" (`fixed top-16 right-4 z-50`, ligne 94) passe devant le bouton ✕ de la modale paramètres (`fixed inset-0 z-50`, ligne 291), la rendant infermable.
+
+**Symptôme / Problème :** le fix demandé était de monter la modale à `z-[60]`. Vérification empirique (repro HTML isolé + Playwright headless, en comparant l'élément retourné par `document.elementFromPoint()` à la position du bouton Quitter) : ce bump seul **ne corrige rien** — le bouton Quitter reste au-dessus même avec la modale à `z-[60]`.
+
+**Cause / Alternatives :** la modale (et aussi la modale d'exclusion et l'overlay `isExcluded`) est imbriquée dans `<main class="relative z-10 ...">` (ligne 107). `position:relative` + `z-index` non-`auto` crée un nouveau *stacking context* : le `z-index` des descendants ne compte alors que **dans ce contexte**, jamais contre les frères/sœurs du contexte parent. `main` (z:10) est lui-même inférieur au `.btn-quit` racine (z:50) — donc tout son sous-arbre, quel que soit le z-index interne de ses enfants, reste peint sous le bouton. Seule option correcte : faire disparaître le stacking context isolant (retirer `z-10` de `main`, `relative` seul suffit et ne crée pas de contexte) plutôt que de continuer à augmenter le z-index de la modale (qui resterait piégé indéfiniment).
+
+**Fix / Décision :** retrait de `z-10` sur `<main>` (ligne 107, `relative` conservé — aucun élément du sous-arbre ne dépend de `main` comme ancêtre positionné) + `z-[60]` sur la modale paramètres (défense en profondeur, gardée telle que demandée) + `max-h-[85vh] overflow-y-auto` sur le conteneur interne pour le scroll (bug 2, indépendant). Confirmé après coup par le même repro Playwright : la modale passe bien au-dessus du bouton Quitter uniquement après retrait du `z-10`. Effet de bord positif : corrige aussi le même piège pour la modale d'exclusion et l'overlay `isExcluded`, imbriqués dans le même `<main>`.
+
+**Leçon :** un bug "même z-index, élément A masque B" n'est PAS toujours résolu en augmentant le z-index de B — si B a un ancêtre positionné avec un z-index explicite, cet ancêtre plafonne B au niveau de son propre z-index parmi ses frères/sœurs, quel que soit le z-index interne de B. Avant de bumper un z-index, remonter l'arbre DOM et chercher un ancêtre `position:relative|absolute|fixed` + `z-index` non-`auto` entre l'élément et le point où le conflit doit se résoudre.
+
+**Statut :** ✅ Résolu
+
+---
+
 ## [CHOIX] Halo pulsé du bouton "Entrer dans la partie" — cadre doré statique volontairement écrasé par le style `readyDone`
 
 **Contexte :** `feat/role-reveal-cta-visibility` — `resources/views/game/role-reveal.blade.php`.
