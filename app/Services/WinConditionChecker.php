@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Events\Game\GameFinished;
 use App\Events\Game\PhaseAnnouncement;
 use App\Models\Game;
+use App\Models\GameAction;
 use App\Notifications\GameFinishedNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -37,12 +38,23 @@ class WinConditionChecker
      * ce qui pouvait la faire courir en concurrence avec cancelGame() (voir DECISIONS.md).
      * Broadcasts et notifications restent HORS transaction (RISK_GUARDS Guard #5).
      *
-     * @param  Game $game La partie à vérifier
+     * Tir du Chasseur en attente (voir DECISIONS.md "Victoire Loups déclarée avant
+     * résolution du tir du Chasseur") : la victoire Loups/Village est reportée tant qu'un
+     * GameAction hunter_pending existe pour le round courant, ou que $awaitingHunterId est
+     * fourni (ProcessHunterTurn s'apprête à donner la main au Chasseur dont le hunter_pending
+     * a déjà été consommé par l'appelant) — un tir peut encore changer la parité. La victoire
+     * Amoureux reste prioritaire et immédiate (SPEC_CUPIDON.md §6), jamais reportée par ce guard.
+     *
+     * @param  Game     $game             La partie à vérifier
+     * @param  int|null $awaitingHunterId Identifiant du Chasseur sur le point de recevoir son
+     *                                    tour (ProcessHunterTurn uniquement) — traité comme un
+     *                                    tir en attente même si son hunter_pending a déjà été
+     *                                    supprimé par l'appelant pour éviter un double dispatch.
      * @return bool        true si une victoire a été détectée et la partie terminée, false sinon
      */
-    public function check(Game $game): bool
+    public function check(Game $game, ?int $awaitingHunterId = null): bool
     {
-        $decision = DB::transaction(function () use ($game) {
+        $decision = DB::transaction(function () use ($game, $awaitingHunterId) {
             $locked = Game::where('id', $game->id)->lockForUpdate()->first();
 
             // Idempotent : partie déjà terminée (victoire déjà persistée par un appel
@@ -68,6 +80,16 @@ class WinConditionChecker
             }
 
             if (! $winnerTeam) {
+                $hasPendingHunterShot = $awaitingHunterId !== null
+                    || GameAction::where('game_id', $locked->id)
+                        ->where('round', $locked->round)
+                        ->where('type', 'hunter_pending')
+                        ->exists();
+
+                if ($hasPendingHunterShot) {
+                    return null;
+                }
+
                 $aliveWerewolves = $locked->aliveWerewolvesCount();
                 $aliveOthers     = $locked->aliveVillagersCount();
 

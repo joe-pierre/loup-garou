@@ -1,5 +1,13 @@
 # BUGS CORRIGÉS
 
+### [x] 2026-07-27 — Victoire Loups déclarée avant résolution du tir du Chasseur (partie MGUIVJ)
+
+- **Symptôme :** partie MGUIVJ — 2 Loups + Chasseur + 2 non-loups vivants, les Loups tuent le Chasseur en Nuit 3, ce qui fait tomber l'effectif à exactement 2 Loups vs 2 non-loups (parité) — la partie s'est terminée immédiatement en "Victoire des Loups" sans que le Chasseur n'ait jamais eu l'occasion de tirer, alors qu'un `GameAction hunter_pending` avait bien été créé.
+- **Cause :** `WinConditionChecker::check()` n'avait aucune notion de tir de Chasseur en attente — appelé dans `ProcessNightActions::handle()` juste après la création du `hunter_pending`, il tranchait la victoire dès la parité atteinte, avant que `ProcessWitchTurn`/`ProcessNightEnd`/`ProcessHunterTurn` ne soient jamais dispatchés. Même défaut confirmé sur 5 des 7 call sites de `check()` (nuit et jour).
+- **Fix :** `check()` accepte désormais un état "tir en attente" (GameAction `hunter_pending` en base pour le round, ou paramètre `$awaitingHunterId` explicite depuis `ProcessHunterTurn`) et reporte la victoire Loups/Village tant qu'il n'est pas résolu — la victoire Amoureux reste, elle, toujours immédiate. Voir DECISIONS.md "Victoire Loups déclarée avant résolution du tir du Chasseur (partie MGUIVJ)" pour le détail complet (audit des 7 call sites, piste `startNight()` explorée puis abandonnée).
+
+---
+
 ### [x] 2026-07-25 — Écran Voyante (seer_result) se referme sur un mauvais repère temporel
 
 - **Symptôme :** entre la fin du tour de la Voyante et le début réel du tour des Loups, un délai anormal de ~10-14s était observé (audit dédié, partie réelle à 6 joueurs) — l'écran `seer_result` de la Voyante repassait à `village_sleeping` bien avant que les Loups ne démarrent réellement côté serveur.

@@ -71,7 +71,14 @@ class ProcessHunterTurn implements ShouldQueue
         // vérifier AVANT de donner la main au Chasseur, pas seulement dans le fallback
         // ci-dessous — sinon un Chasseur mort déclenche son tour même si la mort qui a
         // créé son hunter_pending a déjà fait tomber l'effectif à 2 amoureux mutuels.
-        if ($winChecker->check($game)) {
+        //
+        // $awaitingHunterId = $this->hunterId : à ce stade l'appelant (ProcessNightEnd ou
+        // VoteService::dispatchDayVoteConsequences()) a déjà supprimé le hunter_pending de
+        // ce Chasseur pour éviter un double dispatch — sans ce paramètre, check() ne verrait
+        // plus aucun tir en attente et déclarerait Loups/Village gagnants ICI, avant même le
+        // broadcast HunterTurnStarted (voir DECISIONS.md "Victoire Loups déclarée avant
+        // résolution du tir du Chasseur").
+        if ($winChecker->check($game, awaitingHunterId: $this->hunterId)) {
             return;
         }
 
@@ -89,6 +96,15 @@ class ProcessHunterTurn implements ShouldQueue
             ->exists();
 
         if (! $hunter || $hunter->is_alive || ! $hunter->isHunter() || $alreadyShot) {
+            // Le tir de ce Chasseur est déjà résolu (ou invalide) — le report accordé par
+            // awaitingHunterId ci-dessus ne tient plus : re-vérifier la victoire pour de bon
+            // avant de transitionner. endNight() refait ce check() lui-même (redondant mais
+            // sûr) ; startNight() ne le fait pas (voir PhaseManager::startNight()), d'où ce
+            // check() explicite ici pour le cas jour.
+            if ($winChecker->check($game)) {
+                return;
+            }
+
             $fromNight ? $phaseManager->endNight($game) : $phaseManager->startNight($game);
             return;
         }
