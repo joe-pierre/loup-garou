@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 03h25
+Generated at: 12h59
 
 ## PHP Analysis (Core Logic)
 
@@ -1115,7 +1115,7 @@ NightResyncService.php
 // app/Services/WinConditionChecker.php
 WinConditionChecker.php
     functions:
-      - check(Game $game) → return true
+      - check(Game $game, ?int $awaitingHunterId) → return true
       - buildLastAction(Game $game) → return ['phase' => 'day', 'round' => $round, 'eliminated' => $eliminated ? ['pseudo' => $eliminated->pseudo, 'role' => $eliminated->role] : null, 'vote_count' => $topWeight]
 
 // app/Services/ChatService.php
@@ -1247,6 +1247,7 @@ HunterTest.php
       - test_hunter_auto_action_no_elimination_if_inactive() → void
       - test_chasseur_tire_apres_resolution_complete_de_nuit() → void
       - test_chasseur_ne_tire_pas_avant_day_started() → void
+      - test_chasseur_recoit_son_tour_meme_si_sa_propre_mort_atteint_la_parite_loups() → void
 
 // tests/Feature/Game/FullGameIntegrationTest.php
 FullGameIntegrationTest.php
@@ -1660,6 +1661,11 @@ WinConditionCheckerTest.php
       - test_deux_derniers_survivants_non_amoureux_loup_contre_villageois_les_loups_gagnent() → void
       - test_plus_de_deux_survivants_amoureux_ne_declenche_pas_victoire_amoureux() → void
       - test_ne_reecrit_pas_une_partie_deja_annulee() → void
+      - test_parite_loups_avec_hunter_pending_en_attente_reporte_la_victoire() → void
+      - test_awaiting_hunter_id_reporte_la_victoire_meme_sans_hunter_pending_en_base() → void
+      - test_tir_du_chasseur_resolu_sur_un_loup_annule_la_victoire_loups_en_attente() → void
+      - test_chasseur_n_a_pas_change_la_parite_confirme_la_victoire_loups_apres_resolution() → void
+      - test_victoire_amoureux_reste_immediate_malgre_hunter_pending_en_attente() → void
 
 // tests/Unit/Services/PlayerEliminationServiceTest.php
 PlayerEliminationServiceTest.php

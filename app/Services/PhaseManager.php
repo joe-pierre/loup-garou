@@ -96,6 +96,15 @@ class PhaseManager
      * Broadcaste NightStarted et dispatche ProcessSeerTurn avec le délai 'night_start_delay'.
      * Guard atomique : no-op si la partie n'est plus en statut jour.
      *
+     * ⚠️ Ne PAS ajouter ici un check() de victoire inconditionnel symétrique à endNight() :
+     * de nombreux appelants (tests d'intégration en particulier) démarrent une nuit avec un
+     * effectif sans loup, qui déclencherait à tort une victoire Village. Dans la chaîne
+     * normale du Chasseur mort de jour, ProcessHunterAutoAction::handle() vérifie déjà la
+     * victoire avant d'appeler cette méthode (directement ou via ProcessMayorSuccession) —
+     * la branche de repli de ProcessHunterTurn::handle() (Chasseur invalide/déjà résolu) qui
+     * appelle startNight() directement fait son propre check() avant l'appel, localement.
+     * Voir DECISIONS.md "Victoire Loups déclarée avant résolution du tir du Chasseur".
+     *
      * Appel hors lockForUpdate uniquement — jamais depuis l'intérieur d'une transaction verrouillée.
      *
      * @param  Game $game La partie à transitionner

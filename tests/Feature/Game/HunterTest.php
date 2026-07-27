@@ -3,6 +3,7 @@
 namespace Tests\Feature\Game;
 
 use App\Events\Game\DayStarted;
+use App\Events\Game\GameFinished;
 use App\Events\Game\HunterShot;
 use App\Events\Game\HunterTurnStarted;
 use App\Events\Game\MayorSuccessionStarted;
@@ -13,6 +14,7 @@ use App\Jobs\ProcessMayorSuccession;
 use App\Jobs\ProcessNightActions;
 use App\Jobs\ProcessNightEnd;
 use App\Jobs\ProcessDayVote;
+use App\Jobs\ProcessWitchTurn;
 use App\Models\Game;
 use App\Models\GameAction;
 use App\Models\GamePlayer;
@@ -407,5 +409,96 @@ class HunterTest extends TestCase
         Queue::assertPushed(ProcessHunterTurn::class, fn ($job) => $job->gameId === $game->id
             && $job->round === $game->round
             && $job->hunterId === $hunter->id);
+    }
+
+    /**
+     * Régression : voir DECISIONS.md "Victoire Loups déclarée avant résolution du tir du
+     * Chasseur" (partie MGUIVJ). Avant le fix, ProcessNightActions déclarait la partie
+     * terminée (Loups gagnants) dès que la mort du Chasseur atteignait la parité, sans
+     * jamais laisser la chaîne ProcessWitchTurn/ProcessNightEnd/ProcessHunterTurn tourner —
+     * le hunter_pending restait orphelin en base, le Chasseur ne tirait jamais.
+     *
+     * Scénario exact du rapport : 2 loups + Chasseur + 2 villageois (5 vivants). Les loups
+     * tuent le Chasseur → parité 2v2 atteinte par sa seule mort. La partie doit continuer
+     * (ProcessNightEnd → ProcessHunterTurn dispatchés, HunterTurnStarted broadcasté) au lieu
+     * de se terminer immédiatement.
+     */
+    public function test_chasseur_recoit_son_tour_meme_si_sa_propre_mort_atteint_la_parite_loups(): void
+    {
+        Event::fake();
+        Queue::fake();
+
+        $game  = $this->makeNightGame(3);
+        $wolfA = GamePlayer::factory()->werewolf()->create(['game_id' => $game->id]);
+        $wolfB = GamePlayer::factory()->werewolf()->create(['game_id' => $game->id]);
+        $hunter = GamePlayer::factory()->hunter()->create(['game_id' => $game->id]);
+        GamePlayer::factory()->count(2)->villager()->create(['game_id' => $game->id]);
+
+        GameAction::factory()->create([
+            'game_id' => $game->id, 'player_id' => $wolfA->id, 'type' => 'night_vote',
+            'target_player_id' => $hunter->id, 'round' => 3, 'phase' => 'night',
+        ]);
+        GameAction::factory()->create([
+            'game_id' => $game->id, 'player_id' => $wolfB->id, 'type' => 'night_vote',
+            'target_player_id' => $hunter->id, 'round' => 3, 'phase' => 'night',
+        ]);
+
+        (new ProcessNightActions($game->id, 3))
+            ->handle(app(VoteService::class), app(WinConditionChecker::class));
+
+        // La partie ne s'est PAS terminée : le hunter_pending doit être laissé à
+        // ProcessNightEnd/ProcessHunterTurn, pas court-circuité.
+        $this->assertFalse($hunter->fresh()->is_alive);
+        $this->assertSame('processing_night', $game->fresh()->status);
+        $this->assertNull($game->fresh()->winner_team);
+        Event::assertNotDispatched(GameFinished::class);
+        $this->assertDatabaseHas('game_actions', [
+            'game_id' => $game->id, 'player_id' => $hunter->id, 'type' => 'hunter_pending', 'round' => 3,
+        ]);
+        Queue::assertPushed(ProcessNightEnd::class, fn ($job) => $job->gameId === $game->id && $job->round === 3);
+
+        // ProcessNightEnd consomme le hunter_pending et dispatche ProcessHunterTurn
+        // (Queue::fake() n'exécute pas le job dispatché : on l'invoque manuellement,
+        // exactement comme le ferait le worker de queue).
+        (new ProcessNightEnd($game->id, 3))->handle(app(PhaseManager::class));
+
+        Event::assertNotDispatched(GameFinished::class);
+        $this->assertDatabaseMissing('game_actions', ['game_id' => $game->id, 'type' => 'hunter_pending']);
+        Queue::assertPushed(ProcessHunterTurn::class, fn ($job) => $job->gameId === $game->id
+            && $job->round === 3 && $job->hunterId === $hunter->id);
+
+        (new ProcessHunterTurn($game->id, 3, $hunter->id))
+            ->handle(app(PhaseManager::class), app(WinConditionChecker::class));
+
+        Event::assertDispatched(HunterTurnStarted::class, fn ($e) => $e->hunter->id === $hunter->id);
+        Event::assertNotDispatched(GameFinished::class);
+
+        // Le Chasseur tire sur un loup : la parité bascule, la partie doit continuer.
+        $target = GamePlayer::where('id', $wolfA->id)->first();
+        $user   = User::factory()->create();
+        $hunter->update(['user_id' => $user->id]);
+
+        $response = $this->actingAs($user)->postJson("/game/{$game->id}/hunter/shoot", [
+            'target_player_id' => $target->id,
+        ]);
+        $response->assertStatus(200);
+
+        $this->assertFalse($target->fresh()->is_alive);
+        $this->assertNotSame('finished', $game->fresh()->status, 'Le tir du Chasseur sur un loup doit faire retomber la parité et laisser la partie continuer.');
+        Event::assertNotDispatched(GameFinished::class);
+        Queue::assertPushed(ProcessHunterAutoAction::class, fn ($job) => $job->gameId === $game->id
+            && $job->round === 3 && $job->hunterId === $hunter->id && $job->fromNight === true);
+
+        // Exécute le job réellement dispatché par ActionController (Queue::fake() ne l'exécute
+        // pas automatiquement) : hunter_shot déjà en DB → guard "alreadyShot" → endNight().
+        (new ProcessHunterAutoAction($game->id, 3, $hunter->id, fromNight: true))
+            ->handle(app(PhaseManager::class), app(WinConditionChecker::class));
+
+        // 1 loup vs 2 autres : le check() de fin de nuit confirme qu'il n'y a pas de vainqueur,
+        // la nuit se termine normalement (transition vers le jour).
+        $this->assertSame('day', $game->fresh()->status);
+        $this->assertNull($game->fresh()->winner_team);
+        Event::assertNotDispatched(GameFinished::class);
+        Event::assertDispatched(DayStarted::class);
     }
 }
