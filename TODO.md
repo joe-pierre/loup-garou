@@ -986,6 +986,48 @@
       311 tests (305 + 6 nouveaux, aucun cassé — 6 échecs `BroadcastException` pré-existants
       liés à Reverb non démarré localement, confirmés identiques sur `dev` avant ce fix).
 
+## Phase 59 — Support PWA (manifest + service worker) (2026-07-29)
+
+- [x] `public/manifest.json` créé — name/short_name/description cohérents, icônes 192/512
+      (`purpose: any maskable`), `display: standalone`, `orientation: portrait`,
+      `theme_color: #111827` / `background_color: #0a0f1e` (palette existante SPEC.md §10).
+- [x] `public/sw.js` — étendu (pas remplacé, un SW WebPush existait déjà avec `push`/
+      `notificationclick`) : `install`/`activate`/`fetch` ajoutés. Cache-first pour
+      `/build/*`, `/icons/*` et polices ; network-first sans cache pour les routes
+      dynamiques ; `/broadcasting/auth`, `/game/*/state` et `/api/*` jamais mis en cache.
+- [x] `layouts/game.blade.php` — `<link rel="manifest">`, meta iOS
+      (`apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`,
+      `apple-touch-icon`), `theme-color`, et enregistrement `navigator.serviceWorker.register('/sw.js')`
+      indépendant de `registerPush()` (voir DECISIONS.md pour l'analyse du chevauchement).
+- [x] Scope volontairement limité aux vues étendant `layouts/game.blade.php` (waiting-room →
+      finished) — `home.blade.php`, `lobby/index.blade.php` et `auth/login.blade.php` sont des
+      documents HTML autonomes hors de `resources/views/layouts/`, donc hors du périmètre
+      explicite de cette tâche (voir DECISIONS.md et ROADMAP).
+- [x] `php artisan test` : 311 tests verts, 8 échecs `BroadcastException` pré-existants
+      (Reverb non démarré en local) — confirmés identiques sur `dev` avant cette tâche
+      (`git stash` + relance ciblée sur `WinConditionCheckerTest`).
+
+## Phase 60 — Support PWA étendu aux vues d'entrée hors partie (2026-07-29)
+
+- [x] Vérifié via `routes/web.php` que `/` sert bien `home.blade.php` (route `home`) — l'ambiguïté
+      historique "welcome.blade.php vs landing.blade.php" (DECISIONS.md) est déjà résolue depuis
+      un renommage antérieur (`welcome` → `home`, `landing.blade.php` orphelin supprimé) ; aucune
+      confusion actuelle, pas de vue fantôme.
+- [x] 4 vues autonomes identifiées (leur propre `<!DOCTYPE html>`, hors `resources/views/layouts/`) :
+      `home.blade.php` (`/`), `lobby/index.blade.php` (`/lobby`), `game/history.blade.php`
+      (`/game/{code}/history`), `auth/login.blade.php` (`/login` — vue dédiée confirmée, pas
+      une redirection directe vers `/auth/google`).
+- [x] `resources/views/partials/pwa-head.blade.php` créé — factorise le bloc manifest + meta iOS
+      + script d'enregistrement SW (identique à celui de `layouts/game.blade.php`) ; inclus via
+      `@include('partials.pwa-head')` dans les 4 vues ci-dessus ET dans `layouts/game.blade.php`
+      (bloc inline dupliqué de la Phase 59 remplacé par le même include, source unique désormais).
+      Choix documenté dans DECISIONS.md (partial `@include` plutôt que copier-coller, sans créer
+      de layout Blade partagé — hors périmètre, trop risqué à ce stade).
+- [x] `php artisan test` : 311 tests verts (mêmes 8 échecs `BroadcastException` pré-existants,
+      Reverb non démarré) — routes `/`, `/lobby`, `/login`, `/game/{code}/history` toutes
+      couvertes par la suite existante (`ExampleTest`, `LobbyTest`, `GoogleAuthTest`,
+      `GameHistoryServiceTest`), confirmant l'absence de régression de rendu Blade.
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
