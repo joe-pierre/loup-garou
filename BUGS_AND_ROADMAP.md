@@ -1081,6 +1081,9 @@
 
 # ROADMAP (idées / améliorations futures)
  
+- [x] ~~Étendre le manifest/service worker PWA (Phase 59) à `home.blade.php`, `lobby/index.blade.php`
+      et `auth/login.blade.php`~~ — fait en Phase 60 (+ `game/history.blade.php`, également autonome
+      et identifiée à cette occasion) via `@include('partials.pwa-head')`, sans layout partagé.
 - [ ] `game-state.js::_buildVoteMap()` (partagée `.werewolves.vote.cast`/`.day.vote.cast`) lit les mêmes noms
       de champs erronés que le bug `_updateVoteBars()` corrigé le 2026-07-25 (`vote_weight`/`vote_count`/
       `player_id` au lieu de `total_weight`/`vote_count`/`target_player_id` selon l'event) et lit `e.votes`

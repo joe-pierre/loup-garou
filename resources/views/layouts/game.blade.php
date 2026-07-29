@@ -6,6 +6,9 @@
     <title>@yield('title', 'Loup-Garou Undu')</title>
     <meta name="description" content="Jeu Loup-Garou multijoueur en temps réel. Crée une partie, invite tes amis et découvre ton rôle.">
     <meta name="csrf-token"   content="{{ csrf_token() }}">
+
+    @include('partials.pwa-head')
+
     @isset($player)
     <meta name="player-id"    content="{{ $player->id }}">
     <meta name="player-pseudo" content="{{ $player->pseudo }}">
