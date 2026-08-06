@@ -1256,3 +1256,8 @@ Implémentation envisagée :
 - [ ] `LeaderboardService::PERIODS` (`current_month`/`previous_month`/`all`) n'offre aucune borne
       personnalisée (ex. plage de dates arbitraire) — suffisant pour la demande initiale, mais à
       étendre si un besoin de filtre plus fin apparaît (par saison, par tournoi...).
+- [ ] `tests/Unit/Services/Admin/LeaderboardServiceTest.php` et `tests/Feature/Admin/AdminLeaderboardTest.php`
+      n'ont aucun cas `winner_team = 'lovers'` (contrairement à `AdminUserControllerTest.php`, ajouté
+      pendant `fix/admin-stats-lovers-winrate`) — `winCaseSql()` étant réutilisé tel quel par
+      `LeaderboardService`, la couverture existe indirectement mais un test explicite manque encore
+      côté leaderboard.
