@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminGameController;
+use App\Http\Controllers\Admin\AdminLeaderboardController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Game\ActionController;
@@ -106,4 +107,5 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/games/{id}', [AdminGameController::class, 'show'])->name('games.show');
     Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
     Route::get('/users/{id}', [AdminUserController::class, 'show'])->name('users.show');
+    Route::get('/leaderboard', [AdminLeaderboardController::class, 'index'])->name('leaderboard');
 });

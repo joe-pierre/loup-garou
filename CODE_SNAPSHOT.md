@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 15h51
+Generated at: 16h09
 
 ## PHP Analysis (Core Logic)
 
@@ -906,6 +906,11 @@ PushSubscriptionController.php
       - store(Request $request) → return response()->json(['success' => true])
       - destroy(Request $request) → return response()->json(['success' => true])
 
+// app/Http/Controllers/Admin/AdminLeaderboardController.php
+AdminLeaderboardController.php
+    functions:
+      - index(Request $request, LeaderboardService $leaderboardService) → return view('admin.leaderboard', compact('period', 'topWins', 'topGamesPlayed', 'topWinRate', 'minGamesForWinRate'))
+
 // app/Http/Controllers/Admin/AdminGameController.php
 AdminGameController.php
     functions:
@@ -1099,6 +1104,19 @@ GameSettingsService.php
       - updateTimerSettings(Game $game, array $timers) → return $game
       - validateRoleSettings(array $roles) → void
       - updateRoleSettings(Game $game, array $roles) → return $game
+
+// app/Services/Admin/LeaderboardService.php
+LeaderboardService.php
+    attributes:
+      - MIN_GAMES_FOR_WIN_RATE
+      - TOP_LIMIT
+      - PERIODS
+    functions:
+      - topWins(string $period) → return $this->baseQuery($period)->selectRaw('users.id, users.name, users.email, SUM(' . AdminUserController::winCaseSql() . ') as wins_count')->groupBy('users.id', 'users.name', 'users.email')->orderByDesc('wins_count')->limit(self::TOP_LIMIT)->get()
+      - topGamesPlayed(string $period) → return $this->baseQuery($period)->selectRaw('users.id, users.name, users.email, COUNT(*) as games_count')->groupBy('users.id', 'users.name', 'users.email')->orderByDesc('games_count')->limit(self::TOP_LIMIT)->get()
+      - topWinRate(string $period, int $minGames) → return $this->baseQuery($period)->selectRaw('users.id, users.name, users.email, COUNT(*) as games_count, ' . 'SUM(' . $winCaseSql . ') as wins_count, ' . 'ROUND(SUM(' . $winCaseSql . ') / COUNT(*) * 100, 1) as win_rate')->groupBy('users.id', 'users.name', 'users.email')->havingRaw('COUNT(*) >= ?', [$minGames])->orderByDesc('win_rate')->limit(self::TOP_LIMIT)->get()
+      - baseQuery(string $period) → return $query
+      - periodRange(string $period) → return match ($period) { 'previous_month' => [now()->subMonthNoOverflow()->startOfMonth(), now()->subMonthNoOverflow()->endOfMonth()], 'all' => [null, null], default => [now()->startOfMonth(), now()->endOfMonth()], }
 
 // app/Services/NightResyncService.php
 NightResyncService.php
@@ -1591,6 +1609,15 @@ ExampleTest.php
     functions:
       - test_the_application_returns_a_successful_response() → void
 
+// tests/Feature/Admin/AdminLeaderboardTest.php
+AdminLeaderboardTest.php
+    attributes:
+      - RefreshDatabase
+    functions:
+      - test_non_admin_ne_peut_pas_acceder_au_leaderboard() → void
+      - test_admin_voit_le_leaderboard_avec_les_trois_classements() → void
+      - test_periode_invalide_retombe_sur_le_mois_courant() → void
+
 // tests/Feature/LobbyTest.php
 LobbyTest.php
     attributes:
@@ -1718,6 +1745,20 @@ CupidonActionTest.php
       - test_meme_cible_deux_fois_rejetee_422() → void
       - test_cible_introuvable_404() → void
       - test_cible_morte_rejetee_422() → void
+
+// tests/Unit/Services/Admin/LeaderboardServiceTest.php
+LeaderboardServiceTest.php
+    attributes:
+      - RefreshDatabase
+      - service
+    functions:
+      - setUp() → void
+      - finishedGameAt(Carbon $finishedAt, string $winnerTeam) → return Game::factory()->finished()->create(['winner_team' => $winnerTeam, 'finished_at' => $finishedAt])
+      - test_top_wins_compte_les_victoires_par_camp_et_ignore_les_defaites() → void
+      - test_top_parties_jouees_compte_toutes_les_participations_gagnees_ou_perdues() → void
+      - test_parties_annulees_exclues_de_tous_les_classements() → void
+      - test_top_taux_de_victoire_applique_le_seuil_minimum_de_parties() → void
+      - test_filtre_periode_isole_le_mois_courant_du_mois_precedent() → void
 
 // tests/TestCase.php
 TestCase.php

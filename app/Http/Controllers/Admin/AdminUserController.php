@@ -69,8 +69,10 @@ class AdminUserController extends Controller
      * CASE SQL déterminant si une ligne game_players est une victoire :
      * camp Amoureux via lover_player_id, sinon camp Loups/Village via le rôle.
      * Voir DECISIONS.md "Calcul des victoires par camp (admin stats)".
+     * Public static pour réutilisation par LeaderboardService (admin/leaderboard) —
+     * voir DECISIONS.md "Réutilisation du calcul de victoire pour le leaderboard".
      */
-    private function winCaseSql(): string
+    public static function winCaseSql(): string
     {
         return "CASE
             WHEN games.winner_team = 'lovers' AND game_players.lover_player_id IS NOT NULL THEN 1

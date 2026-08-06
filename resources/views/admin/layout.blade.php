@@ -14,6 +14,7 @@
             <a href="{{ route('admin.dashboard') }}" class="text-gray-600 hover:text-gray-900 font-medium">Dashboard</a>
             <a href="{{ route('admin.games.index') }}" class="text-gray-600 hover:text-gray-900 font-medium">Parties</a>
             <a href="{{ route('admin.users.index') }}" class="text-gray-600 hover:text-gray-900 font-medium">Utilisateurs</a>
+            <a href="{{ route('admin.leaderboard') }}" class="text-gray-600 hover:text-gray-900 font-medium">Classement</a>
             <a href="{{ route('lobby') }}" class="ml-auto text-gray-500 hover:text-gray-900 text-sm">← Retour au jeu</a>
         </div>
     </nav>
