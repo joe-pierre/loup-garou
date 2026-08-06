@@ -1240,3 +1240,12 @@ Implémentation envisagée :
       spectateur ne réentend donc jamais rien après sa mort. Étendre `AudioManager.crossfadeTo()` à ces
       vues si demandé (`night_music`/`day_music` selon la phase réelle pour `spectator.blade.php`, silence
       probablement correct pour les écrans de résumé/historique).
+- [ ] `config('game_ui.role_labels')` toujours sans entrée `cupidon` (gap déjà connu ci-dessus, confirmé
+      une 3e fois lors de `feat/admin-stats` — `AdminDashboardController::index()` et
+      `admin/users/index.blade.php` contournent localement avec `array_merge(['cupidon' => 'Cupidon'], ...)`
+      plutôt que de modifier le config, hors périmètre de cette tâche admin en lecture seule). Corriger la
+      source (`config/game_ui.php`) supprimerait ce contournement dupliqué à chaque nouvelle consommation.
+- [ ] Stats admin (`feat/admin-stats`) : victoires/rôle favori recalculés à chaque chargement de
+      `admin/users/index.blade.php` (agrégats SQL, pas de N+1, mais toujours un coût si la table
+      `game_players` grossit fortement) — envisager un cache ou une colonne dénormalisée si la pagination
+      devient lente en usage réel.

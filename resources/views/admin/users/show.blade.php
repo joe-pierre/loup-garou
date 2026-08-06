@@ -52,7 +52,60 @@
     </section>
 
     {{-- ═══════════════════════════════════════════════
-         SECTION 2 — Historique des parties
+         SECTION 2 — Victoires / défaites
+    ════════════════════════════════════════════════ --}}
+    <section class="mb-10">
+        <h2 class="text-base font-semibold text-gray-600 uppercase tracking-wide mb-3">Victoires / défaites</h2>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+            @if ($totalFinished === 0)
+                <p class="text-gray-500 text-sm">Aucune partie terminée (hors annulations) pour ce joueur.</p>
+            @else
+                <div class="flex flex-col sm:flex-row items-center gap-8">
+                    <div class="grid grid-cols-3 gap-6 text-center sm:text-left">
+                        <div>
+                            <dt class="text-xs uppercase text-gray-400 font-medium mb-1">Victoires</dt>
+                            <dd class="text-2xl font-bold text-green-600">{{ $winsCount }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs uppercase text-gray-400 font-medium mb-1">Défaites</dt>
+                            <dd class="text-2xl font-bold text-red-600">{{ $lossesCount }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs uppercase text-gray-400 font-medium mb-1">Taux de victoire</dt>
+                            <dd class="text-2xl font-bold text-gray-800">{{ $winRate }}%</dd>
+                        </div>
+                    </div>
+                    <div class="w-40 h-40 shrink-0">
+                        <canvas id="win-loss-chart"></canvas>
+                    </div>
+                </div>
+
+                <script>
+                    (function () {
+                        const ctx = document.getElementById('win-loss-chart');
+                        new Chart(ctx, {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['Victoires', 'Défaites'],
+                                datasets: [{
+                                    data: [{{ $winsCount }}, {{ $lossesCount }}],
+                                    backgroundColor: ['#16a34a', '#dc2626'],
+                                    borderWidth: 0,
+                                }],
+                            },
+                            options: {
+                                plugins: { legend: { position: 'bottom' } },
+                                maintainAspectRatio: false,
+                            },
+                        });
+                    })();
+                </script>
+            @endif
+        </div>
+    </section>
+
+    {{-- ═══════════════════════════════════════════════
+         SECTION 3 — Historique des parties
     ════════════════════════════════════════════════ --}}
     <section class="mb-10">
         @php

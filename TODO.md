@@ -1028,6 +1028,30 @@
       couvertes par la suite existante (`ExampleTest`, `LobbyTest`, `GoogleAuthTest`,
       `GameHistoryServiceTest`), confirmant l'absence de régression de rendu Blade.
 
+## Phase 61 — Statistiques admin : victoires, rôle favori, graphiques Chart.js (2026-08-06)
+
+- [x] `AdminUserController::index()` — colonnes `wins_count` (agrégat `SUM(CASE...)` par camp,
+      voir DECISIONS.md) et `favorite_role` (mode statistique via fenêtre `ROW_NUMBER()`)
+      ajoutées par `leftJoinSub()`, aucun `foreach` PHP sur les utilisateurs.
+- [x] `AdminUserController::show()` — victoires/défaites/taux calculés par requête agrégée
+      (parties `finished` avec `winner_team` non nul uniquement, annulées exclues).
+- [x] `AdminDashboardController::index()` — répartition des rôles joués (`GamePlayer::selectRaw`
+      groupé par rôle), labels français préparés côté contrôleur (pas dans la vue).
+- [x] Chart.js absent du projet (vérifié `package.json` + grep) — chargé via CDN dans
+      `admin/layout.blade.php` uniquement, cohérent avec le pattern CDN existant
+      (GSAP/Tailwind sur `home.blade.php`).
+- [x] `admin/users/index.blade.php` (2 colonnes), `admin/users/show.blade.php` (donut
+      victoires/défaites + chiffres bruts), `admin/dashboard.blade.php` (bar chart rôles) —
+      un `<canvas>` par graphique, init JS inline.
+- [x] Vérification manuelle via `php artisan tinker` (données de test créées puis nettoyées) :
+      les 3 vues rendent sans exception, chiffres agrégés corrects sur un jeu de parties
+      villageois/loups/amoureux/annulée.
+- [x] `php artisan test` : 311/319 verts, 8 échecs `BroadcastException` pré-existants
+      (Reverb non démarré en local) — confirmés identiques via `git stash` avant cette tâche.
+- [x] Ambiguïtés de calcul des victoires (cas `lovers`, parties annulées, joueur mort avant la
+      fin, égalité de rôle favori) tranchées et documentées dans DECISIONS.md plutôt que
+      décidées silencieusement.
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
