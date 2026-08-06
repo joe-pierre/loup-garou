@@ -1052,6 +1052,33 @@
       fin, égalité de rôle favori) tranchées et documentées dans DECISIONS.md plutôt que
       décidées silencieusement.
 
+## Phase 62 — Leaderboard admin : victoires, parties jouées, taux de victoire (2026-08-06)
+
+- [x] Vérifié `feat/admin-stats` déjà mergée sur `dev` (`git log --merged`) avant de démarrer —
+      réutilisation de la logique de victoire existante plutôt que redéveloppement.
+- [x] `AdminUserController::winCaseSql()` passée de `private` à `public static` (aucun autre
+      changement) pour être appelable depuis `LeaderboardService` — voir DECISIONS.md.
+- [x] `app/Services/Admin/LeaderboardService.php` créé — 3 classements (`topWins()`,
+      `topGamesPlayed()`, `topWinRate()`) en requêtes agrégées (`selectRaw`/`groupBy`/`havingRaw`),
+      aucune collection PHP triée en mémoire. Filtre période (`current_month`/`previous_month`/`all`)
+      sur `games.finished_at`, parties annulées (`winner_team = null`) exclues des 3 classements —
+      voir DECISIONS.md pour le détail des deux choix (champ de date, périmètre "tous résultats").
+- [x] `AdminLeaderboardController` créé (`app/Http/Controllers/Admin/`) — lecture seule, valide le
+      paramètre `period` (repli sur `current_month` si invalide).
+- [x] `GET /admin/leaderboard` ajoutée dans le groupe `admin.*` existant (`routes/web.php`).
+- [x] `admin/leaderboard.blade.php` créé (`@extends('admin.layout')`) — filtres période (pattern
+      identique à `admin/games/index.blade.php`), 3 classements top 10 (nom + email + lien fiche
+      utilisateur), seuil minimum affiché explicitement pour le taux de victoire (3 parties).
+- [x] Lien "Classement" ajouté dans la nav de `admin/layout.blade.php`.
+- [x] `tests/Unit/Services/Admin/LeaderboardServiceTest.php` (5 tests) + `tests/Feature/Admin/AdminLeaderboardTest.php`
+      (3 tests) créés — calcul de victoire par camp, comptage parties jouées, exclusion parties
+      annulées, seuil taux de victoire, isolation des périodes, gate `is_admin`, repli période invalide.
+- [x] `php artisan test` : 319/327 verts (311 avant + 8 nouveaux), 8 échecs `BroadcastException`
+      pré-existants (Reverb non démarré en local) — confirmés identiques via `git stash` avant cette
+      tâche, aucun rapport avec ce changement.
+- [x] Deux ambiguïtés de la consigne tranchées et documentées dans DECISIONS.md plutôt que
+      décidées silencieusement (champ de date période, parties annulées dans "Top parties jouées").
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`

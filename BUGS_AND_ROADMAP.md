@@ -1249,3 +1249,10 @@ Implémentation envisagée :
       `admin/users/index.blade.php` (agrégats SQL, pas de N+1, mais toujours un coût si la table
       `game_players` grossit fortement) — envisager un cache ou une colonne dénormalisée si la pagination
       devient lente en usage réel.
+- [ ] Leaderboard admin (`feat/admin-leaderboard`) : mêmes 3 classements (`LeaderboardService`)
+      recalculés en agrégats SQL à chaque chargement de `admin/leaderboard.blade.php`, sans cache —
+      même remarque que ci-dessus pour `feat/admin-stats` (coût croissant avec `game_players`), à
+      traiter ensemble si un cache est un jour introduit côté admin.
+- [ ] `LeaderboardService::PERIODS` (`current_month`/`previous_month`/`all`) n'offre aucune borne
+      personnalisée (ex. plage de dates arbitraire) — suffisant pour la demande initiale, mais à
+      étendre si un besoin de filtre plus fin apparaît (par saison, par tournoi...).
