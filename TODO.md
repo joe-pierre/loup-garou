@@ -1079,6 +1079,23 @@
 - [x] Deux ambiguïtés de la consigne tranchées et documentées dans DECISIONS.md plutôt que
       décidées silencieusement (champ de date période, parties annulées dans "Top parties jouées").
 
+## Phase 63 — Vérification victoire Amoureux dans les stats admin (fix/admin-stats-lovers-winrate) (2026-08-06)
+
+- [x] `feat/admin-stats` déjà mergée sur `dev` au démarrage → branche `fix/admin-stats-lovers-winrate`
+      créée à la place (au lieu de retravailler sur `feat/admin-stats`).
+- [x] Relecture de `AdminUserController::winCaseSql()` (+ usages `index()`/`show()` et réutilisation
+      dans `LeaderboardService`) : le cas `winner_team = 'lovers'` via `lover_player_id` était déjà
+      couvert dès l'implémentation initiale — aucun bug trouvé, aucune modification de code métier
+      ou d'affichage nécessaire. Voir DECISIONS.md pour le détail.
+- [x] `tests/Feature/Admin/AdminUserControllerTest.php` créé (aucune couverture n'existait avant
+      pour `AdminUserController::index()`/`show()`) — 4 tests : gate `is_admin`, victoire `lovers`
+      comptée dans `wins_count` (liste), victoire `lovers` reflétée dans le donut de la fiche
+      utilisateur (`winsCount`/`lossesCount`/`winRate`), défaite hors `lovers` en non-régression.
+- [x] `php artisan test` : 323 tests passent (8 échecs `BroadcastException` préexistants, Reverb
+      non démarré en local, indépendants de cette tâche).
+- [x] `DECISIONS.md` — entrée "Vérification victoire Amoureux dans les stats admin — pas de bug
+      trouvé, tests de régression ajoutés" ajoutée, citant les entrées Cupidon existantes.
+
 ## État global
 
 - v1.1 ✅ Terminé et taggué `v1.1.1`
