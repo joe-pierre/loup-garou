@@ -1,6 +1,6 @@
 # Laravel Core Logic Analysis
 
-Generated at: 12h59
+Generated at: 15h51
 
 ## PHP Analysis (Core Logic)
 
@@ -915,13 +915,14 @@ AdminGameController.php
 // app/Http/Controllers/Admin/AdminDashboardController.php
 AdminDashboardController.php
     functions:
-      - index(Request $request) → return view('admin.dashboard', compact('totalGames', 'activeGames', 'finishedGames', 'totalUsers', 'recentActive'))
+      - index(Request $request) → return view('admin.dashboard', compact('totalGames', 'activeGames', 'finishedGames', 'totalUsers', 'recentActive', 'roleChartLabels', 'roleChartData'))
 
 // app/Http/Controllers/Admin/AdminUserController.php
 AdminUserController.php
     functions:
       - index(Request $request) → return view('admin.users.index', compact('users'))
-      - show(Request $request, int $id) → return view('admin.users.show', compact('user'))
+      - show(Request $request, int $id) → return view('admin.users.show', compact('user', 'winsCount', 'lossesCount', 'winRate', 'totalFinished'))
+      - winCaseSql() → return "CASE\n WHEN games.winner_team = 'lovers' AND game_players.lover_player_id IS NOT NULL THEN 1\n WHEN games.winner_team = 'werewolves' AND game_players.role IN ('werewolf', 'white_wolf') THEN 1\n WHEN games.winner_team = 'villagers' AND game_players.role IN ('villager', 'seer', 'witch', 'hunter') THEN 1\n ELSE 0\n END"
 
 // app/Notifications/PlayerKilledNightNotification.php
 PlayerKilledNightNotification.php

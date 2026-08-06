@@ -20,10 +20,15 @@
                             <th class="px-5 py-3 text-left">Admin</th>
                             <th class="px-5 py-3 text-left">Inscrit le</th>
                             <th class="px-5 py-3 text-left">Parties jouées</th>
+                            <th class="px-5 py-3 text-left">Victoires</th>
+                            <th class="px-5 py-3 text-left">Rôle favori</th>
                             <th class="px-5 py-3 text-left"></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
+                        @php
+                            $roleLabels = array_merge(['cupidon' => 'Cupidon'], config('game_ui.role_labels', []));
+                        @endphp
                         @foreach ($users as $user)
                             <tr class="hover:bg-gray-50">
                                 <td class="px-5 py-3 font-medium text-gray-800">{{ $user->name }}</td>
@@ -42,6 +47,16 @@
                                 </td>
                                 <td class="px-5 py-3 text-gray-500 text-xs">{{ $user->created_at->format('d/m/Y H:i') }}</td>
                                 <td class="px-5 py-3 text-gray-700">{{ $user->game_players_count }}</td>
+                                <td class="px-5 py-3 text-gray-700 font-medium">{{ $user->wins_count }}</td>
+                                <td class="px-5 py-3">
+                                    @if ($user->favorite_role)
+                                        <span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">
+                                            {{ $roleLabels[$user->favorite_role] ?? $user->favorite_role }}
+                                        </span>
+                                    @else
+                                        <span class="text-gray-400">—</span>
+                                    @endif
+                                </td>
                                 <td class="px-5 py-3">
                                     <a href="{{ route('admin.users.show', $user->id) }}" class="text-blue-600 hover:underline text-xs">Voir</a>
                                 </td>

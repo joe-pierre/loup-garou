@@ -23,6 +23,44 @@
         </div>
     </div>
 
+    {{-- Répartition des rôles joués --}}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-10">
+        <div class="px-5 py-4 border-b border-gray-200">
+            <h2 class="text-base font-semibold text-gray-700">Répartition des rôles joués</h2>
+        </div>
+        <div class="p-5">
+            @if ($roleChartLabels->isEmpty())
+                <p class="text-gray-500 text-sm">Aucun rôle distribué pour l'instant.</p>
+            @else
+                <div class="h-72">
+                    <canvas id="role-distribution-chart"></canvas>
+                </div>
+
+                <script>
+                    (function () {
+                        const ctx = document.getElementById('role-distribution-chart');
+                        new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: @json($roleChartLabels),
+                                datasets: [{
+                                    label: 'Parties jouées',
+                                    data: @json($roleChartData),
+                                    backgroundColor: '#4f46e5',
+                                }],
+                            },
+                            options: {
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+                            },
+                        });
+                    })();
+                </script>
+            @endif
+        </div>
+    </div>
+
     {{-- Tableau des parties actives récentes --}}
     <div class="bg-white rounded-lg shadow-sm border border-gray-200">
         <div class="px-5 py-4 border-b border-gray-200">
